@@ -72,76 +72,70 @@ const pricingPlans = [
 
 export default function Home() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-slate-950">
       {/* ====== Hero Section ====== */}
-      <section className="relative overflow-hidden pt-32 pb-24 px-6">
-        {/* Background effects */}
+      <section className="relative overflow-hidden pt-40 pb-32 px-8">
+        {/* Advanced Background effects */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-gradient-to-b from-cyan-500/8 via-blue-500/5 to-transparent rounded-full blur-3xl" />
-          <div className="absolute top-10 left-10 w-2 h-2 rounded-full bg-cyan-400/40 animate-pulse-dot" />
-          <div className="absolute top-40 right-20 w-1.5 h-1.5 rounded-full bg-blue-400/30 animate-pulse-dot" style={{ animationDelay: '1s' }} />
-          <div className="absolute bottom-20 left-1/4 w-1 h-1 rounded-full bg-purple-400/30 animate-pulse-dot" style={{ animationDelay: '0.5s' }} />
+          <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-cyan-500/10 rounded-full blur-[120px] animate-pulse" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-gradient-to-b from-cyan-500/5 via-transparent to-transparent rounded-full blur-3xl opacity-50" />
         </div>
 
-        <div className="relative max-w-4xl mx-auto text-center">
+        <div className="relative max-w-screen-xl mx-auto text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-cyan-500/20 bg-cyan-500/5 mb-8 animate-fade-in-up">
+          <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-white/5 bg-white/[0.03] backdrop-blur-md mb-10 animate-fade-in-up shadow-xl">
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse-dot" />
-            <span className="text-cyan-400 text-sm font-medium">AI 기반 스마트 모니터링</span>
+            <span className="text-cyan-400 text-xs font-bold tracking-widest uppercase">Next-Gen AI Monitoring</span>
           </div>
 
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-white leading-tight tracking-tight mb-6 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-            근무 환경을
+          <h1 className="text-6xl sm:text-7xl lg:text-8xl font-black text-white leading-tight tracking-tighter mb-8 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+            WorkSight로
             <br />
-            <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
-              더 스마트하게
+            <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-500 bg-clip-text text-transparent">
+              스마트하게 근무하세요
             </span>
           </h1>
 
-          <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-            WorkSight는 AI 영상 분석 기술로 직원의 근무 상태를 실시간 모니터링하여,
+          <p className="text-xl sm:text-2xl text-slate-400 max-w-3xl mx-auto mb-14 leading-relaxed font-medium animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            AI 실시간 영상 분석 기술로 팀의 몰입도를 높이고 
             <br className="hidden sm:block" />
-            안전하고 효율적인 작업 환경을 만들어갑니다.
+            건강한 디지털 근무 문화를 선도합니다.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-            <Link
-              to="/login"
-              className="px-8 py-3.5 rounded-xl text-base font-semibold text-white bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 transition-all duration-300 no-underline shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:-translate-y-0.5"
-            >
-              무료로 시작하기
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+            <Link to="/login" className="btn-primary px-10 py-4 text-lg no-underline">
+              지금 무료로 시작하기
             </Link>
-            <a
-              href="#features"
-              className="px-8 py-3.5 rounded-xl text-base font-medium text-slate-300 border border-slate-700 hover:border-slate-500 hover:text-white transition-all duration-300 no-underline hover:-translate-y-0.5"
-            >
-              자세히 알아보기
+            <a href="#features" className="px-10 py-4 rounded-2xl text-lg font-bold text-slate-300 border border-white/10 hover:border-white/20 hover:text-white transition-all duration-300 no-underline backdrop-blur-sm">
+              기능 둘러보기
             </a>
           </div>
         </div>
       </section>
 
       {/* ====== Features Section ====== */}
-      <section id="features" className="py-24 px-6">
-        <div className="max-w-6xl mx-auto">
+      <section id="features" className="py-24 px-6 relative scroll-mt-24">
+        <div className="max-w-screen-xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">핵심 기능</h2>
-            <p className="text-slate-400 text-lg max-w-xl mx-auto">
-              WorkSight가 제공하는 강력한 근무 환경 모니터링 기능들
+            <h2 className="text-3xl sm:text-4xl font-black text-white mb-4 tracking-tight">핵심 솔루션</h2>
+            <div className="w-16 h-1 bg-gradient-to-r from-cyan-500 to-blue-600 mx-auto rounded-full" />
+            <p className="text-slate-500 mt-6 text-sm sm:text-base font-medium max-w-2xl mx-auto">
+              WorkSight는 최신 AI 기술을 활용하여 단순한 감시가 아닌, 팀의 몰입도를 높이고 건강한 디지털 근무 환경을 만드는 데 집중합니다.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((f, i) => (
               <div
                 key={i}
-                className="glass-card p-8 hover:border-cyan-500/30 transition-all duration-300 hover:-translate-y-1 group"
+                className="rounded-3xl bg-slate-900/50 border border-white/5 p-8 flex flex-col items-start transition-all duration-300 hover:bg-slate-900/80 hover:-translate-y-1 hover:shadow-2xl hover:shadow-cyan-500/10 hover:border-white/10 group"
               >
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center text-cyan-400 mb-5 group-hover:from-cyan-500/30 group-hover:to-blue-500/30 transition-all duration-300">
+                <div className="w-14 h-14 rounded-2xl bg-slate-800/80 border border-white/5 flex items-center justify-center text-cyan-400 mb-6 group-hover:scale-110 group-hover:bg-cyan-500/10 transition-all duration-500">
                   {f.icon}
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-3">{f.title}</h3>
-                <p className="text-slate-400 leading-relaxed">{f.desc}</p>
+                <h3 className="text-xl font-bold text-white mb-3 tracking-tight">{f.title}</h3>
+                <p className="text-slate-400 leading-relaxed text-sm">{f.desc}</p>
               </div>
             ))}
           </div>
@@ -149,30 +143,27 @@ export default function Home() {
       </section>
 
       {/* ====== How It Works ====== */}
-      <section className="py-24 px-6 border-t border-slate-800/60">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">어떻게 작동하나요?</h2>
-            <p className="text-slate-400 text-lg">단 3단계로 시작하는 스마트 모니터링</p>
+      <section className="py-32 px-8 border-t border-white/5 bg-white/[0.01]">
+        <div className="max-w-screen-xl mx-auto">
+          <div className="text-center mb-20">
+            <h2 className="text-4xl font-black text-white mb-4 tracking-tight">작동 원리</h2>
+            <p className="text-slate-500 text-lg font-medium">복잡한 설치 없이 브라우저에서 바로 시작하세요</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             {[
-              { step: '01', title: '카메라 연결', desc: '직원 PC의 웹캠을 WorkSight에 연결합니다. 별도의 장비가 필요 없습니다.' },
-              { step: '02', title: 'AI 분석 시작', desc: 'AI가 실시간으로 영상을 분석하여 졸음, 자리이탈 등의 상태를 판별합니다.' },
-              { step: '03', title: '알림 & 관리', desc: '이상 상태 감지 시 관리자에게 즉시 알림이 전송되고, 대시보드에서 관리합니다.' },
+              { step: '01', title: '간편한 계정 생성', desc: '직원 또는 관리자로 가입하세요. 가입 즉시 10,000 포인트가 지급됩니다.' },
+              { step: '02', title: 'AI 분석 활성화', desc: '웹캠을 통해 실시간으로 상태를 분석합니다. 딥러닝 모델이 졸음과 이탈을 감지합니다.' },
+              { step: '03', title: '실시간 리포트', desc: '감지된 모든 이벤트는 즉시 관리 대시보드에 기록되어 팀 생산성을 관리합니다.' },
             ].map((item, i) => (
-              <div key={i} className="text-center">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 flex items-center justify-center mx-auto mb-5">
-                  <span className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-                    {item.step}
-                  </span>
+              <div key={i} className="relative group text-center md:text-left">
+                <div className="text-7xl font-black text-white/[0.03] absolute -top-10 -left-4 pointer-events-none group-hover:text-cyan-500/10 transition-colors">
+                  {item.step}
                 </div>
-                <h3 className="text-lg font-semibold text-white mb-2">{item.title}</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">{item.desc}</p>
-                {i < 2 && (
-                  <div className="hidden md:block mt-6 text-slate-700 text-2xl">→</div>
-                )}
+                <div className="relative z-10">
+                  <h3 className="text-xl font-bold text-white mb-4">{item.title}</h3>
+                  <p className="text-slate-400 leading-relaxed">{item.desc}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -180,53 +171,55 @@ export default function Home() {
       </section>
 
       {/* ====== Pricing Section ====== */}
-      <section className="py-24 px-6 border-t border-slate-800/60">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">요금제</h2>
-            <p className="text-slate-400 text-lg">팀 규모에 맞는 플랜을 선택하세요</p>
+      <section className="py-32 px-8 border-t border-white/5">
+        <div className="max-w-screen-xl mx-auto">
+          <div className="text-center mb-20">
+            <h2 className="text-4xl font-black text-white mb-4 tracking-tight">요금제</h2>
+            <p className="text-slate-500 text-lg font-medium">합리적인 비용으로 생산성을 극대화하세요</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {pricingPlans.map((plan, i) => (
               <div
                 key={i}
-                className={`glass-card p-8 flex flex-col transition-all duration-300 hover:-translate-y-1 ${
+                className={`glass-card p-10 flex flex-col transition-all duration-500 hover:-translate-y-2 ${
                   plan.accent
-                    ? 'border-cyan-500/40 glow-cyan relative'
-                    : 'hover:border-slate-600'
+                    ? 'border-cyan-500/30 glow-cyan relative bg-slate-900/60'
+                    : 'bg-slate-900/30'
                 }`}
               >
                 {plan.accent && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 text-xs font-bold text-white">
-                    인기
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-1.5 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 text-xs font-black text-white uppercase tracking-widest shadow-xl">
+                    Most Popular
                   </div>
                 )}
-                <h3 className="text-xl font-bold text-white mb-1">{plan.name}</h3>
-                <p className="text-slate-500 text-sm mb-5">{plan.desc}</p>
-                <div className="mb-6">
-                  <span className="text-4xl font-extrabold text-white">{plan.price}</span>
-                  {plan.period && <span className="text-slate-500 text-sm">{plan.period}</span>}
+                <h3 className="text-2xl font-black text-white mb-2">{plan.name}</h3>
+                <p className="text-slate-500 text-sm mb-8 font-medium">{plan.desc}</p>
+                <div className="mb-10">
+                  <span className="text-5xl font-black text-white tracking-tighter">{plan.price}</span>
+                  {plan.period && <span className="text-slate-500 text-lg ml-1">{plan.period}</span>}
                 </div>
-                <ul className="flex-1 space-y-3 mb-8">
+                <ul className="flex-1 space-y-4 mb-10">
                   {plan.features.map((feat, j) => (
-                    <li key={j} className="flex items-center gap-2.5 text-sm text-slate-300">
-                      <svg className="w-4 h-4 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
+                    <li key={j} className="flex items-center gap-3 text-sm font-medium text-slate-300">
+                      <div className="w-5 h-5 rounded-full bg-cyan-500/10 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-3 h-3 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4">
+                          <path d="M20 6L9 17l-5-5" />
+                        </svg>
+                      </div>
                       {feat}
                     </li>
                   ))}
                 </ul>
                 <Link
                   to="/login"
-                  className={`block text-center py-3 rounded-xl font-semibold text-sm transition-all duration-200 no-underline ${
+                  className={`block text-center py-4 rounded-2xl font-bold text-sm transition-all duration-300 no-underline ${
                     plan.accent
-                      ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:from-cyan-400 hover:to-blue-400 shadow-lg shadow-cyan-500/20'
-                      : 'border border-slate-700 text-slate-300 hover:border-slate-500 hover:text-white'
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-xl shadow-cyan-500/20 hover:shadow-cyan-500/40'
+                      : 'border border-white/10 text-slate-300 hover:border-white/20 hover:text-white'
                   }`}
                 >
-                  시작하기
+                  플랜 선택하기
                 </Link>
               </div>
             ))}
@@ -235,20 +228,29 @@ export default function Home() {
       </section>
 
       {/* ====== Footer ====== */}
-      <footer className="border-t border-slate-800/60 py-12 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
+      <footer className="border-t border-white/5 py-20 px-8 bg-slate-950">
+        <div className="max-w-screen-xl mx-auto flex flex-col md:flex-row items-center justify-between gap-10">
+          <div className="flex flex-col items-center md:items-start gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                </svg>
+              </div>
+              <span className="text-2xl font-black text-white tracking-tighter">
+                Work<span className="text-cyan-400">Sight</span>
+              </span>
             </div>
-            <span className="text-sm font-semibold text-slate-400">
-              Work<span className="text-cyan-400">Sight</span>
-            </span>
+            <p className="text-slate-500 text-sm font-medium">AI 기반 스마트 근무 모니터링 플랫폼</p>
           </div>
-          <p className="text-sm text-slate-600">© 2026 WorkSight. All rights reserved.</p>
+          <div className="flex flex-col items-center md:items-end gap-2">
+            <div className="flex gap-8 text-sm font-bold text-slate-500 mb-4">
+              <a href="#" className="hover:text-cyan-400 transition-colors no-underline">이용약관</a>
+              <a href="#" className="hover:text-cyan-400 transition-colors no-underline">개인정보처리방침</a>
+              <a href="#" className="hover:text-cyan-400 transition-colors no-underline">고객지원</a>
+            </div>
+            <p className="text-slate-600 text-xs">© 2026 WorkSight Team. All rights reserved.</p>
+          </div>
         </div>
       </footer>
     </div>
