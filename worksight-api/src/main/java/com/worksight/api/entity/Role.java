@@ -1,4 +1,5 @@
 package com.worksight.api.entity;
 
-public class Role {
+public enum Role {
+    EMPLOYEE, MANAGER
 }
