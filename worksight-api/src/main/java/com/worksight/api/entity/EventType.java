@@ -1,4 +1,5 @@
 package com.worksight.api.entity;
 
-public class EventType {
+public enum EventType {
+    SLEEP, SMARTPHONE, AWAY, DISTRACTED, NORMAL
 }
