@@ -1,4 +1,56 @@
 package com.worksight.api.service;
 
+import com.worksight.api.entity.Member;
+import com.worksight.api.repository.MemberRepository;
+import com.worksight.api.dto.MonitoringDto.*;
+import com.worksight.api.entity.EventType;
+import com.worksight.api.entity.WorkEvent;
+import com.worksight.api.repository.WorkEventRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
 public class MonitoringService {
+
+    private final WorkEventRepository workEventRepository;
+    private final MemberRepository memberRepository;
+    private final SimpMessagingTemplate messagingTemplate;
+
+    @Transactional
+    public void processEvent(EventReportRequest request) {
+        // 1. 정상 상태면 무시 (기획서대로 DB 로그 폭발 방지)
+        if (request.eventType() == EventType.NORMAL) {
+            return;
+        }
+
+        // 2. 직원 조회
+        Member employee = memberRepository.findById(request.employeeId())
+                .orElseThrow(() -> new IllegalArgumentException("Invalid Employee ID"));
+
+        // 3. 이상 상태 DB에 이벤트 저장
+        WorkEvent event = WorkEvent.builder()
+                .employee(employee)
+                .eventType(request.eventType())
+                .build();
+
+        workEventRepository.save(event);
+        log.info("Abnormal state detected and saved: {} - {}", employee.getUsername(), request.eventType());
+
+        // 4. 웹소켓을 통해 관리자 대시보드로 실시간 알림 브로드캐스팅
+        DashboardAlertResponse alert = new DashboardAlertResponse(
+                event.getId(),
+                employee.getId(),
+                employee.getUsername(),
+                event.getEventType(),
+                event.getEventTime()
+        );
+
+        // 프론트엔드(관리자)는 '/topic/alerts'를 구독하고 있어야 함
+        messagingTemplate.convertAndSend("/topic/alerts", alert);
+    }
 }
