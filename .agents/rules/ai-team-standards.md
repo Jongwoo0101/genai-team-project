@@ -12,7 +12,7 @@
 
 ---
 
-## 2. Frontend 표준 (Next.js & Tailwind)
+## 2. Frontend 표준 (React.js + Vite & Tailwind)
 - **Framework**: Next.js App Router (Pages Router 사용 금지)
 - **Styling**: Tailwind CSS 유틸리티 클래스만 사용. 인라인 스타일 절대 금지.
 - **Icons**: Lucide-react
@@ -21,7 +21,7 @@
 
 ---
 
-## 3. Backend & Integration 표준 (Supabase & Zapier)
+## 3. Backend & Integration 표준 (Spring Boot & Zapier)
 - **DB & Auth**: Supabase
 - **보안**: 모든 테이블에 RLS 적용 필수
 - **API**: Supabase 로직은 `@/lib/supabaseClient.ts` 에 집중
