@@ -1,0 +1,18 @@
+### 1. 회원가입 테스트
+POST http://localhost:8080/api/members/signup
+Content-Type: application/json
+
+{
+  "username": "tester01",
+  "password": "password123",
+  "role": "EMPLOYEE"
+}
+
+### 2. 로그인 테스트 (아직 로그인 로직을 따로 안 만드셨다면 확인용)
+POST http://localhost:8080/api/members/login
+Content-Type: application/json
+
+{
+  "username": "tester01",
+  "password": "password123"
+}
