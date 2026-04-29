@@ -12,12 +12,8 @@ TEAM NAME: THE FIRST CLASS
 
 **프로젝트명:** WorkSight AI
 **프론트엔드:** React + Vite
-**백엔드:** Spring Boot
+**백엔드:** Java Spring Boot (Gradle)
 **AI 모듈:** Python (OpenCV, PyTorch/TensorFlow)
-**DB:** PostgreSQL
-**스토리지:** AWS S3 / MinIO
-**실시간 통신:** WebSocket
-**배포:** Docker + Nginx + EC2
 
 ---
 
@@ -260,18 +256,6 @@ Python
 * dlib
 
 ---
-
-## 데이터베이스
-
-PostgreSQL
-
-테이블:
-
-* employees
-* events
-* videos
-* departments
-* alerts
 
 ---
 
