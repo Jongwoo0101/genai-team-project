@@ -1,0 +1,31 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:worksight;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    # 경고 해결: View 단계까지 DB 연결을 유지하지 않음 (성능 및 커넥션 효율 향상)
+    open-in-view: false
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        # DB 예약어 충돌 방지
+        globally_quoted_identifiers: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+# 로그 레벨 조정 (보안 및 디버깅 최적화)
+logging:
+  level:
+    org.springframework.security: INFO
+    org.hibernate.SQL: DEBUG
+    com.worksight.api: DEBUG
