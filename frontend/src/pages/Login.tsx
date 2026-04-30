@@ -38,6 +38,17 @@ export default function Login() {
       const result = await login(username, password);
       if (result.success) {
         const role = useAuthStore.getState().user?.role;
+        // 서버에서 받은 role과 선택한 role이 일치하는지 검증
+        if (role !== selectedRole) {
+          setError(
+            selectedRole === 'MANAGER'
+              ? '관리자 계정이 아닙니다.'
+              : '직원 계정이 아닙니다.'
+          );
+          useAuthStore.getState().logout?.(); // 로그인 상태 초기화
+          setIsLoading(false);
+          return;
+        }
         navigate(role === 'MANAGER' ? '/dashboard' : '/employee');
       } else {
         setError(result.error || '로그인에 실패했습니다.');
@@ -84,7 +95,7 @@ export default function Login() {
               <button
                 key={m}
                 type="button"
-                onClick={() => { setMode(m); setError(''); }}
+                onClick={() => { setMode(m); setError(''); setSelectedRole('EMPLOYEE'); }}
                 className={`py-3 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer border-0 ${
                   mode === m
                     ? 'bg-cyan-500/15 text-cyan-400 glow-cyan'
@@ -98,28 +109,28 @@ export default function Login() {
         </div>
 
         <div className="glass-card p-10 shadow-2xl animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-          {/* Role Selector (Signup only) */}
-          {mode === 'signup' && (
-            <div className="mb-8">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 text-center">계정 유형 선택</label>
-              <div className="grid grid-cols-2 gap-4">
-                {(['EMPLOYEE', 'MANAGER'] as Role[]).map((role) => (
-                  <button
-                    key={role}
-                    type="button"
-                    onClick={() => setSelectedRole(role)}
-                    className={`py-4 px-4 rounded-2xl text-sm font-bold transition-all duration-300 cursor-pointer border-2 ${
-                      selectedRole === role
-                        ? 'bg-cyan-500/10 border-cyan-500/40 text-cyan-400'
-                        : 'bg-slate-800/20 border-transparent text-slate-500 hover:border-slate-700'
-                    }`}
-                  >
-                    {role === 'EMPLOYEE' ? '👤 직원' : '👔 관리자'}
-                  </button>
-                ))}
-              </div>
+          {/* Role Selector - 로그인/회원가입 공통 표시 */}
+          <div className="mb-8">
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 text-center">
+              {mode === 'login' ? '계정 유형' : '계정 유형 선택'}
+            </label>
+            <div className="grid grid-cols-2 gap-4">
+              {(['EMPLOYEE', 'MANAGER'] as Role[]).map((role) => (
+                <button
+                  key={role}
+                  type="button"
+                  onClick={() => setSelectedRole(role)}
+                  className={`py-4 px-4 rounded-2xl text-sm font-bold transition-all duration-300 cursor-pointer border-2 ${
+                    selectedRole === role
+                      ? 'bg-cyan-500/10 border-cyan-500/40 text-cyan-400'
+                      : 'bg-slate-800/20 border-transparent text-slate-500 hover:border-slate-700'
+                  }`}
+                >
+                  {role === 'EMPLOYEE' ? '👤 직원' : '👔 관리자'}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">

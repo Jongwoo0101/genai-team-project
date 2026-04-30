@@ -11,6 +11,7 @@ public class Member {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(unique = true) // 같은 아이디 중복 가입 방지
     private String username;
     private String password;
 

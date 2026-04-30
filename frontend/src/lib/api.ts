@@ -1,11 +1,5 @@
 import type { SignUpRequest, LoginRequest, MemberResponse, EventReportRequest } from './types';
 
-// ========================
-// 백엔드 API 호출 함수
-// Spring Boot 서버 (localhost:8080)
-// Vite 프록시를 통해 /api/** → localhost:8080/api/** 로 전달
-// ========================
-
 const API_BASE = '/api';
 
 /** 공통 fetch 래퍼 - JSON POST 요청 */
@@ -17,9 +11,19 @@ async function postJSON<T>(url: string, body: unknown): Promise<T> {
   });
 
   if (!res.ok) {
-    // 서버에서 에러 메시지를 텍스트로 보내는 경우 처리
-    const errorText = await res.text();
-    throw new Error(errorText || `HTTP ${res.status}`);
+    // 서버가 JSON 에러 응답을 보내는 경우 message 필드 추출
+    try {
+      const errorData = await res.json();
+      // GlobalExceptionHandler의 message 필드 우선 사용
+      throw new Error(errorData?.message || `HTTP ${res.status}`);
+    } catch (jsonErr) {
+      // json() 자체가 실패한 경우 (빈 응답 등) 텍스트로 폴백
+      if (jsonErr instanceof Error && !jsonErr.message.startsWith('HTTP')) {
+        throw jsonErr; // 이미 파싱된 에러면 그대로 던짐
+      }
+      const errorText = await res.text().catch(() => '');
+      throw new Error(errorText || `HTTP ${res.status}`);
+    }
   }
 
   return res.json();
