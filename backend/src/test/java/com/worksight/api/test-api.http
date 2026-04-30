@@ -1,0 +1,62 @@
+### 1. 회원가입 테스트
+POST http://localhost:8080/api/members/signup
+Content-Type: application/json
+
+{
+  "username": "tester01",
+  "password": "password123",
+  "role": "EMPLOYEE"
+}
+
+### 2. 로그인 테스트
+POST http://localhost:8080/api/members/login
+Content-Type: application/json
+
+{
+  "username": "tester01",
+  "password": "password123"
+}
+
+### 3. 이상 상태 보고 테스트 (Monitoring - Abnormal)
+# AI 모듈이 SLEEP(졸음) 상태를 감지했을 때 호출하는 시뮬레이션입니다.
+# employeeId는 위에서 가입/로그인한 유저의 실제 고유 ID(Long)를 입력해야 합니다.
+POST http://localhost:8080/api/monitoring/event
+Content-Type: application/json
+
+{
+  "employeeId": 1,
+  "eventType": "SLEEP"
+}
+
+### 4. 다양한 이상 상태 테스트 (SMARTPHONE, AWAY, DISTRACTED)
+# 'SMARTPHONE', 'AWAY', 'DISTRACTED' 중 하나를 골라 테스트할 수 있습니다.
+# 이 요청이 성공하면 서버 로그에 "Abnormal state detected..."가 찍힙니다.
+POST http://localhost:8080/api/monitoring/event
+Content-Type: application/json
+
+{
+  "employeeId": 1,
+  "eventType": "SMARTPHONE"
+}
+
+### 5. 정상 상태 보고 테스트 (Monitoring - Normal)
+# NORMAL 상태는 기획서 로직에 따라 서버 응답(200 OK)은 오지만,
+# DB 저장이나 웹소켓 알림은 발생하지 않아야 합니다. (로그 폭발 방지)
+POST http://localhost:8080/api/monitoring/event
+Content-Type: application/json
+
+{
+  "employeeId": 1,
+  "eventType": "NORMAL"
+}
+
+### 6. 잘못된 유저 ID 테스트 (Error Handling)
+# 존재하지 않는 ID를 보냈을 때 서비스 단에서
+# "Invalid Employee ID" 예외를 적절히 던지는지 확인합니다.
+POST http://localhost:8080/api/monitoring/event
+Content-Type: application/json
+
+{
+  "employeeId": 9999,
+  "eventType": "SLEEP"
+}
