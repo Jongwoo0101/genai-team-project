@@ -2,10 +2,12 @@ package com.worksight.api.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,26 +25,39 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new BCryptPasswordEncoder(); // 로컬이므로 기본 strength(10) 사용
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // 1. CSRF 비활성화 (API 서버이므로)
                 .csrf(AbstractHttpConfigurer::disable)
-                // 2. CORS 설정 적용
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                // 3. H2 콘솔 사용을 위한 FrameOptions 비활성화
-                .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable))
-                // 4. 요청 권한 설정
+
+                // H2 콘솔 iframe 허용
+                .headers(headers -> headers
+                        .frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin)
+                )
+
+                // Stateless 명시 (JWT 전제)
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/members/**", "/api/monitoring/**", "/ws-monitoring/**", "/h2-console/**").permitAll()
+                        // 회원가입·로그인만 인증 없이 허용
+                        .requestMatchers(HttpMethod.POST, "/api/members/signup", "/api/members/login").permitAll()
+                        // H2 콘솔 허용
+                        .requestMatchers("/h2-console/**").permitAll()
+                        // 나머지는 인증 필요
                         .anyRequest().authenticated()
                 )
-                // 5. 기본 폼 로그인 및 HTTP Basic 인증 비활성화 (로그의 랜덤 비밀번호 경고 제거)
+
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable);
+
+        // JWT 필터 구현 시 여기에 추가
+        // http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -51,9 +66,17 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.setAllowedOriginPatterns(List.of("*")); // React 프론트엔드 주소에 맞춰 제한 권장
+
+        // Vite 기본 포트 5173 고정
+        config.setAllowedOrigins(List.of("http://localhost:5173"));
+
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
+        config.setAllowedHeaders(List.of(
+                "Authorization",
+                "Content-Type",
+                "Accept"
+        ));
+        config.setExposedHeaders(List.of("Authorization"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
@@ -62,6 +85,7 @@ public class SecurityConfig {
 
     @Bean
     public UserDetailsService userDetailsService() {
-        return new InMemoryUserDetailsManager(); // 빈 유저 저장소
+        // JWT 구현 시 실제 UserDetailsService 구현체로 교체
+        return new InMemoryUserDetailsManager();
     }
 }
