@@ -3,21 +3,25 @@ server:
 
 spring:
   datasource:
-    url: jdbc:h2:mem:worksight;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=FALSE
+    # 필요없는 url 설정 제거
+    url: jdbc:h2:mem:worksight;DB_CLOSE_DELAY=-1;
     driver-class-name: org.h2.Driver
     username: sa
     password:
   jpa:
     hibernate:
       ddl-auto: update
+      naming:
+        # 테이블 생성 시 첫 글자는 항상 대문자로
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     # 경고 해결: View 단계까지 DB 연결을 유지하지 않음 (성능 및 커넥션 효율 향상)
     open-in-view: false
     show-sql: true
     properties:
       hibernate:
         format_sql: true
-        # DB 예약어 충돌 방지
-        globally_quoted_identifiers: true
+        # DB 대소문자 구분
+        globally_quoted_identifiers: false
   h2:
     console:
       enabled: true
