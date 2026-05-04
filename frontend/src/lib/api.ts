@@ -1,4 +1,4 @@
-import type { SignUpRequest, LoginRequest, MemberResponse, EventReportRequest } from './types';
+import type { SignUpRequest, LoginRequest, MemberResponse, EventReportRequest, Role } from './types';
 
 const API_BASE = '/api';
 
@@ -34,11 +34,19 @@ export async function signUp(request: SignUpRequest): Promise<MemberResponse> {
   return postJSON<MemberResponse>('/members/signup', request);
 }
 
-/** 로그인 */
-export async function login(request: LoginRequest): Promise<MemberResponse> {
-  return postJSON<MemberResponse>('/members/login', request);
+// LoginResponse 타입 추가
+interface LoginResponse {
+  token: string;
+  id: number;
+  username: string;
+  role: Role;
+  virtualBalance: number;
 }
 
+// 로그인 
+export async function login(request: LoginRequest): Promise<LoginResponse> {
+  return postJSON<LoginResponse>('/members/login', request);
+}
 /** ──────────── 모니터링 API ──────────── */
 
 /** 대시보드 통계 가져오기 */

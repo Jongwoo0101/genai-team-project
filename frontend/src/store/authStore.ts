@@ -40,11 +40,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (username: string, password: string) => {
     try {
       const res = await api.login({ username, password });
+
+      // 토큰 저장
+      localStorage.setItem('token', res.token);
+
       const user: AuthUser = {
         id: res.id,
         username: res.username,
         role: res.role,
-        balance: res.balance,
+        balance: res.virtualBalance, //가상머니 필드 맞추기
       };
       set({ user, isAuthenticated: true });
       return { success: true };
@@ -72,6 +76,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
+    localStorage.removeItem('token');
     set({ user: null, isAuthenticated: false });
   },
 

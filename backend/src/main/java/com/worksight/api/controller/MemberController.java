@@ -19,8 +19,7 @@ public class MemberController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<MemberResponse> login(@RequestBody LoginRequest request) {
-        // 실제 구현에서는 JWT 토큰 반환
+    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
         return ResponseEntity.ok(memberService.login(request));
     }
 }
