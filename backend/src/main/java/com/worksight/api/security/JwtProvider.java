@@ -57,4 +57,6 @@ public class JwtProvider {
                 .parseSignedClaims(token)
                 .getPayload();
     }
+
+    // TODO: Secret key 길이, Bearer 처리, refresh token 구조, subject → userId 변경, roles 구조 개선
 }
