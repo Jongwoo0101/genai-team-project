@@ -13,10 +13,12 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     private final MemberRepository memberRepository;
 
+    // JwtAuthenticationFilter에서 userId(String)를 넘기므로 id 기반으로 조회
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        return memberRepository.findByUsername(username)
+    public UserDetails loadUserByUsername(String userId) throws UsernameNotFoundException {
+        Long id = Long.parseLong(userId);
+        return memberRepository.findById(id)
                 .orElseThrow(() -> new UsernameNotFoundException(
-                        "사용자를 찾을 수 없습니다: " + username));
+                        "사용자를 찾을 수 없습니다. id=" + id));
     }
 }

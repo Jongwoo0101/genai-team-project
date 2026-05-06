@@ -30,9 +30,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = resolveToken(request);
 
-        if (token != null && jwtProvider.isValid(token)) {
-            String username = jwtProvider.getUsername(token);
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+        if (token != null
+                && jwtProvider.isValid(token)
+                && jwtProvider.isAccessToken(token)) {   // access token만 인증에 사용
+
+            Long userId = jwtProvider.getUserId(token);
+            // CustomUserDetailsService.loadUserByUsername이 userId(String)로 조회하도록 수정 필요
+            UserDetails userDetails = userDetailsService.loadUserByUsername(String.valueOf(userId));
 
             UsernamePasswordAuthenticationToken auth =
                     new UsernamePasswordAuthenticationToken(
@@ -45,7 +49,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
-    // Authorization: Bearer {token} 헤더에서 토큰 추출
     private String resolveToken(HttpServletRequest request) {
         String bearer = request.getHeader("Authorization");
         if (StringUtils.hasText(bearer) && bearer.startsWith("Bearer ")) {
