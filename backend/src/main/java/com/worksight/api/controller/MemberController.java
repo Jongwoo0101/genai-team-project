@@ -22,4 +22,9 @@ public class MemberController {
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
         return ResponseEntity.ok(memberService.login(request));
     }
+
+    @PostMapping("/reissue")
+    public ResponseEntity<LoginResponse> reissue(@RequestBody ReissueRequest request) {
+        return ResponseEntity.ok(memberService.reissue(request));
+    }
 }
