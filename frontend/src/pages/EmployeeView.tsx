@@ -113,7 +113,7 @@ export default function EmployeeView() {
             </div>
 
             {/* Video Area */}
-            <div className="relative bg-slate-950" style={{ aspectRatio: '16/9' }}>
+            <div className="relative bg-slate-950 aspect-video">
               <video
                 ref={videoRef}
                 autoPlay
@@ -126,7 +126,7 @@ export default function EmployeeView() {
                 <>
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent pointer-events-none" />
                   {/* Scan line */}
-                  <div className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent animate-[scan_3s_linear_infinite] z-10" />
+                  <div className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent animate-scan z-10" />
                   {/* Bottom overlay */}
                   <div className="absolute bottom-0 left-0 right-0 p-5 z-20">
                     <div className="flex items-end justify-between">
@@ -136,7 +136,7 @@ export default function EmployeeView() {
                       </div>
                       <div className="flex flex-col items-end gap-1.5">
                         <div className="w-28 h-1.5 bg-slate-800/80 rounded-full overflow-hidden">
-                          <div className="h-full bg-cyan-500 transition-all duration-700" style={{ width: `${confidence}%` }} />
+                          <div className={`h-full bg-cyan-500 transition-all duration-700 w-conf-${confidence}`} />
                         </div>
                         <span className="text-[10px] font-mono text-white/60">{confidence}% confidence</span>
                       </div>
@@ -250,14 +250,6 @@ export default function EmployeeView() {
         </div>
       </div>
 
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes scan {
-          0% { top: 0%; opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { top: 100%; opacity: 0; }
-        }
-      ` }} />
     </div>
   );
 }

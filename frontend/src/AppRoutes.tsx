@@ -1,6 +1,10 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
+import Features from './pages/Features';
+import HowItWorks from './pages/HowItWorks';
+import Pricing from './pages/Pricing';
+import Checkout from './pages/Checkout';
 import Login from './pages/Login';
 import EmployeeView from './pages/EmployeeView';
 import ManagerDashboard from './pages/ManagerDashboard';
@@ -16,6 +20,10 @@ export default function AppRoutes() {
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
+        <Route path="/features" element={<Features />} />
+        <Route path="/how-it-works" element={<HowItWorks />} />
+        <Route path="/pricing" element={<Pricing />} />
+        <Route path="/checkout" element={<Checkout />} />
         <Route path="/login" element={<Login />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
