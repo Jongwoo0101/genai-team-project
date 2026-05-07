@@ -29,6 +29,16 @@ export interface ReissueRequest {
   refreshToken: string;
 }
 
+/** 초대 코드로 직원 추가 요청 (관리자 → 서버) */
+export interface AddEmployeeByCodeRequest {
+  inviteCode: string;
+}
+
+/** 초대 코드 생성 응답 (직원 → 서버) */
+export interface GenerateInviteCodeResponse {
+  inviteCode: string;
+}
+
 /** 로그인 응답 (backend: MemberDto.LoginResponse) */
 export interface LoginResponse {
   accessToken: string;

@@ -1,4 +1,4 @@
-import type { SignUpRequest, LoginRequest, LoginResponse, ReissueRequest, MemberResponse, EventReportRequest } from './types';
+import type { SignUpRequest, LoginRequest, LoginResponse, ReissueRequest, MemberResponse, EventReportRequest, AddEmployeeByCodeRequest, GenerateInviteCodeResponse } from './types';
 
 const API_BASE = '/api';
 
@@ -33,12 +33,37 @@ async function postJSON<T>(url: string, body: unknown): Promise<T> {
     }
   }
 
+  // 응답 body가 비어있거나 204 No Content인 경우 안전하게 처리
+  const contentLength = res.headers.get('content-length');
+  const contentType = res.headers.get('content-type') || '';
+  if (res.status === 204 || contentLength === '0' || !contentType.includes('application/json')) {
+    return undefined as T;
+  }
+
   return res.json();
 }
 
 /** 회원가입 */
 export async function signUp(request: SignUpRequest): Promise<MemberResponse> {
   return postJSON<MemberResponse>('/members/signup', request);
+}
+
+/** 초대 코드 생성 (직원이 호출) */
+export async function generateInviteCode(): Promise<GenerateInviteCodeResponse> {
+  return postJSON<GenerateInviteCodeResponse>('/members/invite-code', {});
+}
+
+/** 초대 코드로 직원 추가 (관리자가 호출) */
+export async function addEmployeeByCode(request: AddEmployeeByCodeRequest): Promise<void> {
+  try {
+    return await postJSON<void>('/members/add-by-code', request);
+  } catch (err: any) {
+    // 백엔드 미구현(404) 또는 파싱 에러 시 사용자 친화적 메시지
+    if (err.message?.includes('pattern') || err.message?.includes('JSON')) {
+      throw new Error('백엔드 API가 아직 구현되지 않았습니다. 백엔드 개발 후 연동됩니다.');
+    }
+    throw err;
+  }
 }
 
 /** 로그인 */
