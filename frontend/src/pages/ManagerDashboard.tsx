@@ -2,15 +2,15 @@ import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import * as api from '../lib/api';
-import { eventTypeLabels, eventTypeColors, SIMULATED_EVENTS } from '../lib/mockData';
+import { eventTypeLabels, eventTypeColors } from '../lib/mockData';
 import type { WorkEvent, MonitoringStatus, EventType, DashboardStats } from '../lib/types';
 import SockJS from 'sockjs-client';
-import Stomp from 'stompjs';
+import * as Stomp from 'stompjs';
 
 export default function ManagerDashboard() {
   const { user, isAuthenticated } = useAuthStore();
   const [events, setEvents] = useState<WorkEvent[]>([]);
-  const [statuses, setStatuses] = useState<MonitoringStatus[]>([]);
+  const [statuses] = useState<MonitoringStatus[]>([]); // TODO: update statuses from websocket
   const [stats, setStats] = useState<DashboardStats>({ totalEmployees: 0, onlineEmployees: 0, totalAlerts: 0, resolvedAlerts: 0, activeAlerts: 0 });
   const [notification, setNotification] = useState<string | null>(null);
   const [wsConnected, setWsConnected] = useState(false);

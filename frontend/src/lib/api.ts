@@ -1,12 +1,19 @@
-import type { SignUpRequest, LoginRequest, MemberResponse, EventReportRequest } from './types';
+import type { SignUpRequest, LoginRequest, LoginResponse, ReissueRequest, MemberResponse, EventReportRequest } from './types';
 
 const API_BASE = '/api';
 
 /** 공통 fetch 래퍼 - JSON POST 요청 */
 async function postJSON<T>(url: string, body: unknown): Promise<T> {
+  const token = localStorage.getItem('accessToken');
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}${url}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(body),
   });
 
@@ -35,22 +42,35 @@ export async function signUp(request: SignUpRequest): Promise<MemberResponse> {
 }
 
 /** 로그인 */
-export async function login(request: LoginRequest): Promise<MemberResponse> {
-  return postJSON<MemberResponse>('/members/login', request);
+export async function login(request: LoginRequest): Promise<LoginResponse> {
+  return postJSON<LoginResponse>('/members/login', request);
+}
+
+/** 토큰 재발급 */
+export async function reissueToken(request: ReissueRequest): Promise<LoginResponse> {
+  return postJSON<LoginResponse>('/members/reissue', request);
 }
 
 /** ──────────── 모니터링 API ──────────── */
+// GET 요청용 공통 래퍼 (토큰 포함)
+async function fetchWithAuth(url: string) {
+  const token = localStorage.getItem('accessToken');
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  
+  return fetch(`${API_BASE}${url}`, { headers });
+}
 
 /** 대시보드 통계 가져오기 */
 export async function getDashboardStats() {
-  const res = await fetch(`${API_BASE}/monitoring/stats`);
+  const res = await fetchWithAuth('/monitoring/stats');
   if (!res.ok) throw new Error('통계를 불러오지 못했습니다.');
   return res.json();
 }
 
 /** 최근 이벤트 목록 가져오기 */
 export async function getWorkEvents() {
-  const res = await fetch(`${API_BASE}/monitoring/events`);
+  const res = await fetchWithAuth('/monitoring/events');
   if (!res.ok) throw new Error('이벤트 로그를 불러오지 못했습니다.');
   return res.json();
 }

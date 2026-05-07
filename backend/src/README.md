@@ -4,7 +4,13 @@
 
 * Base URL: `/api`
 * Content-Type: `application/json`
-* 인증: 없음 (현재 모든 API permitAll)
+* 인증: JWT Bearer 토큰 (로그인·회원가입 제외 모든 API에 필요)
+
+### 인증 헤더
+
+```
+Authorization: Bearer {token}
+```
 
 ---
 
@@ -16,39 +22,47 @@
 POST /api/members/signup
 ```
 
+> 인증 불필요
+
 #### Request
 
 ```json
 {
   "username": "string",
   "password": "string",
-  "role": "ADMIN | USER"
+  "role": "MANAGER | EMPLOYEE"
 }
 ```
 
 #### 필드 설명
 
-| 필드       | 타입     | 설명               |
-| -------- | ------ | ---------------- |
-| username | String | 사용자 아이디          |
-| password | String | 비밀번호 (서버에서 암호화됨) |
-| role     | Enum   | 사용자 권한           |
+| 필드       | 타입     | 설명                        |
+| -------- | ------ | ------------------------- |
+| username | String | 사용자 아이디 (중복 불가)           |
+| password | String | 비밀번호 (서버에서 BCrypt 암호화됨)   |
+| role     | Enum   | 사용자 권한 (`MANAGER` / `EMPLOYEE`) |
 
-#### Response
+#### Response `200 OK`
 
 ```json
 {
   "id": 1,
   "username": "test",
-  "role": "USER",
-  "balance": 0
+  "role": "EMPLOYEE",
+  "virtualBalance": 10000
 }
 ```
 
+#### 예외 상황
+
+| 상황         | HTTP  | 메시지                          |
+| ---------- | ----- | ------------------------------ |
+| 아이디 중복     | `409` | "이미 사용 중인 아이디입니다."          |
+
 #### 설명
 
-* 회원을 생성하고 DB에 저장
-* 비밀번호는 BCrypt로 암호화됨
+* 회원 생성 후 DB 저장
+* 가입 시 `virtualBalance` 기본값 10,000 지급
 
 ---
 
@@ -57,6 +71,8 @@ POST /api/members/signup
 ```
 POST /api/members/login
 ```
+
+> 인증 불필요
 
 #### Request
 
@@ -67,32 +83,45 @@ POST /api/members/login
 }
 ```
 
-#### Response
+#### Response `200 OK`
 
 ```json
 {
+  "token": "eyJhbGciOiJIUzI1NiJ9...",
   "id": 1,
   "username": "test",
-  "role": "USER",
-  "balance": 0
+  "role": "EMPLOYEE",
+  "virtualBalance": 10000
 }
 ```
 
+#### 필드 설명
+
+| 필드             | 타입     | 설명                  |
+| -------------- | ------ |---------------------|
+| token          | String | JWT 액세스 토큰 (30분 유효) |
+| id             | Long   | 회원 고유 ID            |
+| username       | String | 사용자 아이디             |
+| role           | Enum   | 사용자 권한              |
+| virtualBalance | Long   | 가상 머니 잔액            |
+
 #### 예외 상황
 
-| 상황      | 메시지                |
-| ------- | ------------------ |
-| 사용자 없음  | "User not found"   |
-| 비밀번호 틀림 | "Invalid password" |
+| 상황        | HTTP  | 메시지                                        |
+| --------- | ----- | -------------------------------------------- |
+| 사용자 없음   | `400` | "존재하지 않는 아이디입니다. 아이디를 다시 확인해주세요." |
+| 비밀번호 틀림  | `400` | "비밀번호가 올바르지 않습니다. 다시 확인해주세요."      |
 
 #### 설명
 
-* 현재는 JWT 없음 (추후 확장 예정)
-* 단순 인증 후 사용자 정보 반환
+* 로그인 성공 시 JWT 토큰과 유저 정보를 함께 반환
+* 이후 모든 요청에 `Authorization: Bearer {token}` 헤더 포함 필요
 
 ---
 
 ## 3. 모니터링 API
+
+> 모든 모니터링 API는 JWT 인증 필요
 
 ### 3.1 이벤트 전송
 
@@ -118,10 +147,10 @@ POST /api/monitoring/event
 
 #### 처리 로직
 
-* NORMAL → 무시 (DB 저장 X)
-* 그 외 → DB 저장 및 알림 전송
+* `NORMAL` → 무시 (DB 저장 X)
+* 그 외 → DB 저장 및 웹소켓 알림 전송
 
-#### Response
+#### Response `200 OK`
 
 ```json
 "Event processed successfully"
@@ -172,18 +201,18 @@ POST /api/monitoring/event
 
 ### 5.1 Role
 
-```
-ADMIN
-USER
-```
+| 값          | 설명  |
+| ---------- | --- |
+| `MANAGER`  | 관리자 |
+| `EMPLOYEE` | 직원  |
 
 ### 5.2 EventType
 
-```
-NORMAL
-SLEEP
-AWAY
-```
+| 값        | 설명   |
+| -------- | ---- |
+| `NORMAL` | 정상   |
+| `SLEEP`  | 졸음   |
+| `AWAY`   | 자리비움 |
 
 ---
 
@@ -192,18 +221,30 @@ AWAY
 ### 6.1 Security
 
 * CSRF 비활성화
-* 모든 API 공개 (permitAll)
-* JWT 미적용
+* JWT Stateless 인증 적용
+* 인증 불필요 경로: `POST /api/members/signup`, `POST /api/members/login`, `/h2-console/**`
+* 그 외 모든 요청은 유효한 JWT 토큰 필요
 
 ### 6.2 CORS
 
-* 모든 origin 허용 (`*`)
-* 운영 환경에서는 제한 필요
+| 항목              | 값                          |
+| --------------- | -------------------------- |
+| Allowed Origins | `http://localhost:5173`    |
+| Allowed Methods | GET, POST, PUT, DELETE, PATCH, OPTIONS |
+| Allowed Headers | Authorization, Content-Type, Accept |
+| Exposed Headers | Authorization               |
+
+> 운영 환경에서는 실제 도메인으로 변경 필요
 
 ---
 
 ## 7. 전체 흐름
 
 ```
-AI → /api/monitoring/event → 서버 저장 → WebSocket → 관리자
+# 인증 흐름
+클라이언트 → POST /api/members/login → JWT 토큰 발급
+클라이언트 → 이후 요청 시 Authorization: Bearer {token} 헤더 포함
+
+# 모니터링 흐름
+AI → POST /api/monitoring/event → 서버 저장 → WebSocket(/topic/alerts) → 관리자
 ```

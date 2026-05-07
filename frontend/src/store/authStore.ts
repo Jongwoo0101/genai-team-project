@@ -40,11 +40,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (username: string, password: string) => {
     try {
       const res = await api.login({ username, password });
+      
+      // 토큰 저장
+      localStorage.setItem('accessToken', res.accessToken);
+      localStorage.setItem('refreshToken', res.refreshToken);
+
       const user: AuthUser = {
         id: res.id,
         username: res.username,
         role: res.role,
-        balance: res.balance,
+        balance: res.virtualBalance, // LoginResponse에서는 virtualBalance
       };
       set({ user, isAuthenticated: true });
       return { success: true };
@@ -56,14 +61,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signUp: async (username: string, password: string, role: Role) => {
     try {
-      const res = await api.signUp({ username, password, role });
-      const user: AuthUser = {
-        id: res.id,
-        username: res.username,
-        role: res.role,
-        balance: res.balance,
-      };
-      set({ user, isAuthenticated: true });
+      // 1. 회원가입 요청 (응답엔 토큰이 없음)
+      await api.signUp({ username, password, role });
+      
+      // 2. 가입 성공 시 자동으로 로그인 처리
+      const loginResult = await get().login(username, password);
+      if (!loginResult.success) {
+        return { success: false, error: '가입은 완료되었으나 자동 로그인에 실패했습니다. 수동으로 로그인해주세요.' };
+      }
+      
       return { success: true };
     } catch (err: unknown) {
       const message = await parseErrorMessage(err);
@@ -72,6 +78,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
     set({ user: null, isAuthenticated: false });
   },
 

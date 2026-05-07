@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import AgreementModal from '../components/AgreementModal';
 
 const features = [
   {
@@ -71,6 +73,22 @@ const pricingPlans = [
 ];
 
 export default function Home() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const TERMS_CONTENT = `제 1 장 총칙
+
+제 1 조 (목적)
+본 약관은 WorkSight(이하 "회사")가 제공하는 AI 기반 근무 모니터링 서비스(이하 "서비스")의 이용조건 및 절차, 이용자와 회사의 권리, 의무, 책임사항을 규정함을 목적으로 합니다.
+
+제 2 조 (수집하는 개인정보의 항목)
+서비스는 화상 데이터(얼굴 형태 등)를 실시간으로 분석하며, 해당 데이터는 분석 직후 즉시 폐기됩니다. 분석된 결과(졸음, 자리 이탈 등 상태 로그)만 저장되어 관리자에게 제공됩니다.
+
+제 3 조 (데이터 보호 및 프라이버시)
+회사는 이용자의 프라이버시를 최우선으로 보호하며, 수집된 근무 상태 데이터는 서비스 제공 목적(근태 및 몰입도 관리) 이외의 용도로 절대 사용되지 않습니다.
+
+제 4 조 (이용자의 동의)
+서비스를 이용함은 본인의 근무 상태가 카메라를 통해 AI 모듈에 의해 실시간 분석되고 기록되는 것에 명시적으로 동의함을 의미합니다.`;
+
   return (
     <div className="min-h-screen bg-slate-950">
       {/* ====== Hero Section ====== */}
@@ -104,9 +122,9 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-            <Link to="/login" className="btn-primary px-10 py-4 text-lg no-underline">
+            <button onClick={() => setIsModalOpen(true)} className="btn-primary px-10 py-4 text-lg no-underline cursor-pointer">
               지금 무료로 시작하기
-            </Link>
+            </button>
             <a href="#features" className="px-10 py-4 rounded-2xl text-lg font-bold text-slate-300 border border-white/10 hover:border-white/20 hover:text-white transition-all duration-300 no-underline backdrop-blur-sm">
               기능 둘러보기
             </a>
@@ -211,16 +229,16 @@ export default function Home() {
                     </li>
                   ))}
                 </ul>
-                <Link
-                  to="/login"
-                  className={`block text-center py-4 rounded-2xl font-bold text-sm transition-all duration-300 no-underline ${
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className={`w-full block text-center py-4 rounded-2xl font-bold text-sm transition-all duration-300 no-underline cursor-pointer ${
                     plan.accent
                       ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-xl shadow-cyan-500/20 hover:shadow-cyan-500/40'
                       : 'border border-white/10 text-slate-300 hover:border-white/20 hover:text-white'
                   }`}
                 >
                   플랜 선택하기
-                </Link>
+                </button>
               </div>
             ))}
           </div>
@@ -245,14 +263,23 @@ export default function Home() {
           </div>
           <div className="flex flex-col items-center md:items-end gap-2">
             <div className="flex gap-8 text-sm font-bold text-slate-500 mb-4">
-              <a href="#" className="hover:text-cyan-400 transition-colors no-underline">이용약관</a>
-              <a href="#" className="hover:text-cyan-400 transition-colors no-underline">개인정보처리방침</a>
-              <a href="#" className="hover:text-cyan-400 transition-colors no-underline">고객지원</a>
+              <Link to="/terms" className="hover:text-cyan-400 transition-colors no-underline">이용약관</Link>
+              <Link to="/privacy" className="hover:text-cyan-400 transition-colors no-underline">개인정보처리방침</Link>
+              <Link to="/support" className="hover:text-cyan-400 transition-colors no-underline">고객지원</Link>
             </div>
             <p className="text-slate-600 text-xs">© 2026 WorkSight Team. All rights reserved.</p>
           </div>
         </div>
       </footer>
+
+      <AgreementModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="WorkSight 시작하기"
+        description="서비스를 이용하기 위해 아래 안내사항과 이용약관에 동의해 주세요."
+        terms={TERMS_CONTENT}
+        targetPath="/login"
+      />
     </div>
   );
 }
