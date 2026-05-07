@@ -4,7 +4,7 @@ const API_BASE = '/api';
 
 /** 공통 fetch 래퍼 - JSON POST 요청 */
 async function postJSON<T>(url: string, body: unknown): Promise<T> {
-  const token = localStorage.getItem('accessToken');
+  const token = localStorage.getItem('token'); // 'accessToken' -> 'token'으로 변경
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   
   if (token) {
@@ -18,22 +18,18 @@ async function postJSON<T>(url: string, body: unknown): Promise<T> {
   });
 
   if (!res.ok) {
-    // 서버가 JSON 에러 응답을 보내는 경우 message 필드 추출
     try {
       const errorData = await res.json();
-      // GlobalExceptionHandler의 message 필드 우선 사용
       throw new Error(errorData?.message || `HTTP ${res.status}`);
     } catch (jsonErr) {
-      // json() 자체가 실패한 경우 (빈 응답 등) 텍스트로 폴백
       if (jsonErr instanceof Error && !jsonErr.message.startsWith('HTTP')) {
-        throw jsonErr; // 이미 파싱된 에러면 그대로 던짐
+        throw jsonErr;
       }
       const errorText = await res.text().catch(() => '');
       throw new Error(errorText || `HTTP ${res.status}`);
     }
   }
 
-  // 응답 body가 비어있거나 204 No Content인 경우 안전하게 처리
   const contentLength = res.headers.get('content-length');
   const contentType = res.headers.get('content-type') || '';
   if (res.status === 204 || contentLength === '0' || !contentType.includes('application/json')) {
@@ -58,7 +54,6 @@ export async function addEmployeeByCode(request: AddEmployeeByCodeRequest): Prom
   try {
     return await postJSON<void>('/members/add-by-code', request);
   } catch (err: any) {
-    // 백엔드 미구현(404) 또는 파싱 에러 시 사용자 친화적 메시지
     if (err.message?.includes('pattern') || err.message?.includes('JSON')) {
       throw new Error('백엔드 API가 아직 구현되지 않았습니다. 백엔드 개발 후 연동됩니다.');
     }
@@ -77,9 +72,8 @@ export async function reissueToken(request: ReissueRequest): Promise<LoginRespon
 }
 
 /** ──────────── 모니터링 API ──────────── */
-// GET 요청용 공통 래퍼 (토큰 포함)
 async function fetchWithAuth(url: string) {
-  const token = localStorage.getItem('accessToken');
+  const token = localStorage.getItem('token'); // 'accessToken' -> 'token'
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
   

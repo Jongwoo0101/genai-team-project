@@ -41,8 +41,7 @@ export interface GenerateInviteCodeResponse {
 
 /** 로그인 응답 (backend: MemberDto.LoginResponse) */
 export interface LoginResponse {
-  accessToken: string;
-  refreshToken: string;
+  token: string;
   id: number;
   username: string;
   role: Role;

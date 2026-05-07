@@ -40,16 +40,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (username: string, password: string) => {
     try {
       const res = await api.login({ username, password });
-      
-      // 토큰 저장
-      localStorage.setItem('accessToken', res.accessToken);
-      localStorage.setItem('refreshToken', res.refreshToken);
+
+      // 토큰 저장 (단일 토큰 방식 반영)
+      localStorage.setItem('token', res.token);
 
       const user: AuthUser = {
         id: res.id,
         username: res.username,
         role: res.role,
-        balance: res.virtualBalance, // LoginResponse에서는 virtualBalance
+        balance: res.virtualBalance, // LoginResponse의 필드명 반영
       };
       set({ user, isAuthenticated: true });
       return { success: true };
@@ -61,7 +60,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signUp: async (username: string, password: string, role: Role) => {
     try {
-      // 1. 회원가입 요청 (응답엔 토큰이 없음)
+      // 1. 회원가입 요청
       await api.signUp({ username, password, role });
       
       // 2. 가입 성공 시 자동으로 로그인 처리
@@ -78,8 +77,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('token');
     set({ user: null, isAuthenticated: false });
   },
 
