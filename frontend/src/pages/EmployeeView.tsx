@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuthStore } from '../store/authStore';
+import { useTeamStore } from '../store/teamStore';
 import { Navigate } from 'react-router-dom';
 import * as api from '../lib/api';
 import type { EventType } from '../lib/types';
@@ -10,6 +11,7 @@ const STATUS_CYCLE: EventType[] = ['NORMAL', 'NORMAL', 'SLEEP', 'NORMAL', 'SMART
 
 export default function EmployeeView() {
   const { user, isAuthenticated } = useAuthStore();
+  const { getEmployeeTeam } = useTeamStore();
   const [currentStatus, setCurrentStatus] = useState<EventType>('NORMAL');
   const [prevStatus, setPrevStatus] = useState<EventType>('NORMAL');
   const [confidence, setConfidence] = useState(95);
@@ -21,6 +23,12 @@ export default function EmployeeView() {
 
   if (!isAuthenticated || user?.role !== 'EMPLOYEE') {
     return <Navigate to="/login" replace />;
+  }
+
+  // 팀에 소속되지 않았으면 팀 가입 페이지로
+  const team = getEmployeeTeam(user.id);
+  if (!team) {
+    return <Navigate to="/join-team" replace />;
   }
 
   const now = () => new Date().toLocaleTimeString('ko-KR');
@@ -103,6 +111,8 @@ export default function EmployeeView() {
             balance={user.balance}
             prevStatus={prevStatus}
             statusLog={statusLog}
+            teamName={team.name}
+            teamCode={team.teamCode}
           />
         </div>
       </div>

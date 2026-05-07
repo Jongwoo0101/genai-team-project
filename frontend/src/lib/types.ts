@@ -29,19 +29,32 @@ export interface ReissueRequest {
   refreshToken: string;
 }
 
-/** 초대 코드로 직원 추가 요청 (관리자 → 서버) */
-export interface AddEmployeeByCodeRequest {
+/** 팀 생성 및 초대 코드 생성 요청 (관리자 → 서버) */
+export interface CreateTeamRequest {
+  teamName: string;
+  description?: string;
+}
+
+/** 팀 생성 및 초대 코드 생성 응답 (서버 → 관리자) */
+export interface CreateTeamResponse {
+  inviteCode: string;
+  teamName: string;
+}
+
+/** 팀 참여 요청 (직원 → 서버) */
+export interface JoinTeamRequest {
   inviteCode: string;
 }
 
-/** 초대 코드 생성 응답 (직원 → 서버) */
-export interface GenerateInviteCodeResponse {
-  inviteCode: string;
+/** 팀 참여 응답 (서버 → 직원) */
+export interface JoinTeamResponse {
+  teamName: string;
 }
 
 /** 로그인 응답 (backend: MemberDto.LoginResponse) */
 export interface LoginResponse {
-  token: string;
+  accessToken: string;
+  refreshToken: string;
   id: number;
   username: string;
   role: Role;

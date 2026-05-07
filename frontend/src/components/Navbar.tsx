@@ -27,7 +27,7 @@ export default function Navbar() {
             <NavLink to="/pricing" label="요금제" active={location.pathname === '/pricing'} />
             
             {isAuthenticated && user?.role === 'MANAGER' && (
-              <NavLink to="/dashboard" label="대시보드" active={location.pathname === '/dashboard'} />
+              <NavLink to="/teams" label="팀 관리" active={location.pathname.startsWith('/teams')} />
             )}
             {isAuthenticated && user?.role === 'EMPLOYEE' && (
               <NavLink to="/employee" label="내 모니터링" active={location.pathname === '/employee'} />

@@ -49,7 +49,7 @@ export default function Login() {
           setIsLoading(false);
           return;
         }
-        navigate(role === 'MANAGER' ? '/dashboard' : '/employee');
+        navigate(role === 'MANAGER' ? '/teams' : '/employee');
       } else {
         setError(result.error || '로그인에 실패했습니다.');
       }
@@ -57,7 +57,7 @@ export default function Login() {
       const result = await signUp(username, password, selectedRole);
       if (result.success) {
         const role = useAuthStore.getState().user?.role;
-        navigate(role === 'MANAGER' ? '/dashboard' : '/employee');
+        navigate(role === 'MANAGER' ? '/teams' : '/employee');
       } else {
         setError(result.error || '회원가입에 실패했습니다.');
       }

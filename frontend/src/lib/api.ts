@@ -1,13 +1,13 @@
-import type { SignUpRequest, LoginRequest, LoginResponse, ReissueRequest, MemberResponse, EventReportRequest, AddEmployeeByCodeRequest, GenerateInviteCodeResponse } from './types';
+import type { SignUpRequest, LoginRequest, LoginResponse, ReissueRequest, MemberResponse, EventReportRequest, CreateTeamRequest, CreateTeamResponse, JoinTeamRequest, JoinTeamResponse } from './types';
 
 const API_BASE = '/api';
 
 /** 공통 fetch 래퍼 - JSON POST 요청 */
 async function postJSON<T>(url: string, body: unknown): Promise<T> {
-  const token = localStorage.getItem('token'); // 'accessToken' -> 'token'으로 변경
+  const token = localStorage.getItem('token');
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   
-  if (token) {
+  if (token && token !== 'undefined' && token !== 'null') {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
@@ -18,25 +18,31 @@ async function postJSON<T>(url: string, body: unknown): Promise<T> {
   });
 
   if (!res.ok) {
+    let errorMessage = `HTTP ${res.status}`;
     try {
       const errorData = await res.json();
-      throw new Error(errorData?.message || `HTTP ${res.status}`);
-    } catch (jsonErr) {
-      if (jsonErr instanceof Error && !jsonErr.message.startsWith('HTTP')) {
-        throw jsonErr;
-      }
-      const errorText = await res.text().catch(() => '');
-      throw new Error(errorText || `HTTP ${res.status}`);
+      errorMessage = errorData?.message || errorMessage;
+    } catch {
+      try {
+        const text = await res.text();
+        errorMessage = text || errorMessage;
+      } catch { /* ignore */ }
     }
+    throw new Error(errorMessage);
   }
 
-  const contentLength = res.headers.get('content-length');
+  // 응답 본문이 있는지 확인 후 파싱 (사파리 호환성 강화)
   const contentType = res.headers.get('content-type') || '';
-  if (res.status === 204 || contentLength === '0' || !contentType.includes('application/json')) {
+  if (res.status === 204 || !contentType.includes('application/json')) {
     return undefined as T;
   }
 
-  return res.json();
+  try {
+    return await res.json();
+  } catch (err) {
+    console.warn('JSON 파싱 실패:', err);
+    return undefined as T;
+  }
 }
 
 /** 회원가입 */
@@ -44,21 +50,16 @@ export async function signUp(request: SignUpRequest): Promise<MemberResponse> {
   return postJSON<MemberResponse>('/members/signup', request);
 }
 
-/** 초대 코드 생성 (직원이 호출) */
-export async function generateInviteCode(): Promise<GenerateInviteCodeResponse> {
-  return postJSON<GenerateInviteCodeResponse>('/members/invite-code', {});
+/** ──────────── 팀 관리 API ──────────── */
+
+/** 팀 생성 및 초대 코드 발급 (관리자가 호출) */
+export async function createTeamAndInviteCode(request: CreateTeamRequest): Promise<CreateTeamResponse> {
+  return postJSON<CreateTeamResponse>('/members/invite-code', request);
 }
 
-/** 초대 코드로 직원 추가 (관리자가 호출) */
-export async function addEmployeeByCode(request: AddEmployeeByCodeRequest): Promise<void> {
-  try {
-    return await postJSON<void>('/members/add-by-code', request);
-  } catch (err: any) {
-    if (err.message?.includes('pattern') || err.message?.includes('JSON')) {
-      throw new Error('백엔드 API가 아직 구현되지 않았습니다. 백엔드 개발 후 연동됩니다.');
-    }
-    throw err;
-  }
+/** 팀 참여 (직원이 호출) */
+export async function joinTeam(request: JoinTeamRequest): Promise<JoinTeamResponse> {
+  return postJSON<JoinTeamResponse>('/members/join-team', request);
 }
 
 /** 로그인 */

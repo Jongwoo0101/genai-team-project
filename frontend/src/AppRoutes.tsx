@@ -8,6 +8,8 @@ import Checkout from './pages/Checkout';
 import Login from './pages/Login';
 import EmployeeView from './pages/EmployeeView';
 import ManagerDashboard from './pages/ManagerDashboard';
+import TeamList from './pages/TeamList';
+import JoinTeam from './pages/JoinTeam';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import Support from './pages/Support';
@@ -29,14 +31,29 @@ export default function AppRoutes() {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/support" element={<Support />} />
         
-        {/* 인증 보호 루틴 추가 */}
+        {/* 관리자 라우트 */}
+        <Route 
+          path="/teams" 
+          element={isAuthenticated && user?.role === 'MANAGER' ? <TeamList /> : <Navigate to="/login" replace />} 
+        />
+        <Route 
+          path="/teams/:teamId" 
+          element={isAuthenticated && user?.role === 'MANAGER' ? <ManagerDashboard /> : <Navigate to="/login" replace />} 
+        />
+        {/* 기존 /dashboard는 /teams로 리다이렉트 */}
+        <Route 
+          path="/dashboard" 
+          element={isAuthenticated && user?.role === 'MANAGER' ? <Navigate to="/teams" replace /> : <Navigate to="/login" replace />} 
+        />
+
+        {/* 직원 라우트 */}
+        <Route 
+          path="/join-team" 
+          element={isAuthenticated && user?.role === 'EMPLOYEE' ? <JoinTeam /> : <Navigate to="/login" replace />} 
+        />
         <Route 
           path="/employee" 
           element={isAuthenticated ? <EmployeeView /> : <Navigate to="/login" replace />} 
-        />
-        <Route 
-          path="/dashboard" 
-          element={isAuthenticated && user?.role === 'MANAGER' ? <ManagerDashboard /> : <Navigate to="/login" replace />} 
         />
       </Route>
     </Routes>
