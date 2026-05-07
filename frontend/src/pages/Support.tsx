@@ -10,7 +10,7 @@ export default function Support() {
           </section>
           <section className="bg-slate-800/30 p-6 rounded-2xl border border-white/5">
             <h2 className="text-lg font-semibold text-cyan-400 mb-2">이메일 문의</h2>
-            <p>support@worksight.com</p>
+            <p>test1234@tukorea.ac.kr</p>
             <p className="text-xs text-slate-500 mt-2">운영시간: 평일 10:00 ~ 17:00 (주말 및 공휴일 휴무)</p>
           </section>
           <section>
