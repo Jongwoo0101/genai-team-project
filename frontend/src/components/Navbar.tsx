@@ -22,6 +22,10 @@ export default function Navbar() {
           {/* Nav Links */}
           <div className="hidden md:flex items-center gap-2">
             <NavLink to="/" label="홈" active={location.pathname === '/'} />
+            <NavLink to="/features" label="핵심 솔루션" active={location.pathname === '/features'} />
+            <NavLink to="/how-it-works" label="작동 원리" active={location.pathname === '/how-it-works'} />
+            <NavLink to="/pricing" label="요금제" active={location.pathname === '/pricing'} />
+            
             {isAuthenticated && user?.role === 'MANAGER' && (
               <NavLink to="/dashboard" label="대시보드" active={location.pathname === '/dashboard'} />
             )}

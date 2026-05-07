@@ -70,7 +70,7 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center px-6 py-20 relative overflow-hidden">
       {/* Background Orbs */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-cyan-500/10 rounded-full blur-[120px] animate-pulse" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 rounded-full blur-[120px] animate-pulse delay-1000" />
 
       <div className="w-full max-w-md relative z-10">
         {/* Logo Section */}
@@ -89,7 +89,7 @@ export default function Login() {
         </div>
 
         {/* Auth Tabs */}
-        <div className="glass-card p-1.5 mb-6 animate-fade-in-up" style={{ animationDelay: '0.05s' }}>
+        <div className="glass-card p-1.5 mb-6 animate-fade-in-up delay-50">
           <div className="grid grid-cols-2 gap-2">
             {(['login', 'signup'] as AuthMode[]).map((m) => (
               <button
@@ -108,7 +108,7 @@ export default function Login() {
           </div>
         </div>
 
-        <div className="glass-card p-10 shadow-2xl animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+        <div className="glass-card p-10 shadow-2xl animate-fade-in-up delay-100">
           {/* Role Selector - 로그인/회원가입 공통 표시 */}
           <div className="mb-8">
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 text-center">

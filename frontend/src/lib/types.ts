@@ -24,7 +24,31 @@ export interface LoginRequest {
   password: string;
 }
 
-/** 로그인/회원가입 응답 (backend: MemberDto.MemberResponse) */
+/** 토큰 재발급 요청 (backend: MemberDto.ReissueRequest) */
+export interface ReissueRequest {
+  refreshToken: string;
+}
+
+/** 초대 코드로 직원 추가 요청 (관리자 → 서버) */
+export interface AddEmployeeByCodeRequest {
+  inviteCode: string;
+}
+
+/** 초대 코드 생성 응답 (직원 → 서버) */
+export interface GenerateInviteCodeResponse {
+  inviteCode: string;
+}
+
+/** 로그인 응답 (backend: MemberDto.LoginResponse) */
+export interface LoginResponse {
+  token: string;
+  id: number;
+  username: string;
+  role: Role;
+  virtualBalance: number;
+}
+
+/** 회원가입 응답 (backend: MemberDto.MemberResponse) */
 export interface MemberResponse {
   id: number;
   username: string;

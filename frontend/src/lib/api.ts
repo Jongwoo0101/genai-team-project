@@ -1,29 +1,39 @@
-import type { SignUpRequest, LoginRequest, MemberResponse, EventReportRequest, Role } from './types';
+import type { SignUpRequest, LoginRequest, LoginResponse, ReissueRequest, MemberResponse, EventReportRequest, AddEmployeeByCodeRequest, GenerateInviteCodeResponse } from './types';
 
 const API_BASE = '/api';
 
 /** 공통 fetch 래퍼 - JSON POST 요청 */
 async function postJSON<T>(url: string, body: unknown): Promise<T> {
+  const token = localStorage.getItem('token'); // 'accessToken' -> 'token'으로 변경
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}${url}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(body),
   });
 
   if (!res.ok) {
-    // 서버가 JSON 에러 응답을 보내는 경우 message 필드 추출
     try {
       const errorData = await res.json();
-      // GlobalExceptionHandler의 message 필드 우선 사용
       throw new Error(errorData?.message || `HTTP ${res.status}`);
     } catch (jsonErr) {
-      // json() 자체가 실패한 경우 (빈 응답 등) 텍스트로 폴백
       if (jsonErr instanceof Error && !jsonErr.message.startsWith('HTTP')) {
-        throw jsonErr; // 이미 파싱된 에러면 그대로 던짐
+        throw jsonErr;
       }
       const errorText = await res.text().catch(() => '');
       throw new Error(errorText || `HTTP ${res.status}`);
     }
+  }
+
+  const contentLength = res.headers.get('content-length');
+  const contentType = res.headers.get('content-type') || '';
+  if (res.status === 204 || contentLength === '0' || !contentType.includes('application/json')) {
+    return undefined as T;
   }
 
   return res.json();
@@ -34,31 +44,52 @@ export async function signUp(request: SignUpRequest): Promise<MemberResponse> {
   return postJSON<MemberResponse>('/members/signup', request);
 }
 
-// LoginResponse 타입 추가
-interface LoginResponse {
-  token: string;
-  id: number;
-  username: string;
-  role: Role;
-  virtualBalance: number;
+/** 초대 코드 생성 (직원이 호출) */
+export async function generateInviteCode(): Promise<GenerateInviteCodeResponse> {
+  return postJSON<GenerateInviteCodeResponse>('/members/invite-code', {});
 }
 
-// 로그인 
+/** 초대 코드로 직원 추가 (관리자가 호출) */
+export async function addEmployeeByCode(request: AddEmployeeByCodeRequest): Promise<void> {
+  try {
+    return await postJSON<void>('/members/add-by-code', request);
+  } catch (err: any) {
+    if (err.message?.includes('pattern') || err.message?.includes('JSON')) {
+      throw new Error('백엔드 API가 아직 구현되지 않았습니다. 백엔드 개발 후 연동됩니다.');
+    }
+    throw err;
+  }
+}
+
+/** 로그인 */
 export async function login(request: LoginRequest): Promise<LoginResponse> {
   return postJSON<LoginResponse>('/members/login', request);
 }
+
+/** 토큰 재발급 */
+export async function reissueToken(request: ReissueRequest): Promise<LoginResponse> {
+  return postJSON<LoginResponse>('/members/reissue', request);
+}
+
 /** ──────────── 모니터링 API ──────────── */
+async function fetchWithAuth(url: string) {
+  const token = localStorage.getItem('token'); // 'accessToken' -> 'token'
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  
+  return fetch(`${API_BASE}${url}`, { headers });
+}
 
 /** 대시보드 통계 가져오기 */
 export async function getDashboardStats() {
-  const res = await fetch(`${API_BASE}/monitoring/stats`);
+  const res = await fetchWithAuth('/monitoring/stats');
   if (!res.ok) throw new Error('통계를 불러오지 못했습니다.');
   return res.json();
 }
 
 /** 최근 이벤트 목록 가져오기 */
 export async function getWorkEvents() {
-  const res = await fetch(`${API_BASE}/monitoring/events`);
+  const res = await fetchWithAuth('/monitoring/events');
   if (!res.ok) throw new Error('이벤트 로그를 불러오지 못했습니다.');
   return res.json();
 }
