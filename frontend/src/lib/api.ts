@@ -12,7 +12,7 @@ async function postJSON<T>(url: string, body: unknown): Promise<T> {
   // 공개 엔드포인트에는 토큰을 보내지 않음 (서버 재시작 후 만료된 토큰이 401을 유발하는 문제 방지)
   const isPublic = PUBLIC_ENDPOINTS.some(ep => url.includes(ep));
   if (!isPublic) {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
     if (token && token !== 'undefined' && token !== 'null') {
       headers['Authorization'] = `Bearer ${token}`;
     }
@@ -82,7 +82,7 @@ export async function reissueToken(request: ReissueRequest): Promise<LoginRespon
 
 /** ──────────── 모니터링 API ──────────── */
 async function fetchWithAuth(url: string) {
-  const token = localStorage.getItem('token'); // 'accessToken' -> 'token'
+  const token = sessionStorage.getItem('token'); // 'accessToken' -> 'token'
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
   

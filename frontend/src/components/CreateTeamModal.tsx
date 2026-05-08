@@ -40,7 +40,7 @@ export default function CreateTeamModal({ isOpen, onClose, onSuccess }: CreateTe
       // 서버에서 초대 코드를 받았는지 확인
       if (res && res.inviteCode) {
         // 서버 코드 사용 (이것이 서버 메모리에 저장된 유일한 유효 코드)
-        createTeam(teamName.trim(), teamDescription.trim(), user.id, user.username);
+        createTeam(teamName.trim(), teamDescription.trim(), user.id, user.username, res.inviteCode);
         setCreatedCode(res.inviteCode);
       } else {
         // 서버가 코드를 반환하지 않은 경우 → 로컬 폴백
