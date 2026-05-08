@@ -44,14 +44,15 @@ interface TeamState {
   removeMember: (teamId: string, memberId: number) => boolean;
 }
 
-/** 6자리 팀 코드 생성 */
+/** WS-XXXX-XXXX 형식의 팀 코드 생성 (백엔드와 일치) */
 function generateTeamCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 혼동 방지: I,O,0,1 제외
-  let code = '';
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const segment = () => {
+    let s = '';
+    for (let i = 0; i < 4; i++) s += chars.charAt(Math.floor(Math.random() * chars.length));
+    return s;
+  };
+  return `WS-${segment()}-${segment()}`;
 }
 
 /** localStorage 키 */

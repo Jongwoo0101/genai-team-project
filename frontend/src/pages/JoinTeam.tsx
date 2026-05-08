@@ -38,10 +38,10 @@ export default function JoinTeam() {
 
     try {
       // 1) 백엔드 API 호출 시도
-      const res = await api.joinTeam({ inviteCode: code });
+      await api.joinTeam({ inviteCode: code });
       // API 성공 → localStorage에도 동기화
       joinTeam(code, user.id, user.username);
-      setSuccessTeam(res.teamName || '팀');
+      setSuccessTeam('팀');
       setTimeout(() => navigate('/employee'), 1500);
     } catch {
       // 2) 백엔드 미구현 시 → localStorage 폴백
@@ -93,7 +93,7 @@ export default function JoinTeam() {
               </div>
               <h2 className="text-xl font-bold text-white mb-2">팀 참여 완료!</h2>
               <p className="text-slate-400 text-sm">
-                <span className="text-cyan-400 font-bold">{successTeam}</span>에 성공적으로 합류했습니다.
+                성공적으로 합류했습니다.
               </p>
               <p className="text-slate-500 text-xs mt-3">잠시 후 모니터링 화면으로 이동합니다...</p>
             </div>
@@ -109,7 +109,7 @@ export default function JoinTeam() {
                     </svg>
                   </div>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    관리자가 팀을 생성하면 <span className="text-cyan-400 font-bold">6자리 팀 코드</span>가 발급됩니다.
+                    관리자가 팀을 생성하면 <span className="text-cyan-400 font-bold">초대 코드</span>가 발급됩니다.
                     해당 코드를 입력하면 팀에 합류하여 모니터링을 시작할 수 있습니다.
                   </p>
                 </div>
@@ -125,11 +125,11 @@ export default function JoinTeam() {
                   type="text"
                   value={teamCode}
                   onChange={(e) => setTeamCode(e.target.value.toUpperCase())}
-                  placeholder="6자리 코드 입력"
-                  maxLength={6}
+                  placeholder="WS-XXXX-XXXX"
+                  maxLength={15}
                   autoComplete="off"
                   autoFocus
-                  className="w-full px-5 py-4 rounded-2xl bg-slate-800/40 border border-slate-700/50 text-white text-center text-2xl font-mono font-bold tracking-[0.4em] placeholder-slate-600 placeholder:text-base placeholder:tracking-normal focus:outline-none focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10 transition-all duration-200"
+                  className="w-full px-5 py-4 rounded-2xl bg-slate-800/40 border border-slate-700/50 text-white text-center text-xl font-mono font-bold tracking-wider placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-4 focus:ring-cyan-500/10 transition-all duration-200"
                 />
               </div>
 

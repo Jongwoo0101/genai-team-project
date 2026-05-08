@@ -53,8 +53,9 @@ export async function signUp(request: SignUpRequest): Promise<MemberResponse> {
 /** ──────────── 팀 관리 API ──────────── */
 
 /** 팀 생성 및 초대 코드 발급 (관리자가 호출) */
-export async function createTeamAndInviteCode(request: CreateTeamRequest): Promise<CreateTeamResponse> {
-  return postJSON<CreateTeamResponse>('/members/invite-code', request);
+export async function createTeamAndInviteCode(_request: CreateTeamRequest): Promise<CreateTeamResponse> {
+  // 백엔드 POST /members/invite-code 는 현재 @RequestBody 를 받지 않음
+  return postJSON<CreateTeamResponse>('/members/invite-code', {});
 }
 
 /** 팀 참여 (직원이 호출) */

@@ -41,16 +41,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const res = await api.login({ username, password });
 
-      // 백엔드 응답 필드(accessToken) 반영
-      if (res.accessToken) {
-        localStorage.setItem('token', res.accessToken);
+      // 백엔드 응답 필드(token) 반영
+      if (res.token) {
+        localStorage.setItem('token', res.token);
+      }
+      if (res.refreshToken) {
+        localStorage.setItem('refresh_token', res.refreshToken);
       }
 
       const user: AuthUser = {
         id: res.id,
         username: res.username,
         role: res.role,
-        balance: res.virtualBalance ?? 0, // virtualBalance 반영
+        balance: res.virtualBalance ?? 0,
       };
       set({ user, isAuthenticated: true });
       return { success: true };
