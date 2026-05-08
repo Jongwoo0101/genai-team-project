@@ -2,13 +2,20 @@ import type { SignUpRequest, LoginRequest, LoginResponse, ReissueRequest, Member
 
 const API_BASE = '/api';
 
+/** 인증이 필요 없는 공개 엔드포인트 */
+const PUBLIC_ENDPOINTS = ['/members/signup', '/members/login', '/members/reissue'];
+
 /** 공통 fetch 래퍼 - JSON POST 요청 */
 async function postJSON<T>(url: string, body: unknown): Promise<T> {
-  const token = localStorage.getItem('token');
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   
-  if (token && token !== 'undefined' && token !== 'null') {
-    headers['Authorization'] = `Bearer ${token}`;
+  // 공개 엔드포인트에는 토큰을 보내지 않음 (서버 재시작 후 만료된 토큰이 401을 유발하는 문제 방지)
+  const isPublic = PUBLIC_ENDPOINTS.some(ep => url.includes(ep));
+  if (!isPublic) {
+    const token = sessionStorage.getItem('token');
+    if (token && token !== 'undefined' && token !== 'null') {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
   }
 
   const res = await fetch(`${API_BASE}${url}`, {
@@ -31,16 +38,16 @@ async function postJSON<T>(url: string, body: unknown): Promise<T> {
     throw new Error(errorMessage);
   }
 
-  // 응답 본문이 있는지 확인 후 파싱 (사파리 호환성 강화)
-  const contentType = res.headers.get('content-type') || '';
-  if (res.status === 204 || !contentType.includes('application/json')) {
+  // 응답 본문 파싱 (사파리 호환성 강화)
+  // 204 No Content만 빈 응답 처리, 나머지는 무조건 JSON 파싱 시도
+  if (res.status === 204) {
     return undefined as T;
   }
 
   try {
     return await res.json();
   } catch (err) {
-    console.warn('JSON 파싱 실패:', err);
+    console.warn('JSON 파싱 실패 (빈 응답일 수 있음):', err);
     return undefined as T;
   }
 }
@@ -53,8 +60,9 @@ export async function signUp(request: SignUpRequest): Promise<MemberResponse> {
 /** ──────────── 팀 관리 API ──────────── */
 
 /** 팀 생성 및 초대 코드 발급 (관리자가 호출) */
-export async function createTeamAndInviteCode(request: CreateTeamRequest): Promise<CreateTeamResponse> {
-  return postJSON<CreateTeamResponse>('/members/invite-code', request);
+export async function createTeamAndInviteCode(_request: CreateTeamRequest): Promise<CreateTeamResponse> {
+  // 백엔드 POST /members/invite-code 는 현재 @RequestBody 를 받지 않음
+  return postJSON<CreateTeamResponse>('/members/invite-code', {});
 }
 
 /** 팀 참여 (직원이 호출) */
@@ -74,7 +82,7 @@ export async function reissueToken(request: ReissueRequest): Promise<LoginRespon
 
 /** ──────────── 모니터링 API ──────────── */
 async function fetchWithAuth(url: string) {
-  const token = localStorage.getItem('token'); // 'accessToken' -> 'token'
+  const token = sessionStorage.getItem('token'); // 'accessToken' -> 'token'
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
   

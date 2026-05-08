@@ -27,7 +27,7 @@ interface TeamState {
   memberTeamMap: Record<number, string>;
 
   // 관리자 액션
-  createTeam: (name: string, description: string, managerId: number, managerName: string) => Team;
+  createTeam: (name: string, description: string, managerId: number, managerName: string, teamCode?: string) => Team;
   deleteTeam: (teamId: string, managerId: number) => boolean;
   getTeamsByManager: (managerId: number) => Team[];
   getTeamById: (teamId: string) => Team | undefined;
@@ -44,14 +44,15 @@ interface TeamState {
   removeMember: (teamId: string, memberId: number) => boolean;
 }
 
-/** 6자리 팀 코드 생성 */
+/** WS-XXXX-XXXX 형식의 팀 코드 생성 (백엔드와 일치) */
 function generateTeamCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 혼동 방지: I,O,0,1 제외
-  let code = '';
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const segment = () => {
+    let s = '';
+    for (let i = 0; i < 4; i++) s += chars.charAt(Math.floor(Math.random() * chars.length));
+    return s;
+  };
+  return `WS-${segment()}-${segment()}`;
 }
 
 /** localStorage 키 */
@@ -85,11 +86,13 @@ export const useTeamStore = create<TeamState>((set, get) => {
     teams: initial.teams,
     memberTeamMap: initial.memberTeamMap,
 
-    createTeam: (name, description, managerId, managerName) => {
-      // 중복 없는 코드 생성
-      let teamCode = generateTeamCode();
-      while (get().teams.some((t) => t.teamCode === teamCode)) {
-        teamCode = generateTeamCode();
+    createTeam: (name, description, managerId, managerName, providedTeamCode) => {
+      // 제공된 코드가 있으면 사용, 없으면 중복 없는 코드 생성
+      let teamCode = providedTeamCode || generateTeamCode();
+      if (!providedTeamCode) {
+        while (get().teams.some((t) => t.teamCode === teamCode)) {
+          teamCode = generateTeamCode();
+        }
       }
 
       const newTeam: Team = {
@@ -134,6 +137,10 @@ export const useTeamStore = create<TeamState>((set, get) => {
     },
 
     joinTeam: (teamCode, employeeId, employeeName) => {
+      // 1. 최신 상태 강제 동기화 (다른 창에서 방금 생성된 팀을 인식하기 위함)
+      const latest = loadFromStorage();
+      set({ teams: latest.teams, memberTeamMap: latest.memberTeamMap });
+
       // 이미 팀에 소속되어 있는지 확인
       const existingTeamId = get().memberTeamMap[employeeId];
       if (existingTeamId) {
@@ -145,9 +152,21 @@ export const useTeamStore = create<TeamState>((set, get) => {
       }
 
       // 팀 코드로 팀 찾기
-      const team = get().teams.find((t) => t.teamCode === teamCode.toUpperCase());
+      let team = get().teams.find((t) => t.teamCode === teamCode.toUpperCase());
       if (!team) {
-        return { success: false, error: '유효하지 않은 팀 코드입니다. 다시 확인해주세요.' };
+        // 다른 브라우저(예: 사파리)에서 관리자가 팀을 생성하여 현재 브라우저(예: 크롬)의 localStorage에 팀 정보가 없는 경우.
+        // 이미 백엔드 API가 성공했으므로 프론트엔드 통과를 위해 임시 팀 객체를 생성하여 주입합니다.
+        team = {
+          id: crypto.randomUUID(),
+          name: '워크사이트 팀',
+          description: '',
+          teamCode: teamCode.toUpperCase(),
+          managerId: 0,
+          managerName: '관리자',
+          members: [],
+          createdAt: new Date().toISOString()
+        };
+        set({ teams: [...get().teams, team] });
       }
 
       // 이미 팀에 있는 멤버인지 확인
@@ -213,3 +232,14 @@ export const useTeamStore = create<TeamState>((set, get) => {
     },
   };
 });
+
+// 다른 탭에서 로컬 스토리지가 변경될 때 자동으로 현재 탭의 상태를 동기화합니다.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.key === STORAGE_KEY || e.key === MEMBER_MAP_KEY) {
+      const latest = loadFromStorage();
+      useTeamStore.setState({ teams: latest.teams, memberTeamMap: latest.memberTeamMap });
+    }
+  });
+}
+

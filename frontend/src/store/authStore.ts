@@ -41,16 +41,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const res = await api.login({ username, password });
 
-      // 백엔드 응답 필드(accessToken) 반영
-      if (res.accessToken) {
-        localStorage.setItem('token', res.accessToken);
+      // 백엔드 응답 필드(token) 반영
+      if (res.token) {
+        sessionStorage.setItem('token', res.token);
+      }
+      if (res.refreshToken) {
+        sessionStorage.setItem('refresh_token', res.refreshToken);
       }
 
       const user: AuthUser = {
         id: res.id,
         username: res.username,
         role: res.role,
-        balance: res.virtualBalance ?? 0, // virtualBalance 반영
+        balance: res.virtualBalance ?? 0,
       };
       set({ user, isAuthenticated: true });
       return { success: true };
@@ -79,7 +82,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
-    localStorage.removeItem('token');
+    // 프론트엔드 캐시(토큰 등) 완전 초기화
+    sessionStorage.clear();
     set({ user: null, isAuthenticated: false });
   },
 

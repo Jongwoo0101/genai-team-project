@@ -30,6 +30,6 @@ jwt:
 
 logging:
   level:
-    org.springframework.security: INFO
-    org.hibernate.SQL: DEBUG
     com.worksight.api: DEBUG
+    org.springframework.security: TRACE
+    org.hibernate.SQL: DEBUG
