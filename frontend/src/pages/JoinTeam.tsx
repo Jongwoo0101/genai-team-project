@@ -43,15 +43,19 @@ export default function JoinTeam() {
       joinTeam(code, user.id, user.username);
       setSuccessTeam('팀');
       setTimeout(() => navigate('/employee'), 1500);
-    } catch {
-      // 2) 백엔드 미구현 시 → localStorage 폴백
-      console.warn('백엔드 API 미구현: localStorage 폴백으로 팀 참여');
+    } catch (err: unknown) {
+      // 서버에서 전달한 실제 에러 메시지 확인
+      const serverErrorMessage = err instanceof Error ? err.message : null;
+      
+      // 2) 백엔드 미구현 혹은 네트워크 실패 시 → localStorage 폴백 시도
       const result = joinTeam(code, user.id, user.username);
+      
       if (result.success) {
         setSuccessTeam(result.teamName || '팀');
         setTimeout(() => navigate('/employee'), 1500);
       } else {
-        setError(result.error || '팀 참여에 실패했습니다.');
+        // 서버 에러 메시지가 있으면 그것을 우선 표시, 없으면 로컬 에러 표시
+        setError(serverErrorMessage || result.error || '팀 참여에 실패했습니다.');
       }
     } finally {
       setIsJoining(false);
