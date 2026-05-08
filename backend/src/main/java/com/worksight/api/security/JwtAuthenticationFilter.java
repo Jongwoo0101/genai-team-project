@@ -1,5 +1,6 @@
 package com.worksight.api.security;
 
+import com.worksight.api.repository.MemberRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -8,8 +9,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -20,7 +19,7 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
-    private final UserDetailsService userDetailsService;
+    private final MemberRepository memberRepository;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -32,18 +31,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (token != null
                 && jwtProvider.isValid(token)
-                && jwtProvider.isAccessToken(token)) {   // access token만 인증에 사용
+                && jwtProvider.isAccessToken(token)) {
 
             Long userId = jwtProvider.getUserId(token);
-            // CustomUserDetailsService.loadUserByUsername이 userId(String)로 조회하도록 수정 필요
-            UserDetails userDetails = userDetailsService.loadUserByUsername(String.valueOf(userId));
 
-            UsernamePasswordAuthenticationToken auth =
-                    new UsernamePasswordAuthenticationToken(
-                            userDetails, null, userDetails.getAuthorities());
-            auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-            SecurityContextHolder.getContext().setAuthentication(auth);
+            // 유저가 없으면 예외 없이 인증 없이 통과
+            memberRepository.findById(userId).ifPresent(member -> {
+                UsernamePasswordAuthenticationToken auth =
+                        new UsernamePasswordAuthenticationToken(
+                                member, null, member.getAuthorities());
+                auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(auth);
+            });
         }
 
         chain.doFilter(request, response);
