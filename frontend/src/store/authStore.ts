@@ -43,10 +43,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // 백엔드 응답 필드(token) 반영
       if (res.token) {
-        localStorage.setItem('token', res.token);
+        sessionStorage.setItem('token', res.token);
       }
       if (res.refreshToken) {
-        localStorage.setItem('refresh_token', res.refreshToken);
+        sessionStorage.setItem('refresh_token', res.refreshToken);
       }
 
       const user: AuthUser = {
@@ -82,7 +82,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
-    localStorage.removeItem('token');
+    // 프론트엔드 캐시(토큰 등) 완전 초기화
+    sessionStorage.clear();
     set({ user: null, isAuthenticated: false });
   },
 

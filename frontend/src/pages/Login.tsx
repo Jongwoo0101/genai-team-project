@@ -95,7 +95,7 @@ export default function Login() {
               <button
                 key={m}
                 type="button"
-                onClick={() => { setMode(m); setError(''); setSelectedRole('EMPLOYEE'); }}
+                onClick={() => { setMode(m); setError(''); }}
                 className={`py-3 rounded-xl text-sm font-bold transition-all duration-300 cursor-pointer border-0 ${
                   mode === m
                     ? 'bg-cyan-500/15 text-cyan-400 glow-cyan'

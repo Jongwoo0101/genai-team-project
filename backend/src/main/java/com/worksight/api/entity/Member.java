@@ -25,7 +25,7 @@ public class Member implements UserDetails {
     private Role role;
 
     private Long virtualBalance;
-    private Long managerId; // 팀 매핑용
+    private Long managerId;
 
     @Builder
     public Member(String username, String password, Role role) {
@@ -44,7 +44,7 @@ public class Member implements UserDetails {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
-    @Override public String getPassword()   { return password; }
-    @Override public String getUsername()   { return username; }
-
+    @Override public String getPassword()  { return password; }
+    @Override public String getUsername()  { return username; }
+    public Long getManagerId()             { return managerId; } // 추가
 }

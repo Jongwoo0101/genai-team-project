@@ -25,11 +25,11 @@ spring:
 
 jwt:
   secret: worksight-super-secret-key-must-be-at-least-256-bits-long-for-hs256-algorithm
-  expiration: 1800000  # 30분 (ms)
+  expiration: 86400000  # 24시간 (테스트용)
   refresh-expiration: 604800000 # 7일
 
 logging:
   level:
-    org.springframework.security: INFO
-    org.hibernate.SQL: DEBUG
     com.worksight.api: DEBUG
+    org.springframework.security: TRACE
+    org.hibernate.SQL: DEBUG

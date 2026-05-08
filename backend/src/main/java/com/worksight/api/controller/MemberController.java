@@ -32,15 +32,12 @@ public class MemberController {
     }
 
     // MANAGER가 초대 코드 생성
-
     @PostMapping("/invite-code")
     @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<InviteCodeResponse> generateInviteCode(
             @AuthenticationPrincipal Member manager
     ) {
-        return ResponseEntity.ok(
-                memberService.generateInviteCode(manager)
-        );
+        return ResponseEntity.ok(memberService.generateInviteCode(manager));
     }
 
     // EMPLOYEE가 초대 코드로 팀 참가

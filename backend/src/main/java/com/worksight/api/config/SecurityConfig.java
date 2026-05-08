@@ -1,5 +1,6 @@
 package com.worksight.api.config;
 
+import com.worksight.api.repository.MemberRepository;
 import com.worksight.api.security.JwtAuthenticationFilter;
 import com.worksight.api.security.JwtProvider;
 import jakarta.servlet.http.HttpServletResponse;
@@ -13,7 +14,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -31,7 +31,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtProvider jwtProvider;
-    private final UserDetailsService userDetailsService;
+    private final MemberRepository memberRepository;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -49,7 +49,6 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-                // 401 / 403 명확히 분리
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) -> {
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -72,7 +71,6 @@ public class SecurityConfig {
                                 "/api/members/login",
                                 "/api/members/reissue").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
-                        // @PreAuthorize보다 먼저 인증 체크 → 미인증 시 401
                         .requestMatchers(HttpMethod.POST,
                                 "/api/members/invite-code",
                                 "/api/members/join-team").authenticated()
@@ -81,7 +79,7 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .addFilterBefore(
-                        new JwtAuthenticationFilter(jwtProvider, userDetailsService),
+                        new JwtAuthenticationFilter(jwtProvider, memberRepository),
                         UsernamePasswordAuthenticationFilter.class
                 );
 

@@ -28,31 +28,21 @@ public class MemberService {
     private final RefreshTokenService refreshTokenService;
     private final SimpMessagingTemplate messagingTemplate;
 
-    // code -> managerId
-
-    private final ConcurrentHashMap<String, InviteEntry> inviteStore =
-            new ConcurrentHashMap<>();
-
-    private record InviteEntry(
-            Long managerId,
-            Instant expiresAt
-    ) {}
+    // 초대 코드 저장소
+    private final ConcurrentHashMap<String, InviteEntry> inviteStore = new ConcurrentHashMap<>();
+    private record InviteEntry(Long managerId, Instant expiresAt) {}
 
     @Transactional
     public MemberResponse register(SignUpRequest request) {
-
         if (memberRepository.existsByUsername(request.username())) {
             throw new DuplicateUsernameException(request.username());
         }
-
         Member member = Member.builder()
                 .username(request.username())
                 .password(passwordEncoder.encode(request.password()))
                 .role(request.role())
                 .build();
-
         Member savedMember = memberRepository.save(member);
-
         return new MemberResponse(
                 savedMember.getId(),
                 savedMember.getUsername(),
@@ -63,34 +53,14 @@ public class MemberService {
 
     @Transactional
     public LoginResponse login(LoginRequest request) {
-
         Member member = memberRepository.findByUsername(request.username())
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "존재하지 않는 아이디입니다. 아이디를 다시 확인해주세요."
-                        )
-                );
-
-        if (!passwordEncoder.matches(
-                request.password(),
-                member.getPassword()
-        )) {
-            throw new IllegalArgumentException(
-                    "비밀번호가 올바르지 않습니다. 다시 확인해주세요."
-            );
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 아이디입니다. 아이디를 다시 확인해주세요."));
+        if (!passwordEncoder.matches(request.password(), member.getPassword())) {
+            throw new IllegalArgumentException("비밀번호가 올바르지 않습니다. 다시 확인해주세요.");
         }
-
-        String accessToken =
-                jwtProvider.generateAccessToken(member);
-
-        String refreshToken =
-                jwtProvider.generateRefreshToken(member);
-
-        refreshTokenService.save(
-                member.getId(),
-                refreshToken
-        );
-
+        String accessToken = jwtProvider.generateAccessToken(member);
+        String refreshToken = jwtProvider.generateRefreshToken(member);
+        refreshTokenService.save(member.getId(), refreshToken);
         return new LoginResponse(
                 accessToken,
                 refreshToken,
@@ -103,38 +73,16 @@ public class MemberService {
 
     @Transactional
     public LoginResponse reissue(ReissueRequest request) {
-
         String oldToken = request.refreshToken();
-
         if (!jwtProvider.isValid(oldToken)) {
-            throw new IllegalArgumentException(
-                    "유효하지 않은 refresh token입니다."
-            );
+            throw new IllegalArgumentException("유효하지 않은 refresh token입니다.");
         }
-
-        RefreshToken refreshToken =
-                refreshTokenService.validate(oldToken);
-
-        Member member = memberRepository.findById(
-                        refreshToken.getMemberId()
-                )
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "존재하지 않는 회원입니다."
-                        )
-                );
-
-        String newAccessToken =
-                jwtProvider.generateAccessToken(member);
-
-        String newRefreshToken =
-                jwtProvider.generateRefreshToken(member);
-
-        refreshTokenService.save(
-                member.getId(),
-                newRefreshToken
-        );
-
+        RefreshToken refreshToken = refreshTokenService.validate(oldToken);
+        Member member = memberRepository.findById(refreshToken.getMemberId())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+        String newAccessToken = jwtProvider.generateAccessToken(member);
+        String newRefreshToken = jwtProvider.generateRefreshToken(member);
+        refreshTokenService.save(member.getId(), newRefreshToken);
         return new LoginResponse(
                 newAccessToken,
                 newRefreshToken,
@@ -145,67 +93,43 @@ public class MemberService {
         );
     }
 
-    /**
-     * MANAGER가 초대 코드 생성
-     */
+    // MANAGER가 초대 코드 생성
     public InviteCodeResponse generateInviteCode(Member manager) {
-
-        String code =
-                "WS-" + randomSegment() + "-" + randomSegment();
-
-        Instant expiresAt =
-                Instant.now().plusSeconds(300);
-
-        inviteStore.put(
-                code,
-                new InviteEntry(manager.getId(), expiresAt)
-        );
-
+        String code = "WS-" + randomSegment() + "-" + randomSegment();
+        Instant expiresAt = Instant.now().plusSeconds(300);
+        inviteStore.put(code, new InviteEntry(manager.getId(), expiresAt));
         return new InviteCodeResponse(code);
     }
 
-    // EMPLOYEE가 코드 입력 후 팀 참가
+    // EMPLOYEE가 초대 코드로 팀 참가
     @Transactional
-    public void joinTeam(
-            JoinTeamRequest request,
-            Member employee
-    ) {
-
+    public void joinTeam(JoinTeamRequest request, Member employee) {
         String code = request.inviteCode();
-
         InviteEntry entry = inviteStore.get(code);
 
         if (entry == null) {
-            throw new IllegalArgumentException(
-                    "유효하지 않거나 만료된 초대 코드입니다."
-            );
+            throw new IllegalArgumentException("유효하지 않거나 만료된 초대 코드입니다.");
         }
-
         if (Instant.now().isAfter(entry.expiresAt())) {
-
             inviteStore.remove(code);
-
-            throw new IllegalArgumentException(
-                    "유효하지 않거나 만료된 초대 코드입니다."
-            );
+            throw new IllegalArgumentException("유효하지 않거나 만료된 초대 코드입니다.");
         }
 
-        employee.linkManager(entry.managerId());
-        memberRepository.save(employee);  // DB에 팀 매핑 저장
+        //  @AuthenticationPrincipal로 받은 객체는 영속성 컨텍스트 밖이므로
+        //    DB에서 다시 조회해서 변경감지가 되도록 처리
+        Member managedEmployee = memberRepository.findById(employee.getId())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 직원입니다."));
 
+        managedEmployee.linkManager(entry.managerId());
         inviteStore.remove(code);
 
         messagingTemplate.convertAndSend(
-                "/topic/members/" + employee.getId(),
-                Map.of(
-                        "type", "TEAM_LINKED",
-                        "managerId", entry.managerId()
-                )
+                "/topic/members/" + managedEmployee.getId(),
+                Map.of("type", "TEAM_LINKED", "managerId", entry.managerId())
         );
     }
 
     private String randomSegment() {
-
         return UUID.randomUUID()
                 .toString()
                 .replace("-", "")

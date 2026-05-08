@@ -16,6 +16,5 @@ public class MemberDto {
             Long virtualBalance
     ) {}
     public record InviteCodeResponse(String inviteCode) {}
-    // public record AddByCodeRequest(String inviteCode) {}
-    public record JoinTeamRequest(String inviteCode) {} //
+    public record JoinTeamRequest(String inviteCode) {}
 }
