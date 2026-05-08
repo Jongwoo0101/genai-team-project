@@ -2,10 +2,12 @@ package com.worksight.api.config;
 
 import com.worksight.api.security.JwtAuthenticationFilter;
 import com.worksight.api.security.JwtProvider;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -24,11 +26,12 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtProvider jwtProvider;
-    private final UserDetailsService userDetailsService; // CustomUserDetailsService 자동 주입
+    private final UserDetailsService userDetailsService;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -46,14 +49,37 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
+                // 401 / 403 명확히 분리
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.getWriter().write(
+                                    "{\"status\":401,\"code\":\"UNAUTHORIZED\",\"message\":\"인증이 필요합니다.\"}"
+                            );
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                            response.setContentType("application/json;charset=UTF-8");
+                            response.getWriter().write(
+                                    "{\"status\":403,\"code\":\"ACCESS_DENIED\",\"message\":\"접근 권한이 없습니다.\"}"
+                            );
+                        })
+                )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/members/signup", "/api/members/login", "/api/members/reissue").permitAll()
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/members/signup",
+                                "/api/members/login",
+                                "/api/members/reissue").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
+                        // @PreAuthorize보다 먼저 인증 체크 → 미인증 시 401
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/members/invite-code",
+                                "/api/members/join-team").authenticated()
                         .anyRequest().authenticated()
                 )
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
-                // JWT 필터 등록
                 .addFilterBefore(
                         new JwtAuthenticationFilter(jwtProvider, userDetailsService),
                         UsernamePasswordAuthenticationFilter.class

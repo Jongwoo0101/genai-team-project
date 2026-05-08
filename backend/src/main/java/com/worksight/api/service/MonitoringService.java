@@ -1,5 +1,6 @@
 package com.worksight.api.service;
 
+import java.util.NoSuchElementException;
 import com.worksight.api.entity.Member;
 import com.worksight.api.repository.MemberRepository;
 import com.worksight.api.dto.MonitoringDto.*;
@@ -30,7 +31,7 @@ public class MonitoringService {
 
         // 2. 직원 조회
         Member employee = memberRepository.findById(request.employeeId())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid Employee ID"));
+                .orElseThrow(() -> new NoSuchElementException("존재하지 않는 직원입니다."));
 
         // 3. 이상 상태 DB에 이벤트 저장
         WorkEvent event = WorkEvent.builder()

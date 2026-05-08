@@ -1,4 +1,8 @@
-### 1. 회원가입 테스트
+### ──────────────────────────────────────────
+### EMPLOYEE 회원가입 / 로그인
+### ──────────────────────────────────────────
+
+### 1. EMPLOYEE 회원가입
 POST http://localhost:8080/api/members/signup
 Content-Type: application/json
 
@@ -8,8 +12,7 @@ Content-Type: application/json
   "role": "EMPLOYEE"
 }
 
-### 2. 로그인 테스트
-# 응답의 token 값을 복사해서 아래 token 변수에 붙여넣기
+### 2. EMPLOYEE 로그인
 POST http://localhost:8080/api/members/login
 Content-Type: application/json
 
@@ -19,44 +22,150 @@ Content-Type: application/json
 }
 
 ### 로그인 응답의 token 값을 여기에 붙여넣기
-@token = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ0ZXN0ZXIwMSIsInJvbGUiOiJFTVBMT1lFRSIsImlhdCI6MTc3Nzg4MzkzMiwiZXhwIjoxNzc3ODg1NzMyfQ.xZcPcAV5N9zGqSpPsU1lUqNtKWr74ZWHsU0sC_buf6O8-QcPTuN4HvZn0_9PidfxAABwQ1SKQB_D_ZADPWc9NQ
+@employeeToken = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZXMiOlsiRU1QTE9ZRUUiXSwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3ODIwMzk1OSwiZXhwIjoxNzc4MjA1NzU5fQ.ZKylYUxeqvLX6GTF-HrYXErSd2IXK48tBcNFmyMeFIDBgoxez-HoB3FGUKRbnbcsaRbJnGIvzmlsvj8U7Z4fQQ
 
-### 3. 이상 상태 보고 테스트 (SLEEP)
+### ──────────────────────────────────────────
+### MANAGER 회원가입 / 로그인
+### ──────────────────────────────────────────
+
+### 3. MANAGER 회원가입
+POST http://localhost:8080/api/members/signup
+Content-Type: application/json
+
+{
+  "username": "manager01",
+  "password": "password123",
+  "role": "MANAGER"
+}
+
+### 4. MANAGER 로그인
+POST http://localhost:8080/api/members/login
+Content-Type: application/json
+
+{
+  "username": "manager01",
+  "password": "password123"
+}
+
+### 로그인 응답의 token 값을 여기에 붙여넣기
+@managerToken = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIyIiwicm9sZXMiOlsiTUFOQUdFUiJdLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzc4MjAzOTg5LCJleHAiOjE3NzgyMDU3ODl9.ReyxjipjtBg52qzN88FevbyDSqRuyMZB4kHQj9pnw2wa1nc0RCKNOtCRPkgKs7NN9IZ2JWj90zNV3b2ynY_X6w
+
+### ──────────────────────────────────────────
+### 모니터링 이벤트 테스트
+### ──────────────────────────────────────────
+
+### 5. 이상 상태 보고 (SLEEP)
 POST http://localhost:8080/api/monitoring/event
 Content-Type: application/json
-Authorization: Bearer {{token}}
+Authorization: Bearer {{employeeToken}}
 
 {
   "employeeId": 1,
   "eventType": "SLEEP"
 }
 
-### 4. 다양한 이상 상태 테스트 (AWAY)
+### 6. 이상 상태 보고 (AWAY)
 POST http://localhost:8080/api/monitoring/event
 Content-Type: application/json
-Authorization: Bearer {{token}}
+Authorization: Bearer {{employeeToken}}
 
 {
   "employeeId": 1,
   "eventType": "AWAY"
 }
 
-### 5. 정상 상태 보고 테스트 (NORMAL)
+### 7. 정상 상태 보고 (NORMAL)
 POST http://localhost:8080/api/monitoring/event
 Content-Type: application/json
-Authorization: Bearer {{token}}
+Authorization: Bearer {{employeeToken}}
 
 {
   "employeeId": 1,
   "eventType": "NORMAL"
 }
 
-### 6. 잘못된 유저 ID 테스트
+### 8. 잘못된 유저 ID 테스트 ← 404 기대
 POST http://localhost:8080/api/monitoring/event
 Content-Type: application/json
-Authorization: Bearer {{token}}
+Authorization: Bearer {{employeeToken}}
 
 {
   "employeeId": 9999,
   "eventType": "SLEEP"
+}
+
+### ──────────────────────────────────────────
+### 초대 코드 정상 플로우
+### (MANAGER가 코드 생성 → EMPLOYEE가 참가)
+### ──────────────────────────────────────────
+
+### 9. 초대 코드 생성 (MANAGER 호출) ← 정상 케이스
+# 응답: { "inviteCode": "WS-XXXX-XXXX" }
+# 응답의 inviteCode 값을 아래 inviteCode 변수에 붙여넣기
+POST http://localhost:8080/api/members/invite-code
+Content-Type: application/json
+Authorization: Bearer {{managerToken}}
+
+### 응답의 inviteCode 값을 여기에 붙여넣기
+@inviteCode = WS-CA4C-5D1B
+
+### 10. 팀 참가 (EMPLOYEE 호출) ← 200 OK 기대
+POST http://localhost:8080/api/members/join-team
+Content-Type: application/json
+Authorization: Bearer {{employeeToken}}
+
+{
+  "inviteCode": "{{inviteCode}}"
+}
+
+### ──────────────────────────────────────────
+### 에러 케이스 테스트
+### ──────────────────────────────────────────
+
+### 11. 같은 코드 재사용 시도 (일회성 검증) ← 400 기대
+# 10번에서 이미 사용된 코드
+# 응답: { "message": "유효하지 않거나 만료된 초대 코드입니다." }
+POST http://localhost:8080/api/members/join-team
+Content-Type: application/json
+Authorization: Bearer {{employeeToken}}
+
+{
+  "inviteCode": "{{inviteCode}}"
+}
+
+### 12. 존재하지 않는 코드 입력 ← 400 기대
+POST http://localhost:8080/api/members/join-team
+Content-Type: application/json
+Authorization: Bearer {{employeeToken}}
+
+{
+  "inviteCode": "WS-FAKE-CODE"
+}
+
+### 13. MANAGER가 join-team 호출 시도 ← 403 기대
+# EMPLOYEE 권한 없으므로 Forbidden
+POST http://localhost:8080/api/members/join-team
+Content-Type: application/json
+Authorization: Bearer {{managerToken}}
+
+{
+  "inviteCode": "WS-FAKE-CODE"
+}
+
+### 14. EMPLOYEE가 invite-code 호출 시도 ← 403 기대
+# MANAGER 권한 없으므로 Forbidden
+POST http://localhost:8080/api/members/invite-code
+Content-Type: application/json
+Authorization: Bearer {{employeeToken}}
+
+### 15. 인증 없이 invite-code 호출 ← 401 기대
+POST http://localhost:8080/api/members/invite-code
+Content-Type: application/json
+
+### 16. 인증 없이 join-team 호출 ← 401 기대
+POST http://localhost:8080/api/members/join-team
+Content-Type: application/json
+
+{
+  "inviteCode": "WS-FAKE-CODE"
 }

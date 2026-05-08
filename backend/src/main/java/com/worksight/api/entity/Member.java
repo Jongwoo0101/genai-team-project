@@ -25,6 +25,7 @@ public class Member implements UserDetails {
     private Role role;
 
     private Long virtualBalance;
+    private Long managerId; // 팀 매핑용
 
     @Builder
     public Member(String username, String password, Role role) {
@@ -32,6 +33,10 @@ public class Member implements UserDetails {
         this.password = password;
         this.role = role;
         this.virtualBalance = 10000L;
+    }
+
+    public void linkManager(Long managerId) {
+        this.managerId = managerId;
     }
 
     @Override

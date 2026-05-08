@@ -8,11 +8,14 @@ public class MemberDto {
     public record ReissueRequest(String refreshToken) {}
     public record MemberResponse(Long id, String username, Role role, Long balance) {}
     public record LoginResponse(
-            String accessToken,
+            String token,
             String refreshToken,
             Long id,
             String username,
             Role role,
             Long virtualBalance
     ) {}
+    public record InviteCodeResponse(String inviteCode) {}
+    // public record AddByCodeRequest(String inviteCode) {}
+    public record JoinTeamRequest(String inviteCode) {} //
 }
