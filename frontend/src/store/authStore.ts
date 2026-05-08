@@ -82,7 +82,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
-    localStorage.removeItem('token');
+    // 프론트엔드 캐시(토큰, 로컬 임시 팀 데이터 등) 완전 초기화
+    localStorage.clear();
     set({ user: null, isAuthenticated: false });
   },
 

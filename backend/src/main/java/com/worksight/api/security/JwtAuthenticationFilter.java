@@ -35,13 +35,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 && jwtProvider.isAccessToken(token)) {   // access token만 인증에 사용
 
             Long userId = jwtProvider.getUserId(token);
-            // CustomUserDetailsService.loadUserByUsername이 userId(String)로 조회하도록 수정 필요
             UserDetails userDetails = userDetailsService.loadUserByUsername(String.valueOf(userId));
 
             UsernamePasswordAuthenticationToken auth =
                     new UsernamePasswordAuthenticationToken(
                             userDetails, null, userDetails.getAuthorities());
             auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+            System.out.println("====== JWT FILTER DEBUG ======");
+            System.out.println("Request URI: " + request.getRequestURI());
+            System.out.println("User ID: " + userId);
+            System.out.println("Username: " + userDetails.getUsername());
+            System.out.println("Authorities: " + userDetails.getAuthorities());
+            System.out.println("==============================");
 
             SecurityContextHolder.getContext().setAuthentication(auth);
         }
