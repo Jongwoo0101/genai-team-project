@@ -44,18 +44,20 @@ export default function JoinTeam() {
       setSuccessTeam('팀');
       setTimeout(() => navigate('/employee'), 1500);
     } catch (err: unknown) {
-      // 서버에서 전달한 실제 에러 메시지 확인
-      const serverErrorMessage = err instanceof Error ? err.message : null;
+      const serverMsg = err instanceof Error ? err.message : '';
       
-      // 2) 백엔드 미구현 혹은 네트워크 실패 시 → localStorage 폴백 시도
-      const result = joinTeam(code, user.id, user.username);
-      
-      if (result.success) {
-        setSuccessTeam(result.teamName || '팀');
-        setTimeout(() => navigate('/employee'), 1500);
+      // 서버가 명확한 비즈니스 에러를 반환한 경우 (400, 401 등) → 그대로 표시
+      if (serverMsg && !serverMsg.startsWith('Failed to fetch') && !serverMsg.includes('NetworkError')) {
+        setError(serverMsg);
       } else {
-        // 서버 에러 메시지가 있으면 그것을 우선 표시, 없으면 로컬 에러 표시
-        setError(serverErrorMessage || result.error || '팀 참여에 실패했습니다.');
+        // 네트워크 에러 → localStorage 폴백 시도
+        const result = joinTeam(code, user.id, user.username);
+        if (result.success) {
+          setSuccessTeam(result.teamName || '팀');
+          setTimeout(() => navigate('/employee'), 1500);
+        } else {
+          setError(result.error || '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
+        }
       }
     } finally {
       setIsJoining(false);

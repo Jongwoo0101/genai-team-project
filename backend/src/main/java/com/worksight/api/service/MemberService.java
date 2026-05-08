@@ -191,6 +191,7 @@ public class MemberService {
         }
 
         employee.linkManager(entry.managerId());
+        memberRepository.save(employee);  // DB에 팀 매핑 저장
 
         inviteStore.remove(code);
 

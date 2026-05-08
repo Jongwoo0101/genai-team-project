@@ -36,15 +36,25 @@ export default function CreateTeamModal({ isOpen, onClose, onSuccess }: CreateTe
         teamName: teamName.trim(),
         description: teamDescription.trim() || undefined,
       });
-      // API 성공 시 → localStorage에도 동기화
-      const team = createTeam(teamName.trim(), teamDescription.trim(), user.id, user.username);
-      // 백엔드에서 받은 코드로 덮어쓰기 (teamStore의 자동 생성 코드 대신)
-      setCreatedCode(res.inviteCode || team.teamCode);
-    } catch {
-      // 2) 백엔드 미구현 시 → localStorage 폴백
-      console.warn('백엔드 API 미구현: localStorage 폴백으로 팀 생성');
-      const team = createTeam(teamName.trim(), teamDescription.trim(), user.id, user.username);
-      setCreatedCode(team.teamCode);
+      
+      // 서버에서 초대 코드를 받았는지 확인
+      if (res && res.inviteCode) {
+        // 서버 코드 사용 (이것이 서버 메모리에 저장된 유일한 유효 코드)
+        createTeam(teamName.trim(), teamDescription.trim(), user.id, user.username);
+        setCreatedCode(res.inviteCode);
+      } else {
+        // 서버가 코드를 반환하지 않은 경우 → 로컬 폴백
+        console.warn('서버가 초대 코드를 반환하지 않음, 로컬 폴백');
+        const team = createTeam(teamName.trim(), teamDescription.trim(), user.id, user.username);
+        setCreatedCode(team.teamCode);
+      }
+    } catch (err: unknown) {
+      const serverMsg = err instanceof Error ? err.message : '팀 생성 중 오류가 발생했습니다.';
+      console.error('팀 생성 API 실패:', serverMsg);
+      
+      // 서버에서 명확한 에러가 났다면 (예: 401 권한 없음) 로컬 폴백을 하지 않고 에러를 보여줌.
+      // (서버 재시작으로 토큰이 만료되었을 때 조용히 로컬 코드를 발급하는 문제 방지)
+      setError(serverMsg);
     } finally {
       setIsCreating(false);
     }
