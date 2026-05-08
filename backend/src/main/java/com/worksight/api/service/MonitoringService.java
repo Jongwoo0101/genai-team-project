@@ -12,6 +12,8 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.NoSuchElementException;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -30,7 +32,7 @@ public class MonitoringService {
 
         // 2. 직원 조회
         Member employee = memberRepository.findById(request.employeeId())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid Employee ID"));
+                .orElseThrow(() -> new NoSuchElementException("존재하지 않는 직원입니다."));
 
         // 3. 이상 상태 DB에 이벤트 저장
         WorkEvent event = WorkEvent.builder()
