@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import * as api from '../lib/api';
+import { useAuthStore } from './authStore';
 
 // ========================
 // 팀 관련 타입 정의
@@ -42,6 +44,10 @@ interface TeamState {
 
   // 멤버 제거 (관리자)
   removeMember: (teamId: string, memberId: number) => boolean;
+
+  // 서버 데이터 동기화 액션
+  fetchMyTeam: () => Promise<void>;
+  fetchTeamMembers: (managerId: number) => Promise<void>;
 }
 
 /** WS-XXXX-XXXX 형식의 팀 코드 생성 (백엔드와 일치) */
@@ -87,13 +93,9 @@ export const useTeamStore = create<TeamState>((set, get) => {
     memberTeamMap: initial.memberTeamMap,
 
     createTeam: (name, description, managerId, managerName, providedTeamCode) => {
-      // 제공된 코드가 있으면 사용, 없으면 중복 없는 코드 생성
-      let teamCode = providedTeamCode || generateTeamCode();
-      if (!providedTeamCode) {
-        while (get().teams.some((t) => t.teamCode === teamCode)) {
-          teamCode = generateTeamCode();
-        }
-      }
+      // 이제 백엔드에서는 초대 코드가 발급되면 자동으로 매니저와 연결되므로, 
+      // 로컬 스토리지에는 팀 이름/설명 등 UI 표시용 정보만 저장합니다.
+      const teamCode = providedTeamCode || generateTeamCode();
 
       const newTeam: Team = {
         id: crypto.randomUUID(),
@@ -230,6 +232,80 @@ export const useTeamStore = create<TeamState>((set, get) => {
       saveToStorage(updatedTeams, updatedMap);
       return true;
     },
+
+    fetchMyTeam: async () => {
+      try {
+        const res = await api.getMyTeam();
+        if (res && res.managerId) {
+          const teamId = `team-${res.managerId}`;
+          const team: Team = {
+            id: teamId,
+            name: '워크사이트 팀',
+            description: '',
+            teamCode: '',
+            managerId: res.managerId,
+            managerName: res.managerUsername,
+            members: [],
+            createdAt: new Date().toISOString()
+          };
+          
+          const updatedTeams = [...get().teams.filter(t => t.id !== teamId), team];
+          // 현재 유저(직원)의 ID를 가져와서 맵 업데이트
+          const { user } = useAuthStore.getState();
+          const updatedMap = { ...get().memberTeamMap };
+          if (user?.id) {
+            updatedMap[user.id] = teamId;
+          }
+          
+          set({ teams: updatedTeams, memberTeamMap: updatedMap });
+          saveToStorage(updatedTeams, updatedMap);
+        }
+      } catch (err) {
+        if (err instanceof Error && err.message === 'NOT_JOINED') {
+          console.log('아직 소속된 팀이 없습니다.');
+        }
+      }
+    },
+
+    fetchTeamMembers: async (managerId) => {
+      try {
+        const members = await api.getTeamMembers(managerId);
+        const teamId = `team-${managerId}`;
+        
+        const teamMembers: TeamMember[] = members.map(m => ({
+          id: m.id,
+          username: m.username,
+          joinedAt: new Date().toISOString()
+        }));
+
+        const existingTeam = get().teams.find(t => t.managerId === managerId);
+        let updatedTeams;
+
+        if (existingTeam) {
+          updatedTeams = get().teams.map(t => 
+            (t.managerId === managerId) ? { ...t, members: teamMembers } : t
+          );
+        } else {
+          // 로컬에 팀이 없으면 서버 데이터를 기반으로 새로 생성
+          const newTeam: Team = {
+            id: teamId,
+            name: '워크사이트 팀',
+            description: '서버에서 불러온 팀입니다.',
+            teamCode: '정보 없음',
+            managerId: managerId,
+            managerName: '관리자',
+            members: teamMembers,
+            createdAt: new Date().toISOString()
+          };
+          updatedTeams = [...get().teams, newTeam];
+        }
+        
+        set({ teams: updatedTeams });
+        saveToStorage(updatedTeams, get().memberTeamMap);
+      } catch (err) {
+        console.error('멤버 목록 동기화 실패:', err);
+      }
+    }
   };
 });
 

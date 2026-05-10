@@ -11,7 +11,12 @@ const STATUS_CYCLE: EventType[] = ['NORMAL', 'NORMAL', 'SLEEP', 'NORMAL', 'SMART
 
 export default function EmployeeView() {
   const { user, isAuthenticated } = useAuthStore();
-  const { getEmployeeTeam } = useTeamStore();
+  const { getEmployeeTeam, fetchMyTeam } = useTeamStore();
+
+  useEffect(() => {
+    // 마운트 시 서버에서 내 팀 정보 동기화
+    fetchMyTeam();
+  }, [fetchMyTeam]);
   const [currentStatus, setCurrentStatus] = useState<EventType>('NORMAL');
   const [prevStatus, setPrevStatus] = useState<EventType>('NORMAL');
   const [confidence, setConfidence] = useState(95);

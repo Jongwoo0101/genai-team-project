@@ -12,7 +12,7 @@ import EventLogTable from '../components/EventLogTable';
 
 export default function ManagerDashboard() {
   const { user, isAuthenticated } = useAuthStore();
-  const { getTeamById, removeMember } = useTeamStore();
+  const { getTeamById, removeMember, fetchTeamMembers } = useTeamStore();
   const { teamId } = useParams<{ teamId: string }>();
   const navigate = useNavigate();
 
@@ -32,6 +32,11 @@ export default function ManagerDashboard() {
       const [statsData, eventsData] = await Promise.all([api.getDashboardStats(), api.getWorkEvents()]);
       setStats(statsData);
       setEvents(eventsData);
+      
+      // 서버에서 실제 팀 멤버 목록 가져오기
+      if (user?.id) {
+        await fetchTeamMembers(user.id);
+      }
     } catch (err) {
       console.warn('백엔드 API 미구현 또는 연결 실패: 시뮬레이션 모드로 전환합니다.');
       // 팀 멤버 수로 통계 표시

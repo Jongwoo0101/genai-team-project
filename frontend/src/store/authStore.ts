@@ -33,9 +33,25 @@ const parseErrorMessage = async (err: unknown): Promise<string> => {
   return '알 수 없는 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
 };
 
+// 초기 상태 복구 (새로고침 대응)
+const loadInitialState = () => {
+  try {
+    const userJson = sessionStorage.getItem('worksight_user');
+    const token = sessionStorage.getItem('token');
+    if (userJson && token) {
+      return {
+        user: JSON.parse(userJson) as AuthUser,
+        isAuthenticated: true
+      };
+    }
+  } catch (e) {
+    console.error('Failed to load initial auth state', e);
+  }
+  return { user: null, isAuthenticated: false };
+};
+
 export const useAuthStore = create<AuthState>((set, get) => ({
-  user: null,
-  isAuthenticated: false,
+  ...loadInitialState(),
 
   login: async (username: string, password: string) => {
     try {
@@ -55,6 +71,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         role: res.role,
         balance: res.virtualBalance ?? 0,
       };
+      
+      // 유저 정보 저장 (새로고침 시 복구용)
+      sessionStorage.setItem('worksight_user', JSON.stringify(user));
+      
       set({ user, isAuthenticated: true });
       return { success: true };
     } catch (err: unknown) {

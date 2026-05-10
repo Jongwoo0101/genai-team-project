@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useTeamStore } from '../store/teamStore';
@@ -6,10 +6,16 @@ import CreateTeamModal from '../components/CreateTeamModal';
 
 export default function TeamList() {
   const { user, isAuthenticated } = useAuthStore();
-  const { getTeamsByManager, deleteTeam } = useTeamStore();
+  const { getTeamsByManager, deleteTeam, fetchTeamMembers } = useTeamStore();
   const navigate = useNavigate();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchTeamMembers(user.id);
+    }
+  }, [user?.id, fetchTeamMembers]);
 
   if (!isAuthenticated || user?.role !== 'MANAGER') {
     return <Navigate to="/login" replace />;
