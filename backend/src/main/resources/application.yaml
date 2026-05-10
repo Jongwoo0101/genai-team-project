@@ -7,17 +7,19 @@ spring:
     driver-class-name: org.h2.Driver
     username: sa
     password:
+
   jpa:
     hibernate:
       ddl-auto: update
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     open-in-view: false
-    show-sql: true
+    show-sql: false   # show-sql 끄기 (중복 출력 방지)
     properties:
       hibernate:
         format_sql: true
         globally_quoted_identifiers: false
+
   h2:
     console:
       enabled: true
@@ -25,11 +27,13 @@ spring:
 
 jwt:
   secret: worksight-super-secret-key-must-be-at-least-256-bits-long-for-hs256-algorithm
-  expiration: 86400000  # 24시간 (테스트용)
-  refresh-expiration: 604800000 # 7일
+  expiration: 86400000
+  refresh-expiration: 604800000
 
 logging:
   level:
-    com.worksight.api: DEBUG
-    org.springframework.security: TRACE
+    root: INFO
+    com.worksight.api: INFO
+    org.springframework.security: WARN
     org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACEa
