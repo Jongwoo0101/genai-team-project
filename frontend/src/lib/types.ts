@@ -48,6 +48,20 @@ export interface JoinTeamRequest {
 /** 팀 참여 응답 (서버 → 직원) */
 export type JoinTeamResponse = void;
 
+/** 내 팀 정보 응답 (backend: TeamDto.MyTeamResponse) */
+export interface MyTeamResponse {
+  managerId: number;
+  managerUsername: string;
+}
+
+/** 팀 멤버 목록 응답 (backend: TeamDto.TeamMemberResponse) */
+export interface TeamMemberResponse {
+  id: number;
+  username: string;
+  role: Role;
+  virtualBalance: number;
+}
+
 /** 로그인 응답 (backend: MemberDto.LoginResponse) */
 export interface LoginResponse {
   token: string;

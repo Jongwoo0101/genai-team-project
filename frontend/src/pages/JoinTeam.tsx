@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useTeamStore } from '../store/teamStore';
@@ -6,8 +6,13 @@ import * as api from '../lib/api';
 
 export default function JoinTeam() {
   const { user, isAuthenticated } = useAuthStore();
-  const { joinTeam, getEmployeeTeam } = useTeamStore();
+  const { joinTeam, getEmployeeTeam, fetchMyTeam } = useTeamStore();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // 마운트 시점에 서버에서 내 팀 정보가 있는지 확인
+    fetchMyTeam();
+  }, [fetchMyTeam]);
 
   const [teamCode, setTeamCode] = useState('');
   const [error, setError] = useState<string | null>(null);

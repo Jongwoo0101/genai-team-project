@@ -71,6 +71,7 @@ public class SecurityConfig {
                                 "/api/members/login",
                                 "/api/members/reissue").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
+                        .requestMatchers("/ws-monitoring/**").permitAll()
                         .requestMatchers(HttpMethod.POST,
                                 "/api/members/invite-code",
                                 "/api/members/join-team").authenticated()

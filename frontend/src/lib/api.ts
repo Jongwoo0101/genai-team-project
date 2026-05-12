@@ -1,4 +1,4 @@
-import type { SignUpRequest, LoginRequest, LoginResponse, ReissueRequest, MemberResponse, EventReportRequest, CreateTeamRequest, CreateTeamResponse, JoinTeamRequest, JoinTeamResponse } from './types';
+import type { SignUpRequest, LoginRequest, LoginResponse, ReissueRequest, MemberResponse, EventReportRequest, CreateTeamRequest, CreateTeamResponse, JoinTeamRequest, JoinTeamResponse, MyTeamResponse, TeamMemberResponse } from './types';
 
 const API_BASE = '/api';
 
@@ -78,6 +78,25 @@ export async function login(request: LoginRequest): Promise<LoginResponse> {
 /** 토큰 재발급 */
 export async function reissueToken(request: ReissueRequest): Promise<LoginResponse> {
   return postJSON<LoginResponse>('/members/reissue', request);
+}
+
+/** ──────────── 신규 팀 관리 API (DB 연동) ──────────── */
+
+/** 내 팀 정보 조회 (직원용) */
+export async function getMyTeam(): Promise<MyTeamResponse> {
+  const res = await fetchWithAuth('/teams/my-team');
+  if (!res.ok) {
+    if (res.status === 409) throw new Error('NOT_JOINED'); // 팀 미소속 특수 에러
+    throw new Error('내 팀 정보를 불러오지 못했습니다.');
+  }
+  return res.json();
+}
+
+/** 팀 멤버 목록 조회 (관리자용) */
+export async function getTeamMembers(managerId: number): Promise<TeamMemberResponse[]> {
+  const res = await fetchWithAuth(`/teams/${managerId}/members`);
+  if (!res.ok) throw new Error('팀 멤버 목록을 불러오지 못했습니다.');
+  return res.json();
 }
 
 /** ──────────── 모니터링 API ──────────── */
