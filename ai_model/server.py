@@ -9,6 +9,10 @@ from datetime import datetime
 import cv2
 import numpy as np
 import websockets
+import ssl
+
+# Mac 환경에서 파이썬 모델 다운로드 시 발생하는 SSL 인증 오류 방지
+ssl._create_default_https_context = ssl._create_unverified_context
 
 from src.detectors.face_detector import FaceDetector
 from src.detectors.object_detector import ObjectDetector

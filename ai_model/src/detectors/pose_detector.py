@@ -18,10 +18,9 @@ class PoseDetector:
     def detect(self, frame: object) -> PoseDetection:
         import cv2
         import mediapipe as mp
-        import mediapipe.python.solutions.pose as mp_pose
 
         if self._pose is None:
-            self._pose = mp_pose.Pose(
+            self._pose = mp.solutions.pose.Pose(
                 static_image_mode=False,
                 model_complexity=0,
                 min_detection_confidence=0.5,

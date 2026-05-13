@@ -20,10 +20,9 @@ class FaceDetector:
     def detect(self, frame: object) -> FaceDetection:
         import cv2
         import mediapipe as mp
-        import mediapipe.python.solutions.face_mesh as mp_face_mesh
 
         if self._face_mesh is None:
-            self._face_mesh = mp_face_mesh.FaceMesh(
+            self._face_mesh = mp.solutions.face_mesh.FaceMesh(
                 static_image_mode=False,
                 max_num_faces=1,
                 refine_landmarks=True,
