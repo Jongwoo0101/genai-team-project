@@ -5,6 +5,7 @@ import { clearTeamStorage } from './teamStorage';
 
 interface AuthState {
   user: AuthUser | null;
+  token: string | null;
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signUp: (username: string, password: string, role: Role) => Promise<{ success: boolean; error?: string }>;
@@ -42,13 +43,14 @@ const loadInitialState = () => {
     if (userJson && token) {
       return {
         user: JSON.parse(userJson) as AuthUser,
+        token,
         isAuthenticated: true
       };
     }
   } catch (e) {
     console.error('Failed to load initial auth state', e);
   }
-  return { user: null, isAuthenticated: false };
+  return { user: null, token: null, isAuthenticated: false };
 };
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -76,7 +78,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // 유저 정보 저장 (새로고침 시 복구용)
       sessionStorage.setItem('worksight_user', JSON.stringify(user));
       
-      set({ user, isAuthenticated: true });
+      set({ user, token: res.token, isAuthenticated: true });
       return { success: true };
     } catch (err: unknown) {
       const message = await parseErrorMessage(err);
@@ -106,7 +108,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: () => {
     // 프론트엔드 캐시(토큰 등) 완전 초기화
     sessionStorage.clear();
-    set({ user: null, isAuthenticated: false });
+    set({ user: null, token: null, isAuthenticated: false });
   },
 
   getRole: () => {
