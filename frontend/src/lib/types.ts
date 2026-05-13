@@ -86,6 +86,9 @@ export interface MemberResponse {
 export interface EventReportRequest {
   employeeId: number;
   eventType: EventType;
+  confidence?: number;
+  detectedAt?: string;
+  source?: string;
 }
 
 /** 웹소켓 알림 (backend: MonitoringDto.DashboardAlertResponse) */
@@ -95,6 +98,9 @@ export interface DashboardAlertResponse {
   employeeName: string;
   eventType: EventType;
   eventTime: string;
+  confidence?: number;
+  detectedAt?: string;
+  source?: string;
 }
 
 /** ──────────── 프론트엔드 내부 타입 ──────────── */
@@ -116,6 +122,8 @@ export interface WorkEvent {
   description: string;
   timestamp: string;
   resolved: boolean;
+  confidence?: number;
+  source?: string;
 }
 
 /** 모니터링 상태 (프론트엔드 내부 - mock 기반, 추후 WebSocket 연동) */
@@ -135,4 +143,41 @@ export interface DashboardStats {
   totalAlerts: number;
   resolvedAlerts: number;
   activeAlerts: number;
+}
+
+/** ──────────── WebSocket 관련 타입 (로컬 AI 에이전트 연동) ──────────── */
+
+export interface WSInitMsg {
+  type: 'init';
+  employeeId: number;
+  token: string;
+  refreshToken?: string;
+}
+
+export interface WSFrameMsg {
+  type: 'frame';
+  data: string;
+}
+
+export interface WSStopMsg {
+  type: 'stop';
+}
+
+export interface WSResultMsg {
+  type: 'result';
+  state: EventType;
+  confidence: number;
+  ear?: number;
+  pitch?: number;
+  yaw?: number;
+  fps: number;
+}
+
+export interface WSReadyMsg {
+  type: 'ready';
+}
+
+export interface WSErrorMsg {
+  type: 'error';
+  message: string;
 }
