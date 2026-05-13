@@ -51,7 +51,7 @@ class WebSocketService {
     this.reconnectTimeout = setTimeout(() => {
       console.log('Attempting to reconnect WebSocket...');
       this.connect(onAlertReceived, onConnectStatusChange);
-    }, 5000);
+    }, 1500);
   }
 
   disconnect(onConnectStatusChange?: (isConnected: boolean) => void) {

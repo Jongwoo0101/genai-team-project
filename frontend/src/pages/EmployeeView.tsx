@@ -23,6 +23,7 @@ export default function EmployeeView() {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const currentStatusRef = useRef<EventType>('NORMAL');
 
   const team = user?.id ? getEmployeeTeam(user.id) : undefined;
   const now = () => new Date().toLocaleTimeString('ko-KR');
@@ -85,27 +86,27 @@ export default function EmployeeView() {
   // 웹소켓 결과 수신 처리
   useEffect(() => {
     if (lastResult) {
-      if (currentStatus !== lastResult.state) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setPrevStatus(currentStatus);
-         
+      if (currentStatusRef.current !== lastResult.state) {
+        setPrevStatus(currentStatusRef.current);
         setCurrentStatus(lastResult.state);
-         
+        currentStatusRef.current = lastResult.state;
+        
         setStatusLog(logs => [
           { status: lastResult.state, time: now(), confidence: lastResult.confidence * 100 },
           ...logs.slice(0, 19)
         ]);
       }
-       
+      
       setConfidence(Math.round(lastResult.confidence * 100));
     }
-  }, [lastResult, currentStatus]);
+  }, [lastResult]);
 
   const handleToggleMonitoring = useCallback(() => {
     if (isMonitoring) {
       stopWS();
       setCurrentStatus('NORMAL');
       setPrevStatus('NORMAL');
+      currentStatusRef.current = 'NORMAL';
       setConfidence(95);
       setIsMonitoring(false);
       return;

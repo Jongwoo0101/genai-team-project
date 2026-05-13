@@ -45,7 +45,10 @@ export default function JoinTeam() {
       // 1) 백엔드 API 호출 시도
       await api.joinTeam({ inviteCode: code });
       // API 성공 → localStorage에도 동기화
-      joinTeam(code, user.id, user.username);
+      const localResult = joinTeam(code, user.id, user.username);
+      if (!localResult.success) {
+        await fetchMyTeam();
+      }
       setSuccessTeam('팀');
       setTimeout(() => navigate('/employee'), 1500);
     } catch (err: unknown) {

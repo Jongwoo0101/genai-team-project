@@ -13,8 +13,6 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.NoSuchElementException;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -39,6 +37,9 @@ public class MonitoringService {
         WorkEvent event = WorkEvent.builder()
                 .employee(employee)
                 .eventType(request.eventType())
+                .confidence(normalizeConfidence(request.confidence()))
+                .detectedAt(request.detectedAt())
+                .source(normalizeSource(request.source()))
                 .build();
 
         workEventRepository.save(event);
@@ -50,10 +51,27 @@ public class MonitoringService {
                 employee.getId(),
                 employee.getUsername(),
                 event.getEventType(),
-                event.getEventTime()
+                event.getEventTime(),
+                event.getConfidence(),
+                event.getDetectedAt(),
+                event.getSource()
         );
 
         // 프론트엔드(관리자)는 '/topic/alerts'를 구독하고 있어야 함
         messagingTemplate.convertAndSend("/topic/alerts", alert);
+    }
+
+    private Integer normalizeConfidence(Integer confidence) {
+        if (confidence == null) {
+            return null;
+        }
+        return Math.max(0, Math.min(100, confidence));
+    }
+
+    private String normalizeSource(String source) {
+        if (source == null || source.isBlank()) {
+            return "frontend";
+        }
+        return source;
     }
 }

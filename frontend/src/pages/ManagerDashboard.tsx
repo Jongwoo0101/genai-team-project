@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Navigate, useParams, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useTeamStore } from '../store/teamStore';
@@ -17,53 +17,77 @@ export default function ManagerDashboard() {
   const navigate = useNavigate();
 
   const [events, setEvents] = useState<WorkEvent[]>([]);
-  const [statuses] = useState<MonitoringStatus[]>([]); // TODO: update statuses from websocket
+  const [statuses, setStatuses] = useState<MonitoringStatus[]>([]);
   const [stats, setStats] = useState<DashboardStats>({ totalEmployees: 0, onlineEmployees: 0, totalAlerts: 0, resolvedAlerts: 0, activeAlerts: 0 });
   const [notification, setNotification] = useState<string | null>(null);
-  const [wsConnected, setWsConnected] = useState(false);
+  const [wsConnected, setWsConnected] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<number | null>(null);
+  const alertDedupRef = useRef<Map<string, number>>(new Map());
 
   const team = teamId ? getTeamById(teamId) : undefined;
 
-  const fetchData = async () => {
-    try {
-      const [statsData, eventsData] = await Promise.all([api.getDashboardStats(), api.getWorkEvents()]);
-      setStats(statsData);
-      setEvents(eventsData);
-      
-      // 서버에서 실제 팀 멤버 목록 가져오기
-      if (user?.id) {
-        await fetchTeamMembers(user.id);
-      }
-    } catch (err) {
-      console.warn('백엔드 API 미구현 또는 연결 실패: 시뮬레이션 모드로 전환합니다.');
-      // 팀 멤버 수로 통계 표시
-      if (team) {
-        setStats((prev) => ({ ...prev, totalEmployees: team.members.length }));
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchData();
-  }, [teamId]);
+    void Promise.resolve().then(async () => {
+      try {
+        const [statsData, eventsData] = await Promise.all([api.getDashboardStats(), api.getWorkEvents()]);
+        setStats(statsData);
+        setEvents(eventsData);
+
+        // 서버에서 실제 팀 멤버 목록 가져오기
+        if (user?.id) {
+          await fetchTeamMembers(user.id);
+        }
+      } catch {
+        console.warn('백엔드 API 미구현 또는 연결 실패: 시뮬레이션 모드로 전환합니다.');
+        // 팀 멤버 수로 통계 표시
+        if (team) {
+          setStats((prev) => ({ ...prev, totalEmployees: team.members.length }));
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    });
+  }, [fetchTeamMembers, team, user?.id]);
 
   useEffect(() => {
     if (wsConnected) {
       webSocketService.connect(
         (alert) => {
+          const statusTimestamp = alert.detectedAt || alert.eventTime;
+          setStatuses((prev) => {
+            const nextStatus: MonitoringStatus = {
+              memberId: alert.employeeId,
+              memberName: alert.employeeName,
+              currentStatus: alert.eventType,
+              lastChecked: statusTimestamp,
+              isOnline: true,
+              confidence: alert.confidence ?? 0
+            };
+            const exists = prev.some((status) => status.memberId === alert.employeeId);
+            if (!exists) return [nextStatus, ...prev];
+            return prev.map((status) => status.memberId === alert.employeeId ? nextStatus : status);
+          });
+
+          const dedupKey = `${alert.employeeId}:${alert.eventType}`;
+          const now = Date.now();
+          const lastAlertAt = alertDedupRef.current.get(dedupKey);
+          if (lastAlertAt && now - lastAlertAt < 5000) {
+            return;
+          }
+          alertDedupRef.current.set(dedupKey, now);
+
           const newEvent: WorkEvent = {
             id: alert.eventId,
             memberId: alert.employeeId,
             memberName: alert.employeeName,
             eventType: alert.eventType,
             timestamp: alert.eventTime,
-            description: '',
-            resolved: false
+            description: `${eventTypeLabels[alert.eventType as EventType]} 감지${alert.confidence != null ? ` - 신뢰도 ${alert.confidence}%` : ''}`,
+            resolved: false,
+            confidence: alert.confidence,
+            source: alert.source
           };
 
           setEvents((prev) => [newEvent, ...prev.slice(0, 29)]);

@@ -1,4 +1,4 @@
-import type { SignUpRequest, LoginRequest, LoginResponse, ReissueRequest, MemberResponse, EventReportRequest, CreateTeamRequest, CreateTeamResponse, JoinTeamRequest, JoinTeamResponse, MyTeamResponse, TeamMemberResponse } from './types';
+import type { SignUpRequest, LoginRequest, LoginResponse, ReissueRequest, MemberResponse, EventReportRequest, CreateTeamResponse, JoinTeamRequest, JoinTeamResponse, MyTeamResponse, TeamMemberResponse } from './types';
 
 const API_BASE = '/api';
 
@@ -60,7 +60,8 @@ export async function signUp(request: SignUpRequest): Promise<MemberResponse> {
 /** ──────────── 팀 관리 API ──────────── */
 
 /** 팀 생성 및 초대 코드 발급 (관리자가 호출) */
-export async function createTeamAndInviteCode(_request: CreateTeamRequest): Promise<CreateTeamResponse> {
+export async function createTeamAndInviteCode(request: { teamName: string; description?: string }): Promise<CreateTeamResponse> {
+  void request;
   // 백엔드 POST /members/invite-code 는 현재 @RequestBody 를 받지 않음
   return postJSON<CreateTeamResponse>('/members/invite-code', {});
 }

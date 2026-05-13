@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { AuthUser, Role } from '../lib/types';
 import * as api from '../lib/api';
+import { clearTeamStorage } from './teamStorage';
 
 interface AuthState {
   user: AuthUser | null;
@@ -85,6 +86,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signUp: async (username: string, password: string, role: Role) => {
     try {
+      clearTeamStorage();
       // 1. 회원가입 요청
       await api.signUp({ username, password, role });
       
