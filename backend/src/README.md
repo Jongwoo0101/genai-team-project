@@ -450,11 +450,13 @@ POST /api/monitoring/event
 
 ### 7.2 EventType
 
-| 값        | 설명   |
-| -------- | ---- |
-| `NORMAL` | 정상   |
-| `SLEEP`  | 졸음   |
-| `AWAY`   | 자리비움 |
+| 값            | 설명 |
+|--------------|  |
+| `NORMAL`     | 정상 |
+| `SLEEP`      | 졸음 |
+| `AWAY`       | 자리비움 |
+| `SMARTPHONE` | 스마트폰 사용 |
+| `DISTRACTED`| 딴짓 |
 
 ---
 
