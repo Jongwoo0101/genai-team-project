@@ -36,4 +36,4 @@ logging:
     com.worksight.api: INFO
     org.springframework.security: WARN
     org.hibernate.SQL: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACEa
+    org.hibernate.orm.jdbc.bind: TRACE
