@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { WSInitMsg, WSFrameMsg, WSStopMsg, WSResultMsg } from '../lib/types';
+import type { WSInitMsg, WSFrameMsg, WSStopMsg, WSResultMsg } from '../lib/types';
 
 export function useMonitorWS(isMonitoring: boolean, employeeId: number, token: string | null) {
   const wsRef = useRef<WebSocket | null>(null);
@@ -9,6 +9,7 @@ export function useMonitorWS(isMonitoring: boolean, employeeId: number, token: s
 
   useEffect(() => {
     if (!isMonitoring || !employeeId || !token) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setWsReady(false);
       return;
     }
