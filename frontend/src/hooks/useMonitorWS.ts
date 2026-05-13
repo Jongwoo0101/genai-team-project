@@ -9,20 +9,13 @@ export function useMonitorWS(isMonitoring: boolean, employeeId: number, token: s
 
   useEffect(() => {
     if (!isMonitoring || !employeeId || !token) {
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setWsReady(false);
       return;
     }
 
-     
+    // 모니터링 시작 시 상태 초기화
     setError(null);
-     
     setLastResult(null);
-     
     setWsReady(false);
 
     const ws = new WebSocket('ws://localhost:8765/ws/monitor');
@@ -60,13 +53,16 @@ export function useMonitorWS(isMonitoring: boolean, employeeId: number, token: s
       setWsReady(false);
     };
 
+    // 언마운트되거나 모니터링이 중단(의존성 변경)될 때 실행
     return () => {
       if (ws.readyState === WebSocket.OPEN) {
         const stopMsg: WSStopMsg = { type: 'stop' };
         ws.send(JSON.stringify(stopMsg));
       }
       ws.close();
-      wsRef.current = null;
+      if (wsRef.current === ws) {
+        wsRef.current = null;
+      }
     };
   }, [isMonitoring, employeeId, token]);
 
@@ -77,15 +73,5 @@ export function useMonitorWS(isMonitoring: boolean, employeeId: number, token: s
     }
   }, [wsReady]);
 
-  const stop = useCallback(() => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      const stopMsg: WSStopMsg = { type: 'stop' };
-      wsRef.current.send(JSON.stringify(stopMsg));
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-    setWsReady(false);
-  }, []);
-
-  return { sendFrame, stop, wsReady, error, lastResult };
+  return { sendFrame, wsReady, error, lastResult };
 }

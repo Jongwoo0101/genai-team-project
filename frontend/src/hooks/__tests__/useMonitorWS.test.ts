@@ -92,16 +92,4 @@ describe('useMonitorWS', () => {
       fps: 15
     });
   });
-
-  it('calls stop and closes websocket', () => {
-    const { result } = renderHook(() => useMonitorWS(true, 1, 'token'));
-    
-    act(() => {
-      result.current.stop();
-    });
-
-    expect(mockWebSocket.send).toHaveBeenCalledWith(JSON.stringify({ type: 'stop' }));
-    expect(mockWebSocket.close).toHaveBeenCalled();
-    expect(result.current.wsReady).toBe(false);
-  });
 });

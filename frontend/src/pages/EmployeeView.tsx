@@ -29,7 +29,7 @@ export default function EmployeeView() {
   const now = () => new Date().toLocaleTimeString('ko-KR');
 
   // WebSocket Hook
-  const { sendFrame, stop: stopWS, wsReady, error, lastResult } = useMonitorWS(isMonitoring, user?.id || 0, token);
+  const { sendFrame, wsReady, error, lastResult } = useMonitorWS(isMonitoring, user?.id || 0, token);
 
   const startCamera = useCallback(async () => {
     try {
@@ -103,7 +103,6 @@ export default function EmployeeView() {
 
   const handleToggleMonitoring = useCallback(() => {
     if (isMonitoring) {
-      stopWS();
       setCurrentStatus('NORMAL');
       setPrevStatus('NORMAL');
       currentStatusRef.current = 'NORMAL';
@@ -112,7 +111,7 @@ export default function EmployeeView() {
       return;
     }
     setIsMonitoring(true);
-  }, [isMonitoring, stopWS]);
+  }, [isMonitoring]);
 
   if (!isAuthenticated || user?.role !== 'EMPLOYEE') {
     return <Navigate to="/login" replace />;
