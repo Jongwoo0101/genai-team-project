@@ -1,13 +1,8 @@
 package com.worksight.api.service;
 
-import com.worksight.api.dto.MonitoringDto.DashboardAlertResponse;
-import com.worksight.api.dto.MonitoringDto.EventReportRequest;
-import com.worksight.api.entity.EventType;
 import com.worksight.api.entity.Member;
 import com.worksight.api.entity.Role;
-import com.worksight.api.entity.WorkEvent;
 import com.worksight.api.repository.MemberRepository;
-import com.worksight.api.repository.WorkEventRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
