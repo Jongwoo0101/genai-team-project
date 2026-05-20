@@ -6,14 +6,21 @@ import java.time.LocalDateTime;
 
 public class MemberStatusDto {
 
-    /** AI 캠 분석 결과 수신 (프론트 → 백엔드) */
+    /**
+     * AI 캠 분석 결과 수신 (프론트 → 백엔드)
+     * 허용: WORKING / AWAY / FOCUS
+     * 불허: MEETING (미팅룸 입장 시 자동), OFFLINE (퇴근 시 자동)
+     */
     public record AiStatusUpdateRequest(
-            StatusType statusType   // WORKING / MEETING / BREAK
+            StatusType statusType
     ) {}
 
-    /** 사용자 수동 상태 설정 (프론트 → 백엔드) */
+    /**
+     * 사용자 수동 상태 설정 (프론트 → 백엔드)
+     * 허용: FOCUS 만
+     */
     public record ManualStatusUpdateRequest(
-            StatusType statusType   // FOCUS 만 허용 (서비스 레이어에서 검증)
+            StatusType statusType
     ) {}
 
     /** 상태 변경 응답 */
