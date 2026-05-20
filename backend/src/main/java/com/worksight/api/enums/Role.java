@@ -1,4 +1,4 @@
-package com.worksight.api.entity;
+package com.worksight.api.enums;
 
 public enum Role {
     EMPLOYEE, MANAGER
