@@ -1,6 +1,6 @@
 ### 전역 변수
-@employeeToken = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZXMiOlsiRU1QTE9ZRUUiXSwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTI1NTI4OSwiZXhwIjoxNzc5MzQxNjg5fQ.1C7uh-osWfUrrm7qbG7v9_cdEsr4fDL_UL8Et-wRhz2iOj0Mi5ntE1GH-seTfhVl7aAnyWE_StRfDvkoyMkPig
-@managerToken = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIyIiwicm9sZXMiOlsiTUFOQUdFUiJdLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzc5MjU1MzA4LCJleHAiOjE3NzkzNDE3MDh9.9YL3x59Ld74P1Mr2FlI9KwSdtzxcqVu8GKJqzEuRPO6YdEcIF3-f0MyU5rIqhTuK_zSM5LNh9AC_VXKuescJug
+@employeeToken =
+@managerToken =
 @inviteCode = WS-77D4-4440
 
 
