@@ -30,8 +30,8 @@ export default function EventLogTable({ events, isLoading, onResolveEvent }: Eve
           <table className="w-full">
             <thead>
               <tr className="border-b border-white/5">
-                {['시간', '직원', '유형', '내용', '처리'].map((h, i) => (
-                  <th key={i} className={`pb-3 px-2 text-[10px] font-bold text-slate-600 uppercase tracking-wider ${i < 4 ? 'text-left' : 'text-right'} ${i === 3 ? 'hidden lg:table-cell' : ''}`}>{h}</th>
+                {['시간', '직원', '유형', '신뢰도', '내용', '처리'].map((h, i) => (
+                  <th key={i} className={`pb-3 px-2 text-[10px] font-bold text-slate-600 uppercase tracking-wider ${i < 5 ? 'text-left' : 'text-right'} ${i === 4 ? 'hidden lg:table-cell' : ''}`}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -47,6 +47,9 @@ export default function EventLogTable({ events, isLoading, onResolveEvent }: Eve
                         <span className={`w-1.5 h-1.5 rounded-full ${c.dot} flex-shrink-0`} />
                         {eventTypeLabels[evt.eventType]}
                       </span>
+                    </td>
+                    <td className="py-3 px-2 text-[11px] text-slate-500 font-mono whitespace-nowrap">
+                      {evt.confidence != null ? `${evt.confidence}%` : '-'}
                     </td>
                     <td className="py-3 px-2 text-[11px] text-slate-600 hidden lg:table-cell max-w-[180px]">
                       <span className="line-clamp-1">{evt.description}</span>

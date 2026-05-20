@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 import * as api from '../lib/api';
 import { useAuthStore } from './authStore';
+import {
+  clearTeamStorage as clearStoredTeams,
+  loadTeamStorage,
+  MEMBER_MAP_STORAGE_KEY,
+  saveTeamStorage,
+  TEAM_STORAGE_KEY
+} from './teamStorage';
 
 // ========================
 // 팀 관련 타입 정의
@@ -61,32 +68,13 @@ function generateTeamCode(): string {
   return `WS-${segment()}-${segment()}`;
 }
 
-/** localStorage 키 */
-const STORAGE_KEY = 'worksight_teams';
-const MEMBER_MAP_KEY = 'worksight_member_team_map';
-
-/** localStorage에서 불러오기 */
-function loadFromStorage(): { teams: Team[]; memberTeamMap: Record<number, string> } {
-  try {
-    const teamsRaw = localStorage.getItem(STORAGE_KEY);
-    const mapRaw = localStorage.getItem(MEMBER_MAP_KEY);
-    return {
-      teams: teamsRaw ? JSON.parse(teamsRaw) : [],
-      memberTeamMap: mapRaw ? JSON.parse(mapRaw) : {},
-    };
-  } catch {
-    return { teams: [], memberTeamMap: {} };
-  }
-}
-
-/** localStorage에 저장 */
-function saveToStorage(teams: Team[], memberTeamMap: Record<number, string>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(teams));
-  localStorage.setItem(MEMBER_MAP_KEY, JSON.stringify(memberTeamMap));
+export function clearTeamStorage() {
+  clearStoredTeams();
+  useTeamStore.setState({ teams: [], memberTeamMap: {} });
 }
 
 export const useTeamStore = create<TeamState>((set, get) => {
-  const initial = loadFromStorage();
+  const initial = loadTeamStorage();
 
   return {
     teams: initial.teams,
@@ -110,7 +98,7 @@ export const useTeamStore = create<TeamState>((set, get) => {
 
       const updated = [...get().teams, newTeam];
       set({ teams: updated });
-      saveToStorage(updated, get().memberTeamMap);
+      saveTeamStorage(updated, get().memberTeamMap);
       return newTeam;
     },
 
@@ -126,7 +114,7 @@ export const useTeamStore = create<TeamState>((set, get) => {
 
       const updated = get().teams.filter((t) => t.id !== teamId);
       set({ teams: updated, memberTeamMap: newMap });
-      saveToStorage(updated, newMap);
+      saveTeamStorage(updated, newMap);
       return true;
     },
 
@@ -140,7 +128,7 @@ export const useTeamStore = create<TeamState>((set, get) => {
 
     joinTeam: (teamCode, employeeId, employeeName) => {
       // 1. 최신 상태 강제 동기화 (다른 창에서 방금 생성된 팀을 인식하기 위함)
-      const latest = loadFromStorage();
+      const latest = loadTeamStorage();
       set({ teams: latest.teams, memberTeamMap: latest.memberTeamMap });
 
       // 이미 팀에 소속되어 있는지 확인
@@ -154,21 +142,9 @@ export const useTeamStore = create<TeamState>((set, get) => {
       }
 
       // 팀 코드로 팀 찾기
-      let team = get().teams.find((t) => t.teamCode === teamCode.toUpperCase());
+      const team = get().teams.find((t) => t.teamCode === teamCode.toUpperCase());
       if (!team) {
-        // 다른 브라우저(예: 사파리)에서 관리자가 팀을 생성하여 현재 브라우저(예: 크롬)의 localStorage에 팀 정보가 없는 경우.
-        // 이미 백엔드 API가 성공했으므로 프론트엔드 통과를 위해 임시 팀 객체를 생성하여 주입합니다.
-        team = {
-          id: crypto.randomUUID(),
-          name: '워크사이트 팀',
-          description: '',
-          teamCode: teamCode.toUpperCase(),
-          managerId: 0,
-          managerName: '관리자',
-          members: [],
-          createdAt: new Date().toISOString()
-        };
-        set({ teams: [...get().teams, team] });
+        return { success: false, error: '로컬에 없는 팀 코드입니다. 서버 동기화 후 다시 확인해주세요.' };
       }
 
       // 이미 팀에 있는 멤버인지 확인
@@ -189,7 +165,7 @@ export const useTeamStore = create<TeamState>((set, get) => {
       const updatedMap = { ...get().memberTeamMap, [employeeId]: team.id };
 
       set({ teams: updatedTeams, memberTeamMap: updatedMap });
-      saveToStorage(updatedTeams, updatedMap);
+      saveTeamStorage(updatedTeams, updatedMap);
 
       return { success: true, teamName: team.name };
     },
@@ -205,7 +181,7 @@ export const useTeamStore = create<TeamState>((set, get) => {
       delete updatedMap[employeeId];
 
       set({ teams: updatedTeams, memberTeamMap: updatedMap });
-      saveToStorage(updatedTeams, updatedMap);
+      saveTeamStorage(updatedTeams, updatedMap);
     },
 
     getEmployeeTeam: (employeeId) => {
@@ -229,7 +205,7 @@ export const useTeamStore = create<TeamState>((set, get) => {
       delete updatedMap[memberId];
 
       set({ teams: updatedTeams, memberTeamMap: updatedMap });
-      saveToStorage(updatedTeams, updatedMap);
+      saveTeamStorage(updatedTeams, updatedMap);
       return true;
     },
 
@@ -237,11 +213,12 @@ export const useTeamStore = create<TeamState>((set, get) => {
       try {
         const res = await api.getMyTeam();
         if (res && res.managerId) {
-          const teamId = `team-${res.managerId}`;
-          const team: Team = {
+          const existingTeam = get().teams.find(t => t.managerId === res.managerId);
+          const teamId = existingTeam?.id || `team-${res.managerId}`;
+          const fallbackTeam: Team = existingTeam || {
             id: teamId,
-            name: '워크사이트 팀',
-            description: '',
+            name: `${res.managerUsername}님의 팀`,
+            description: '서버에서 불러온 팀입니다.',
             teamCode: '',
             managerId: res.managerId,
             managerName: res.managerUsername,
@@ -249,7 +226,7 @@ export const useTeamStore = create<TeamState>((set, get) => {
             createdAt: new Date().toISOString()
           };
           
-          const updatedTeams = [...get().teams.filter(t => t.id !== teamId), team];
+          const updatedTeams = [...get().teams.filter(t => t.id !== teamId), fallbackTeam];
           // 현재 유저(직원)의 ID를 가져와서 맵 업데이트
           const { user } = useAuthStore.getState();
           const updatedMap = { ...get().memberTeamMap };
@@ -258,7 +235,7 @@ export const useTeamStore = create<TeamState>((set, get) => {
           }
           
           set({ teams: updatedTeams, memberTeamMap: updatedMap });
-          saveToStorage(updatedTeams, updatedMap);
+          saveTeamStorage(updatedTeams, updatedMap);
         }
       } catch (err) {
         if (err instanceof Error && err.message === 'NOT_JOINED') {
@@ -270,8 +247,7 @@ export const useTeamStore = create<TeamState>((set, get) => {
     fetchTeamMembers: async (managerId) => {
       try {
         const members = await api.getTeamMembers(managerId);
-        const teamId = `team-${managerId}`;
-        
+
         const teamMembers: TeamMember[] = members.map(m => ({
           id: m.id,
           username: m.username,
@@ -279,29 +255,14 @@ export const useTeamStore = create<TeamState>((set, get) => {
         }));
 
         const existingTeam = get().teams.find(t => t.managerId === managerId);
-        let updatedTeams;
 
         if (existingTeam) {
-          updatedTeams = get().teams.map(t => 
+          const updatedTeams = get().teams.map(t =>
             (t.managerId === managerId) ? { ...t, members: teamMembers } : t
           );
-        } else {
-          // 로컬에 팀이 없으면 서버 데이터를 기반으로 새로 생성
-          const newTeam: Team = {
-            id: teamId,
-            name: '워크사이트 팀',
-            description: '서버에서 불러온 팀입니다.',
-            teamCode: '정보 없음',
-            managerId: managerId,
-            managerName: '관리자',
-            members: teamMembers,
-            createdAt: new Date().toISOString()
-          };
-          updatedTeams = [...get().teams, newTeam];
+          set({ teams: updatedTeams });
+          saveTeamStorage(updatedTeams, get().memberTeamMap);
         }
-        
-        set({ teams: updatedTeams });
-        saveToStorage(updatedTeams, get().memberTeamMap);
       } catch (err) {
         console.error('멤버 목록 동기화 실패:', err);
       }
@@ -312,10 +273,9 @@ export const useTeamStore = create<TeamState>((set, get) => {
 // 다른 탭에서 로컬 스토리지가 변경될 때 자동으로 현재 탭의 상태를 동기화합니다.
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
-    if (e.key === STORAGE_KEY || e.key === MEMBER_MAP_KEY) {
-      const latest = loadFromStorage();
+    if (e.key === TEAM_STORAGE_KEY || e.key === MEMBER_MAP_STORAGE_KEY) {
+      const latest = loadTeamStorage();
       useTeamStore.setState({ teams: latest.teams, memberTeamMap: latest.memberTeamMap });
     }
   });
 }
-

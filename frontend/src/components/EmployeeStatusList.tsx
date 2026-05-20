@@ -42,7 +42,10 @@ export default function EmployeeStatusList({ statuses, isLoading, wsConnected }:
                   <p className="text-[10px] text-slate-600">{fmt(s.lastChecked)}</p>
                 </div>
               </div>
-              <span className={`flex-shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg ${c.bg} ${c.text}`}>{eventTypeLabels[s.currentStatus]}</span>
+              <div className="flex flex-col items-end gap-1">
+                <span className={`flex-shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg ${c.bg} ${c.text}`}>{eventTypeLabels[s.currentStatus]}</span>
+                <span className="text-[10px] text-slate-600 font-mono">{s.confidence}%</span>
+              </div>
             </div>
           );
         })}

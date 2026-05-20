@@ -4,6 +4,7 @@ import { eventTypeLabels, eventTypeColors } from '../lib/mockData';
 
 interface CameraPanelProps {
   isMonitoring: boolean;
+  isConnected?: boolean;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   currentStatus: EventType;
   confidence: number;
@@ -12,6 +13,7 @@ interface CameraPanelProps {
 
 export default function CameraPanel({
   isMonitoring,
+  isConnected,
   videoRef,
   currentStatus,
   confidence,
@@ -24,9 +26,9 @@ export default function CameraPanel({
       {/* Card Header */}
       <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className={`w-2.5 h-2.5 rounded-full ${isMonitoring ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
+          <div className={`w-2.5 h-2.5 rounded-full ${isMonitoring ? (isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-yellow-400 animate-pulse') : 'bg-slate-600'}`} />
           <span className="text-sm font-bold text-slate-300 tracking-wide">
-            {isMonitoring ? 'AI 분석 활성' : '대기 중'}
+            {isMonitoring ? (isConnected ? 'AI 서버 연결됨' : 'AI 서버 연결 중...') : '대기 중'}
           </span>
         </div>
         {isMonitoring && (

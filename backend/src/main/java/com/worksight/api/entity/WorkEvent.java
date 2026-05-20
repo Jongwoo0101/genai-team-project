@@ -21,12 +21,19 @@ public class WorkEvent {
     @Enumerated(EnumType.STRING)
     private EventType eventType;
 
+    private Integer confidence;
+    private LocalDateTime detectedAt;
+    private String source;
+
     @CreationTimestamp
     private LocalDateTime eventTime;
 
     @Builder
-    public WorkEvent(Member employee, EventType eventType) {
+    public WorkEvent(Member employee, EventType eventType, Integer confidence, LocalDateTime detectedAt, String source) {
         this.employee = employee;
         this.eventType = eventType;
+        this.confidence = confidence;
+        this.detectedAt = detectedAt;
+        this.source = source;
     }
 }
