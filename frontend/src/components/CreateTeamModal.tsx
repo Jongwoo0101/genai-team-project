@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useTeamStore } from '../store/teamStore';
-import { useAuthStore } from '../store/authStore';
+import { useTeamStore } from '../domains/team/stores/teamStore';
+import { useAuthStore } from '../domains/auth/stores/authStore';
 import * as api from '../lib/api';
 
 interface CreateTeamModalProps {

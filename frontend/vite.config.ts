@@ -12,8 +12,8 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
-      // WebSocket 프록시 (추후 실시간 알림 연동 시 사용)
-      '/ws-monitoring': {
+      // WebSocket 프록시 (v2.0 STOMP 엔드포인트)
+      '/ws': {
         target: 'http://localhost:8080',
         changeOrigin: true,
         ws: true,

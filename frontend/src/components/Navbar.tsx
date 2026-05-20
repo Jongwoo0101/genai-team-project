@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore } from '../domains/auth/stores/authStore';
 
 export default function Navbar() {
   const location = useLocation();
@@ -37,34 +37,26 @@ export default function Navbar() {
 
         <div className="flex items-center gap-6">
           {isAuthenticated && user ? (
-            <div className="flex items-center gap-6">
-              {/* Virtual Balance Badge */}
-              <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/40 border border-white/5">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Points</span>
-                <span className="text-sm font-black text-cyan-400">💰 {user.balance.toLocaleString()}</span>
+            /* User Profile & Logout */
+            <div className="flex items-center gap-4">
+              <div className="flex flex-col items-end hidden lg:flex">
+                <span className="text-xs font-bold text-slate-500 tracking-wider uppercase">{user.role}</span>
+                <span className="text-sm font-bold text-white">{user.username}님</span>
               </div>
-
-              {/* User Profile & Logout */}
-              <div className="flex items-center gap-4 pl-6 border-l border-white/10">
-                <div className="flex flex-col items-end hidden lg:flex">
-                  <span className="text-xs font-bold text-slate-500 tracking-wider uppercase">{user.role}</span>
-                  <span className="text-sm font-bold text-white">{user.username}님</span>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/10 flex items-center justify-center text-white text-sm font-bold shadow-inner group hover:border-cyan-500/50 transition-colors">
-                  {user.username.charAt(0).toUpperCase()}
-                </div>
-                <button
-                  onClick={logout}
-                  className="p-2.5 rounded-xl text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer"
-                  title="로그아웃"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                    <polyline points="16 17 21 12 16 7" />
-                    <line x1="21" y1="12" x2="9" y2="12" />
-                  </svg>
-                </button>
+              <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/10 flex items-center justify-center text-white text-sm font-bold shadow-inner group hover:border-cyan-500/50 transition-colors">
+                {user.username.charAt(0).toUpperCase()}
               </div>
+              <button
+                onClick={logout}
+                className="p-2.5 rounded-xl text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer"
+                title="로그아웃"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <polyline points="16 17 21 12 16 7" />
+                  <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+              </button>
             </div>
           ) : (
             <Link
