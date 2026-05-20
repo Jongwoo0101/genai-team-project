@@ -1,12 +1,12 @@
 import React from 'react';
-import type { EventType } from '../lib/types';
-import { eventTypeLabels, eventTypeColors } from '../lib/mockData';
+import type { AiStatusType } from '../lib/types';
+import { statusTypeLabels, statusTypeColors } from '../lib/mockData';
 
 interface CameraPanelProps {
   isMonitoring: boolean;
   isConnected?: boolean;
   videoRef: React.RefObject<HTMLVideoElement | null>;
-  currentStatus: EventType;
+  currentStatus: AiStatusType;
   confidence: number;
   onToggleMonitoring: () => void;
 }
@@ -19,7 +19,7 @@ export default function CameraPanel({
   confidence,
   onToggleMonitoring
 }: CameraPanelProps) {
-  const sc = eventTypeColors[currentStatus];
+  const sc = statusTypeColors[currentStatus];
 
   return (
     <div className="lg:col-span-2 rounded-2xl bg-slate-900/50 border border-white/5 overflow-hidden">
@@ -34,7 +34,7 @@ export default function CameraPanel({
         {isMonitoring && (
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/60 border border-white/5">
             <div className={`w-2 h-2 rounded-full ${sc.dot}`} />
-            <span className={`text-xs font-bold ${sc.text}`}>{eventTypeLabels[currentStatus]}</span>
+            <span className={`text-xs font-bold ${sc.text}`}>{statusTypeLabels[currentStatus]}</span>
             <span className="text-xs text-slate-600 ml-1">{confidence}%</span>
           </div>
         )}
@@ -60,7 +60,7 @@ export default function CameraPanel({
               <div className="flex items-end justify-between">
                 <div className={`px-4 py-3 rounded-xl ${sc.bg} border border-white/10 backdrop-blur-md`}>
                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1">AI Status</p>
-                  <p className={`text-lg font-black ${sc.text}`}>{eventTypeLabels[currentStatus]}</p>
+                  <p className={`text-lg font-black ${sc.text}`}>{statusTypeLabels[currentStatus]}</p>
                 </div>
                 <div className="flex flex-col items-end gap-1.5">
                   <div className="w-28 h-1.5 bg-slate-800/80 rounded-full overflow-hidden">

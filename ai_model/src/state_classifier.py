@@ -14,6 +14,7 @@ class DetectionResult:
     pose_detected: bool
     eyes_closed: bool = False
     looking_away: bool = False
+    multiple_faces: bool = False
     phone_detected: bool = False
     phone_confidence: float = 0.0
     face_confidence: float = 0.0
@@ -34,23 +35,20 @@ class StateClassifier:
         self,
         report_cooldown_seconds: float = 30.0,
         phone_threshold: float = 0.6,
-        sleep_seconds: float = 2.0,
-        smartphone_seconds: float = 1.0,
-        away_seconds: float = 10.0,
-        distracted_seconds: float = 5.0,
+        break_seconds: float = 5.0,
+        meeting_seconds: float = 5.0,
+        working_seconds: float = 2.0,
     ) -> None:
         self.report_cooldown_seconds = report_cooldown_seconds
         self.phone_threshold = phone_threshold
         self.thresholds: Dict[EventType, float] = {
-            "SLEEP": sleep_seconds,
-            "SMARTPHONE": smartphone_seconds,
-            "AWAY": away_seconds,
-            "DISTRACTED": distracted_seconds,
-            "NORMAL": 0.0,
+            "BREAK": break_seconds,
+            "MEETING": meeting_seconds,
+            "WORKING": working_seconds,
         }
-        self._candidate_status: EventType = "NORMAL"
+        self._candidate_status: EventType = "WORKING"
         self._candidate_since: Optional[float] = None
-        self._confirmed_status: EventType = "NORMAL"
+        self._confirmed_status: EventType = "WORKING"
         self._last_reported_at: Dict[EventType, float] = {}
 
     def update(self, detection: DetectionResult, now: float) -> ClassificationResult:
@@ -66,9 +64,7 @@ class StateClassifier:
         stable_for = now - since
         should_report = False
 
-        if raw_status == "NORMAL":
-            self._confirmed_status = "NORMAL"
-        elif stable_for >= threshold and self._confirmed_status != raw_status:
+        if stable_for >= threshold and self._confirmed_status != raw_status:
             self._confirmed_status = raw_status
             should_report = self._can_report(raw_status, now)
             if should_report:
@@ -85,24 +81,26 @@ class StateClassifier:
         )
 
     def _classify_raw(self, detection: DetectionResult) -> EventType:
+        if detection.multiple_faces:
+            return "MEETING"
         if detection.phone_detected and detection.phone_confidence >= self.phone_threshold:
-            return "SMARTPHONE"
+            return "BREAK"
         if not detection.face_detected and not detection.pose_detected:
-            return "AWAY"
+            return "BREAK"
         if detection.eyes_closed:
-            return "SLEEP"
+            return "BREAK"
         if detection.face_detected and detection.looking_away:
-            return "DISTRACTED"
-        return "NORMAL"
+            return "BREAK"
+        return "WORKING"
 
     def _confidence_for(self, status: EventType, detection: DetectionResult) -> int:
-        if status == "SMARTPHONE":
-            return self._as_percent(detection.phone_confidence)
-        if status == "AWAY":
-            return 90
-        if status == "SLEEP":
-            return 85
-        if status == "DISTRACTED":
+        if status == "MEETING":
+            return max(self._as_percent(detection.face_confidence), 85)
+        if status == "BREAK":
+            if detection.phone_detected:
+                return self._as_percent(detection.phone_confidence)
+            if not detection.face_detected and not detection.pose_detected:
+                return 90
             return 80
         return max(self._as_percent(detection.face_confidence), self._as_percent(detection.pose_confidence), 75)
 

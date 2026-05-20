@@ -162,144 +162,31 @@ async function requestWithAuth<T>(url: string, method: string, body?: unknown): 
 
 /** ──────────── v2.0 출퇴근 및 상태 관리 API ──────────── */
 
-/** 출근 API (실패 시 Fallback 지원) */
+/** 출근 API */
 export async function clockIn(): Promise<ClockInResponse> {
-  try {
-    return await requestWithAuth<ClockInResponse>('/work/clock-in', 'POST', {});
-  } catch (err: any) {
-    if (err.message && (err.message.includes('404') || err.message.includes('Failed to fetch'))) {
-      console.warn(`[FALLBACK] POST /api/work/clock-in 실패: ${err.message}. 로컬 Mock 출근 처리.`);
-      const userInfo = JSON.parse(sessionStorage.getItem(STORAGE_KEYS.USER_INFO) || '{}');
-      const userId = userInfo.id || 1;
-      const username = userInfo.username || 'tester01';
-      
-      const mockBroadcast = {
-        memberId: userId,
-        username: username,
-        statusType: 'WORKING' as StatusType,
-        changedAt: new Date().toISOString()
-      };
-      localStorage.setItem(`mock_status_broadcast_${userId}_${Date.now()}`, JSON.stringify(mockBroadcast));
-
-      return {
-        workLogId: Date.now(),
-        memberId: userId,
-        username: username,
-        workDate: new Date().toISOString().split('T')[0],
-        clockInTime: new Date().toISOString(),
-      };
-    }
-    throw err;
-  }
+  return requestWithAuth<ClockInResponse>('/work/clock-in', 'POST', {});
 }
 
-/** 퇴근 API (실패 시 Fallback 지원) */
+/** 퇴근 API */
 export async function clockOut(): Promise<ClockOutResponse> {
-  try {
-    return await requestWithAuth<ClockOutResponse>('/work/clock-out', 'POST', {});
-  } catch (err: any) {
-    if (err.message && (err.message.includes('404') || err.message.includes('Failed to fetch'))) {
-      console.warn(`[FALLBACK] POST /api/work/clock-out 실패: ${err.message}. 로컬 Mock 퇴근 처리.`);
-      const userInfo = JSON.parse(sessionStorage.getItem(STORAGE_KEYS.USER_INFO) || '{}');
-      const userId = userInfo.id || 1;
-      const username = userInfo.username || 'tester01';
-      
-      const mockBroadcast = {
-        memberId: userId,
-        username: username,
-        statusType: 'OFFLINE' as StatusType,
-        changedAt: new Date().toISOString()
-      };
-      localStorage.setItem(`mock_status_broadcast_${userId}_${Date.now()}`, JSON.stringify(mockBroadcast));
-
-      return {
-        workLogId: Date.now(),
-        memberId: userId,
-        username: username,
-        workDate: new Date().toISOString().split('T')[0],
-        clockInTime: new Date(Date.now() - 8 * 3600 * 1000).toISOString(),
-        clockOutTime: new Date().toISOString(),
-      };
-    }
-    throw err;
-  }
+  return requestWithAuth<ClockOutResponse>('/work/clock-out', 'POST', {});
 }
 
-/** AI 상태 판별 업데이트 API (실패 시 Fallback 지원) */
+/** AI 상태 판별 업데이트 API */
 export async function updateAiStatus(statusType: StatusType): Promise<StatusUpdateResponse> {
-  try {
-    return await requestWithAuth<StatusUpdateResponse>('/status/ai', 'PUT', { statusType });
-  } catch (err: any) {
-    if (err.message && (err.message.includes('404') || err.message.includes('Failed to fetch'))) {
-      console.warn(`[FALLBACK] PUT /api/status/ai 실패: ${err.message}. 로컬 Mock 상태로 대체합니다. 상태: ${statusType}`);
-      
-      const userInfo = JSON.parse(sessionStorage.getItem(STORAGE_KEYS.USER_INFO) || '{}');
-      const userId = userInfo.id || 1;
-      const username = userInfo.username || 'tester01';
-      
-      const mockBroadcast = {
-        memberId: userId,
-        username: username,
-        statusType: statusType,
-        changedAt: new Date().toISOString()
-      };
-      localStorage.setItem(`mock_status_broadcast_${userId}_${Date.now()}`, JSON.stringify(mockBroadcast));
-      
-      return {
-        memberId: userId,
-        username: username,
-        statusType,
-        updatedAt: new Date().toISOString(),
-      };
-    }
-    throw err;
-  }
+  return requestWithAuth<StatusUpdateResponse>('/status/ai', 'PUT', { statusType });
 }
 
-/** 사용자 수동 상태 설정 API (실패 시 Fallback 지원) */
+/** 사용자 수동 상태 설정 API */
 export async function updateManualStatus(statusType: StatusType): Promise<StatusUpdateResponse> {
-  try {
-    return await requestWithAuth<StatusUpdateResponse>('/status/manual', 'PUT', { statusType });
-  } catch (err: any) {
-    if (err.message && (err.message.includes('404') || err.message.includes('Failed to fetch'))) {
-      console.warn(`[FALLBACK] PUT /api/status/manual 실패: ${err.message}. 로컬 Mock 상태로 대체합니다. 상태: ${statusType}`);
-      
-      const userInfo = JSON.parse(sessionStorage.getItem(STORAGE_KEYS.USER_INFO) || '{}');
-      const userId = userInfo.id || 1;
-      const username = userInfo.username || 'tester01';
-      
-      const mockBroadcast = {
-        memberId: userId,
-        username: username,
-        statusType: statusType,
-        changedAt: new Date().toISOString()
-      };
-      localStorage.setItem(`mock_status_broadcast_${userId}_${Date.now()}`, JSON.stringify(mockBroadcast));
-      
-      return {
-        memberId: userId,
-        username: username,
-        statusType,
-        updatedAt: new Date().toISOString(),
-      };
-    }
-    throw err;
-  }
+  return requestWithAuth<StatusUpdateResponse>('/status/manual', 'PUT', { statusType });
 }
 
-/** 매니저용 팀원 전체 실시간 상태 조회 API (실패 시 Fallback 지원) */
+/** 매니저용 팀원 전체 실시간 상태 조회 API */
 export async function getTeamMemberStatuses(managerId: number): Promise<TeamMemberStatusResponse[]> {
-  try {
-    const res = await fetchWithAuth(`/status/team/${managerId}`);
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
-    return res.json();
-  } catch (err: any) {
-    if (err.message && (err.message.includes('404') || err.message.includes('Failed to fetch'))) {
-      console.warn(`[FALLBACK] GET /api/status/team/${managerId} 실패: ${err.message}. 빈 배열 반환 후 로컬 매핑.`);
-      return [];
-    }
-    throw err;
+  const res = await fetchWithAuth(`/status/team/${managerId}`);
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
   }
+  return res.json();
 }

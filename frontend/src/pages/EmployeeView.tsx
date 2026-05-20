@@ -8,7 +8,7 @@ import type { UserStateType } from '../domains/commute/stores/commuteStore';
 import { useStandupStore } from '../domains/standup/stores/standupStore';
 import { useVideoCallStore } from '../domains/video-call/stores/videoCallStore';
 import { useMonitorWS } from '../hooks/useMonitorWS';
-import type { EventType } from '../lib/types';
+import type { AiStatusType } from '../lib/types';
 import { Navigate } from 'react-router-dom';
 import EmployeeSidebar from '../domains/commute/components/EmployeeSidebar';
 import VideoCallModal from '../domains/video-call/components/VideoCallModal';
@@ -58,7 +58,7 @@ export default function EmployeeView() {
 
   // AI 모니터링 관련 상태
   const [isMonitoring, setIsMonitoring] = useState(false);
-  const [currentStatus, setCurrentStatus] = useState<EventType>('NORMAL');
+  const [currentStatus, setCurrentStatus] = useState<AiStatusType>('WORKING');
   const [confidence, setConfidence] = useState(100);
 
   // 팀 정보 조회
@@ -100,14 +100,14 @@ export default function EmployeeView() {
       setConfidence(Math.round(lastResult.confidence * 100));
 
       if (user) {
-        const isNormal = lastResult.state === 'NORMAL';
-        const isDistracted = ['AWAY', 'SLEEP', 'SMARTPHONE', 'DISTRACTED'].includes(lastResult.state);
+        const isBreak = lastResult.state === 'BREAK';
+        const isWorking = lastResult.state === 'WORKING';
 
-        if (isDistracted && userState === '근무 중') {
+        if (isBreak && userState === '근무 중') {
           setUserState(user.id, user.username, '휴식 중').catch(err => {
             console.error('AI 상태 업데이트 자동 트리거 실패:', err);
           });
-        } else if (isNormal && userState === '휴식 중') {
+        } else if (isWorking && userState === '휴식 중') {
           setUserState(user.id, user.username, '근무 중').catch(err => {
             console.error('AI 상태 업데이트 자동 트리거 실패:', err);
           });
