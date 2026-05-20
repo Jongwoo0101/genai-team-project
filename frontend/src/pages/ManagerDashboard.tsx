@@ -76,7 +76,7 @@ export default function ManagerDashboard() {
     if (!user || !teamId) return;
 
     // 1. 초기 실시간 상태 데이터 로드
-    api.getTeamMemberStatuses(Number(teamId))
+    api.getTeamMemberStatuses(user.id)
       .then((statuses) => {
         const statusMap: Record<number, StatusType> = {};
         statuses.forEach((s) => {
