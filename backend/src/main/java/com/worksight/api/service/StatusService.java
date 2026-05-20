@@ -28,23 +28,31 @@ public class StatusService {
 
     /**
      * AI 캠 분석 결과 상태 업데이트
-     * - WORKING / MEETING / BREAK 만 허용
-     * - FOCUS 는 사용자 수동 설정 전용이므로 거부
+     *
+     * 허용: WORKING / AWAY / FOCUS
+     *   - AWAY  : 키보드·마우스 5분 무입력 + 캠으로 자리비움 판별
+     *   - FOCUS : 시선 80% 이상 모니터 고정 + 상체 기울기 10분 유지
+     *
+     * 불허: MEETING (미팅룸 입장 시 MeetingRoomService에서 자동 변경)
+     *       OFFLINE (퇴근 시 WorkLogService에서 자동 변경)
      */
     @Transactional
     public StatusUpdateResponse updateAiStatus(Member member, AiStatusUpdateRequest request) {
-        if (request.statusType() == StatusType.FOCUS) {
-            throw new IllegalArgumentException("AI는 FOCUS 상태를 설정할 수 없습니다.");
+        StatusType requested = request.statusType();
+
+        if (requested == StatusType.MEETING) {
+            throw new IllegalArgumentException("MEETING 상태는 미팅룸 입장 시 자동으로 변경됩니다.");
         }
-        if (request.statusType() == StatusType.OFFLINE) {
-            throw new IllegalArgumentException("AI는 OFFLINE 상태를 설정할 수 없습니다.");
+        if (requested == StatusType.OFFLINE) {
+            throw new IllegalArgumentException("OFFLINE 상태는 퇴근 시 자동으로 변경됩니다.");
         }
-        return applyStatusUpdate(member, request.statusType());
+
+        return applyStatusUpdate(member, requested);
     }
 
     /**
      * 사용자 수동 상태 설정
-     * - FOCUS 만 허용
+     * FOCUS 만 허용
      */
     @Transactional
     public StatusUpdateResponse updateManualStatus(Member member, ManualStatusUpdateRequest request) {
@@ -73,10 +81,18 @@ public class StatusService {
                 .toList();
     }
 
+    /**
+     * 패키지 내부 공개 — MeetingRoomService에서 MEETING 상태 변경 시 호출
+     * (미팅룸 입장/퇴장 시 상태 자동 전환용)
+     */
+    @Transactional
+    public void updateStatusInternal(Member member, StatusType statusType) {
+        applyStatusUpdate(member, statusType);
+    }
+
     // ── 내부 헬퍼 ────────────────────────────────────────────────
 
     private StatusUpdateResponse applyStatusUpdate(Member member, StatusType statusType) {
-        // @AuthenticationPrincipal 객체는 영속성 컨텍스트 밖 → DB 재조회
         Member managed = memberRepository.findById(member.getId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
 
@@ -91,7 +107,6 @@ public class StatusService {
 
         log.info("Status updated: memberId={}, status={}", managed.getId(), statusType);
 
-        // 커밋 후 팀 전체 브로드캐스트
         broadcastAfterCommit(managed, statusType);
 
         return new StatusUpdateResponse(
@@ -102,11 +117,6 @@ public class StatusService {
         );
     }
 
-    /**
-     * 트랜잭션 커밋 후 WebSocket 브로드캐스트
-     * - /topic/team/{managerId} 로 전송
-     * - 팀 미소속 시 개인 토픽으로 폴백
-     */
     private void broadcastAfterCommit(Member member, StatusType statusType) {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
