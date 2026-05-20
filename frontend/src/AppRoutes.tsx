@@ -13,7 +13,7 @@ import JoinTeam from './pages/JoinTeam';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import Support from './pages/Support';
-import { useAuthStore } from './store/authStore';
+import { useAuthStore } from './domains/auth/stores/authStore';
 
 export default function AppRoutes() {
   const { isAuthenticated, user } = useAuthStore();

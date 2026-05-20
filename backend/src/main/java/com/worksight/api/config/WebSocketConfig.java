@@ -21,7 +21,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // React 프론트엔드에서 웹소켓 연결을 위한 엔드포인트
-        registry.addEndpoint("/ws-monitoring")
+        registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("http://localhost:5173")
                 .withSockJS();
     }

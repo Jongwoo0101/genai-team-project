@@ -66,19 +66,26 @@ public class SecurityConfig {
                         })
                 )
                 .authorizeHttpRequests(auth -> auth
+                        // 인증 불필요
                         .requestMatchers(HttpMethod.POST,
                                 "/api/members/signup",
                                 "/api/members/login",
                                 "/api/members/reissue").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
+                        .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/ws-monitoring/**").permitAll()
+
+                        // 인증 필요
                         .requestMatchers(HttpMethod.POST,
                                 "/api/members/invite-code",
                                 "/api/members/join-team").authenticated()
+                        .requestMatchers("/api/work/**").authenticated()
+                        .requestMatchers("/api/status/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
+                // ↓ 이 부분이 빠져있었어요 — JWT 필터 없으면 토큰을 읽지 않으므로 항상 401
                 .addFilterBefore(
                         new JwtAuthenticationFilter(jwtProvider, memberRepository),
                         UsernamePasswordAuthenticationFilter.class

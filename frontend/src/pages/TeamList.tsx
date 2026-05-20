@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
-import { useTeamStore } from '../store/teamStore';
+import { useAuthStore } from '../domains/auth/stores/authStore';
+import { useTeamStore } from '../domains/team/stores/teamStore';
 import CreateTeamModal from '../components/CreateTeamModal';
 
 export default function TeamList() {
@@ -38,7 +38,7 @@ export default function TeamList() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 pt-36 pb-12 px-6">
+    <div className="min-h-screen bg-slate-950 pt-6 pb-12 px-6">
       <div className="max-w-screen-xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">

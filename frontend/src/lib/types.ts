@@ -181,3 +181,45 @@ export interface WSErrorMsg {
   type: 'error';
   message: string;
 }
+
+/** ──────────── v2.0 출퇴근 및 상태 관리 DTO ──────────── */
+
+export type StatusType = 'WORKING' | 'MEETING' | 'BREAK' | 'FOCUS' | 'OFFLINE';
+
+export interface ClockInResponse {
+  workLogId: number;
+  memberId: number;
+  username: string;
+  workDate: string;
+  clockInTime: string;
+}
+
+export interface ClockOutResponse {
+  workLogId: number;
+  memberId: number;
+  username: string;
+  workDate: string;
+  clockInTime: string;
+  clockOutTime: string;
+}
+
+export interface StatusUpdateResponse {
+  memberId: number;
+  username: string;
+  statusType: StatusType;
+  updatedAt: string;
+}
+
+export interface TeamMemberStatusResponse {
+  memberId: number;
+  username: string;
+  statusType: StatusType;
+  updatedAt: string;
+}
+
+export interface TeamStatusBroadcast {
+  memberId: number;
+  username: string;
+  statusType: StatusType;
+  changedAt: string;
+}

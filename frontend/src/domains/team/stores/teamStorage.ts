@@ -1,7 +1,8 @@
+import { STORAGE_KEYS } from '../../../lib/constants';
 import type { Team } from './teamStore';
 
-export const TEAM_STORAGE_KEY = 'worksight_teams';
-export const MEMBER_MAP_STORAGE_KEY = 'worksight_member_team_map';
+export const TEAM_STORAGE_KEY = STORAGE_KEYS.TEAM_DATA;
+export const MEMBER_MAP_STORAGE_KEY = STORAGE_KEYS.MEMBER_MAP;
 
 export function loadTeamStorage(): { teams: Team[]; memberTeamMap: Record<number, string> } {
   try {

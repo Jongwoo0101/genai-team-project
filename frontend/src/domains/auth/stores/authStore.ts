@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import type { AuthUser, Role } from '../lib/types';
-import * as api from '../lib/api';
-import { clearTeamStorage } from './teamStorage';
+import { STORAGE_KEYS } from '../../../lib/constants';
+import type { AuthUser, Role } from '../../../lib/types';
+import * as api from '../../../lib/api';
+import { clearTeamStorage } from '../../team/stores/teamStore';
 
 interface AuthState {
   user: AuthUser | null;
@@ -38,8 +39,8 @@ const parseErrorMessage = async (err: unknown): Promise<string> => {
 // 초기 상태 복구 (새로고침 대응)
 const loadInitialState = () => {
   try {
-    const userJson = sessionStorage.getItem('worksight_user');
-    const token = sessionStorage.getItem('token');
+    const userJson = sessionStorage.getItem(STORAGE_KEYS.USER_INFO);
+    const token = sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
     if (userJson && token) {
       return {
         user: JSON.parse(userJson) as AuthUser,
@@ -62,10 +63,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       // 백엔드 응답 필드(token) 반영
       if (res.token) {
-        sessionStorage.setItem('token', res.token);
+        sessionStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, res.token);
       }
       if (res.refreshToken) {
-        sessionStorage.setItem('refresh_token', res.refreshToken);
+        sessionStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, res.refreshToken);
       }
 
       const user: AuthUser = {
@@ -76,7 +77,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       };
       
       // 유저 정보 저장 (새로고침 시 복구용)
-      sessionStorage.setItem('worksight_user', JSON.stringify(user));
+      sessionStorage.setItem(STORAGE_KEYS.USER_INFO, JSON.stringify(user));
       
       set({ user, token: res.token, isAuthenticated: true });
       return { success: true };

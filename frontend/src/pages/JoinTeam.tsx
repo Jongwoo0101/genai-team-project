@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
-import { useTeamStore } from '../store/teamStore';
+import { useAuthStore } from '../domains/auth/stores/authStore';
+import { useTeamStore } from '../domains/team/stores/teamStore';
 import * as api from '../lib/api';
 
 export default function JoinTeam() {

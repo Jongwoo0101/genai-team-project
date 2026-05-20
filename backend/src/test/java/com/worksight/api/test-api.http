@@ -1,7 +1,7 @@
 ### 전역 변수
-@employeeToken = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZXMiOlsiRU1QTE9ZRUUiXSwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3ODIyNTQxNywiZXhwIjoxNzc4MzExODE3fQ.24T8ci7hT7QvU5UHwZiHA-CDo6kArs8k4cbZ2QJfkKX7kmZyH_d7OeW5DBoLs24vKwIOy3DTozbCvuLqtlsP5A
-@managerToken = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIyIiwicm9sZXMiOlsiTUFOQUdFUiJdLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzc4MjI1NDM5LCJleHAiOjE3NzgzMTE4Mzl9.kd44eRbzyu_CWSC78nTvrkZsfS3YzyI_9TNXOw1doDDFMXNadQTcs2RmYV4X67KLWkO9Tb7yy6qT08sIDHrNFA
-@inviteCode = WS-7883-5CE6
+@employeeToken =
+@managerToken =
+@inviteCode = WS-77D4-4440
 
 
 ### ──────────────────────────────────────────
@@ -49,51 +49,6 @@ Content-Type: application/json
 {
   "username": "manager01",
   "password": "password123"
-}
-
-
-### ──────────────────────────────────────────
-### 모니터링 이벤트 테스트
-### ──────────────────────────────────────────
-
-### 5. 이상 상태 보고 (SLEEP)
-POST http://localhost:8080/api/monitoring/event
-Content-Type: application/json
-Authorization: Bearer {{employeeToken}}
-
-{
-  "employeeId": 1,
-  "eventType": "SLEEP"
-}
-
-### 6. 이상 상태 보고 (AWAY)
-POST http://localhost:8080/api/monitoring/event
-Content-Type: application/json
-Authorization: Bearer {{employeeToken}}
-
-{
-  "employeeId": 1,
-  "eventType": "AWAY"
-}
-
-### 7. 정상 상태 보고 (NORMAL)
-POST http://localhost:8080/api/monitoring/event
-Content-Type: application/json
-Authorization: Bearer {{employeeToken}}
-
-{
-  "employeeId": 1,
-  "eventType": "NORMAL"
-}
-
-### 8. 존재하지 않는 직원 ID ← 404 기대
-POST http://localhost:8080/api/monitoring/event
-Content-Type: application/json
-Authorization: Bearer {{employeeToken}}
-
-{
-  "employeeId": 9999,
-  "eventType": "SLEEP"
 }
 
 ### ──────────────────────────────────────────
@@ -149,7 +104,7 @@ Content-Type: application/json
 }
 
 ### 미소속 직원 토큰 붙여넣기
-@unlinkedToken = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIzIiwicm9sZXMiOlsiRU1QTE9ZRUUiXSwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3ODIyNTU3NiwiZXhwIjoxNzc4MzExOTc2fQ.nd1YtUGq5RTN3CSJkklHTqG2zo8UdTyjvMNiHPPH2fr1fc0c84RC809yCMcvEbIN1fgbkLso4VhnTQ4EMmXmbA
+@unlinkedToken = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIzIiwicm9sZXMiOlsiRU1QTE9ZRUUiXSwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTI1NTM3NSwiZXhwIjoxNzc5MzQxNzc1fQ.TkrxIDXP8PQ22Rgad3aWAwB2bhZZg7Vl7aQAHuEre6M-10nt3kUKbIwrpvLz635KPEH7cqq8dD8d5s40izr-wQ
 
 ### 13. 미소속 직원이 my-team 조회 ← 409 기대
 GET http://localhost:8080/api/teams/my-team

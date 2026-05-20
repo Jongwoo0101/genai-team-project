@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import * as api from '../lib/api';
-import { useAuthStore } from './authStore';
+import * as api from '../../../lib/api';
+import { useAuthStore } from '../../auth/stores/authStore';
 import {
   clearTeamStorage as clearStoredTeams,
   loadTeamStorage,

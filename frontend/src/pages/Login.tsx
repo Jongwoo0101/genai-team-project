@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore } from '../domains/auth/stores/authStore';
 import type { Role } from '../lib/types';
 
 type AuthMode = 'login' | 'signup';
