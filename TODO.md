@@ -18,6 +18,7 @@
 - [x] WorkSight API v2.0 통합 연동 (출퇴근, AI 상태 변경, 수동 상태 변경, 팀 상태 목록 조회 API) (@fe-dev, 2026-05-20)
 - [x] 백엔드 status 컨트롤러 누락(404) 대응을 위한 Option B Fallback (localStorage Mock 브로드캐스트) 및 다중 탭 동기화 기능 탑재 (@fe-dev, 2026-05-20)
 - [x] 매니저 대시보드 내 실시간 상태 변경 로그 수신 및 `/topic/team/{managerId}` 웹소켓 구독 개편 (@fe-dev, 2026-05-20)
+- [x] Jongwoo0101 원격 브랜치 변경 사항 추적 및 frontend 브랜치 병합 (신규 상태 관리 API StatusController & StatusService 및 README.md 등 백엔드 전면 병합 완료) (@fe-dev, @qa-tester, 2026-05-20)
 
 ## 진행 중
 
