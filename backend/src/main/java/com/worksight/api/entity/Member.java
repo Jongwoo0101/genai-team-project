@@ -32,7 +32,7 @@ public class Member implements UserDetails {
         this.username = username;
         this.password = password;
         this.role = role;
-        this.virtualBalance = 10000L;
+        // this.virtualBalance = 10000L;
     }
 
     public void linkManager(Long managerId) {
