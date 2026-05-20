@@ -1,0 +1,111 @@
+### 전역 변수 (로그인 후 토큰 붙여넣기)
+@employeeToken = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxIiwicm9sZXMiOlsiRU1QTE9ZRUUiXSwidHlwZSI6ImFjY2VzcyIsImlhdCI6MTc3OTI1NzQ0NCwiZXhwIjoxNzc5MzQzODQ0fQ.hfax1coPYF3LtWamLT1CUwqifnVGc7-EAMFxLk3YhTNicASxX5JGnyxxY-URnp_JIbovjLkmR5NPosdE9P4t_w
+@managerToken  = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIyIiwicm9sZXMiOlsiTUFOQUdFUiJdLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzc5MjU3NDY2LCJleHAiOjE3NzkzNDM4NjZ9.__FOgnHXtHHU5VLcYnb5aosI8T5vbN4DFpVwnmwbhexfN_j90A8moCp3lYKN8mzmJYiZuW_kuL8JhDvTyOXRyg
+@managerId     = 2
+@baseUrl       = http://localhost:8080
+
+### ══════════════════════════════════════════
+### AI 상태 업데이트 (PUT /api/status/ai)
+### ══════════════════════════════════════════
+
+### 1. AI → WORKING 상태 설정 ← 200 기대
+PUT {{baseUrl}}/api/status/ai
+Content-Type: application/json
+Authorization: Bearer {{employeeToken}}
+
+{
+  "statusType": "WORKING"
+}
+
+### 2. AI → MEETING 상태 설정 ← 200 기대
+PUT {{baseUrl}}/api/status/ai
+Content-Type: application/json
+Authorization: Bearer {{employeeToken}}
+
+{
+  "statusType": "MEETING"
+}
+
+### 3. AI → BREAK 상태 설정 ← 200 기대
+PUT {{baseUrl}}/api/status/ai
+Content-Type: application/json
+Authorization: Bearer {{employeeToken}}
+
+{
+  "statusType": "BREAK"
+}
+
+### 4. AI → FOCUS 설정 시도 ← 400 기대 (AI는 FOCUS 설정 불가)
+PUT {{baseUrl}}/api/status/ai
+Content-Type: application/json
+Authorization: Bearer {{employeeToken}}
+
+{
+  "statusType": "FOCUS"
+}
+
+### 5. AI → OFFLINE 설정 시도 ← 400 기대 (AI는 OFFLINE 설정 불가)
+PUT {{baseUrl}}/api/status/ai
+Content-Type: application/json
+Authorization: Bearer {{employeeToken}}
+
+{
+  "statusType": "OFFLINE"
+}
+
+### 6. 미인증 AI 상태 설정 ← 401 기대
+PUT {{baseUrl}}/api/status/ai
+Content-Type: application/json
+
+{
+  "statusType": "WORKING"
+}
+
+### ══════════════════════════════════════════
+### 수동 상태 설정 (PUT /api/status/manual)
+### ══════════════════════════════════════════
+
+### 7. 수동 → FOCUS 설정 ← 200 기대
+PUT {{baseUrl}}/api/status/manual
+Content-Type: application/json
+Authorization: Bearer {{employeeToken}}
+
+{
+  "statusType": "FOCUS"
+}
+
+### 8. 수동 → WORKING 설정 시도 ← 400 기대 (수동은 FOCUS만 가능)
+PUT {{baseUrl}}/api/status/manual
+Content-Type: application/json
+Authorization: Bearer {{employeeToken}}
+
+{
+  "statusType": "WORKING"
+}
+
+### 9. 미인증 수동 상태 설정 ← 401 기대
+PUT {{baseUrl}}/api/status/manual
+Content-Type: application/json
+
+{
+  "statusType": "FOCUS"
+}
+
+### ══════════════════════════════════════════
+### 팀 전체 상태 조회 (GET /api/status/team/{managerId})
+### ══════════════════════════════════════════
+
+### 10. 팀 전체 상태 조회 (MANAGER 호출) ← 200 기대
+GET {{baseUrl}}/api/status/team/{{managerId}}
+Authorization: Bearer {{managerToken}}
+
+### 11. EMPLOYEE가 팀 상태 조회 시도 ← 403 기대
+GET {{baseUrl}}/api/status/team/{{managerId}}
+Authorization: Bearer {{employeeToken}}
+
+### 12. 타 관리자 팀 조회 시도 ← 400 기대
+GET {{baseUrl}}/api/status/team/9999
+Authorization: Bearer {{managerToken}}
+
+### 13. 미인증 팀 상태 조회 ← 401 기대
+GET {{baseUrl}}/api/status/team/{{managerId}}
