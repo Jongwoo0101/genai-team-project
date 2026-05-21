@@ -35,16 +35,17 @@ class StateClassifier:
         self,
         report_cooldown_seconds: float = 30.0,
         phone_threshold: float = 0.6,
-        break_seconds: float = 5.0,
+        away_seconds: float = 5.0,
         meeting_seconds: float = 5.0,
         working_seconds: float = 2.0,
     ) -> None:
         self.report_cooldown_seconds = report_cooldown_seconds
         self.phone_threshold = phone_threshold
         self.thresholds: Dict[EventType, float] = {
-            "BREAK": break_seconds,
+            "AWAY": away_seconds,
             "MEETING": meeting_seconds,
             "WORKING": working_seconds,
+            "FOCUS": 10.0,
         }
         self._candidate_status: EventType = "WORKING"
         self._candidate_since: Optional[float] = None
@@ -53,11 +54,18 @@ class StateClassifier:
 
     def update(self, detection: DetectionResult, now: float) -> ClassificationResult:
         raw_status = self._classify_raw(detection)
-        confidence = self._confidence_for(raw_status, detection)
-
+        
         if raw_status != self._candidate_status:
             self._candidate_status = raw_status
             self._candidate_since = now
+
+        # 만약 raw_status가 WORKING이고 10초 이상 유지되었다면 FOCUS로 상태 업그레이드
+        if raw_status == "WORKING" and self._candidate_status == "WORKING":
+            since = self._candidate_since if self._candidate_since is not None else now
+            if now - since >= 10.0:
+                raw_status = "FOCUS"
+
+        confidence = self._confidence_for(raw_status, detection)
 
         since = self._candidate_since if self._candidate_since is not None else now
         threshold = self.thresholds[raw_status]
@@ -84,24 +92,25 @@ class StateClassifier:
         if detection.multiple_faces:
             return "MEETING"
         if detection.phone_detected and detection.phone_confidence >= self.phone_threshold:
-            return "BREAK"
+            return "AWAY"
         if not detection.face_detected and not detection.pose_detected:
-            return "BREAK"
+            return "AWAY"
         if detection.eyes_closed:
-            return "BREAK"
+            return "AWAY"
         if detection.face_detected and detection.looking_away:
-            return "BREAK"
+            return "AWAY"
         return "WORKING"
 
     def _confidence_for(self, status: EventType, detection: DetectionResult) -> int:
         if status == "MEETING":
             return max(self._as_percent(detection.face_confidence), 85)
-        if status == "BREAK":
+        if status == "AWAY":
             if detection.phone_detected:
                 return self._as_percent(detection.phone_confidence)
             if not detection.face_detected and not detection.pose_detected:
                 return 90
             return 80
+        # WORKING or FOCUS
         return max(self._as_percent(detection.face_confidence), self._as_percent(detection.pose_confidence), 75)
 
     def _can_report(self, status: EventType, now: float) -> bool:

@@ -10,7 +10,7 @@ from urllib import request
 @dataclass(frozen=True)
 class EventPayload:
     employee_id: int
-    event_type: str       # WORKING | MEETING | BREAK
+    event_type: str       # WORKING | FOCUS | AWAY
     confidence: int
     detected_at: datetime
     source: str = "ai_model"
@@ -23,11 +23,16 @@ class EventClient:
         self.timeout_seconds = timeout_seconds
 
     def report(self, payload: EventPayload) -> None:
-        # WORKING 상태는 기본값이므로 변경이 없을 경우 전송 생략 가능하지만,
-        # 백엔드에서 상태 동기화를 위해 모든 상태 전송
+        # MEETING 상태는 AI 모델이 직접 보고하면 백엔드에서 400 에러가 나므로, 전송하지 않고 리턴합니다.
+        if payload.event_type == "MEETING":
+            return
+
+        # BREAK 상태가 넘어올 경우 하위 호환을 위해 AWAY로 보정합니다.
+        event_type = "AWAY" if payload.event_type == "BREAK" else payload.event_type
+
         # PUT /api/status/ai — AiStatusUpdateRequest: { statusType }
         body = json.dumps(
-            {"statusType": payload.event_type}
+            {"statusType": event_type}
         ).encode("utf-8")
 
         headers = {"Content-Type": "application/json"}

@@ -13,6 +13,8 @@ import { Navigate } from 'react-router-dom';
 import EmployeeSidebar from '../domains/commute/components/EmployeeSidebar';
 import VideoCallModal from '../domains/video-call/components/VideoCallModal';
 import { Clock, LogIn, LogOut, Video, Play, Plus, BookOpen, Send } from 'lucide-react';
+import { webSocketService } from '../lib/websocket';
+import { WEBSOCKET_TOPICS } from '../lib/constants';
 
 export default function EmployeeView() {
   const { user, token, isAuthenticated } = useAuthStore();
@@ -33,9 +35,11 @@ export default function EmployeeView() {
     startCamera, 
     stopCamera,
     directPings,
-    dismissDirectPing
+    dismissDirectPing,
+    loadDirectPings,
+    addDirectPingFromNotification
   } = useCommuteStore();
-  const { standups, addStandup } = useStandupStore();
+  const { standups, addStandup, loadMyTodayStandup } = useStandupStore();
   const { 
     rooms, 
     activeRoom, 
@@ -45,7 +49,9 @@ export default function EmployeeView() {
     acceptInvitation, 
     declineInvitation, 
     joinRequests, 
-    requestJoinRoom 
+    requestJoinRoom,
+    loadRooms,
+    handleWebsocketEvent: handleVideoCallWS
   } = useVideoCallStore();
 
   // 입력용 로컬 상태
@@ -66,6 +72,15 @@ export default function EmployeeView() {
     fetchMyTeam();
   }, [fetchMyTeam]);
 
+  // 마운트 시 데이터 로드
+  useEffect(() => {
+    if (user) {
+      loadMyTodayStandup();
+      loadRooms();
+      loadDirectPings();
+    }
+  }, [user, loadMyTodayStandup, loadRooms, loadDirectPings]);
+
   // 실시간 시계 작동
   useEffect(() => {
     const timer = setInterval(() => {
@@ -74,9 +89,46 @@ export default function EmployeeView() {
     return () => clearInterval(timer);
   }, []);
 
+  const team = user?.id ? getEmployeeTeam(user.id) : undefined;
+
+  // 실시간 웹소켓 구독 (매니저 토픽 및 개인 알림)
+  useEffect(() => {
+    if (!user || commuteStatus !== 'WORK' || !team?.managerId) return;
+
+    webSocketService.connect((connected) => {
+      if (connected) {
+        // 1. 팀 토픽 구독
+        const teamTopic = WEBSOCKET_TOPICS.TEAM(team.managerId);
+        webSocketService.subscribe(teamTopic, (msg) => {
+          handleVideoCallWS(msg);
+          useStandupStore.getState().handleWebsocketEvent(msg);
+        });
+
+        // 2. 개인 토픽 구독
+        const memberTopic = WEBSOCKET_TOPICS.MEMBER(user.id);
+        webSocketService.subscribe(memberTopic, (msg) => {
+          if (msg.event === 'INVITED' || msg.event === 'REQUEST_ACCEPTED' || msg.event === 'REQUEST_REJECTED') {
+            handleVideoCallWS(msg);
+          }
+          if (msg.notificationId) {
+            addDirectPingFromNotification(msg);
+          }
+        });
+      }
+    });
+
+    return () => {
+      if (team?.managerId) {
+        webSocketService.unsubscribe(WEBSOCKET_TOPICS.TEAM(team.managerId));
+      }
+      webSocketService.unsubscribe(WEBSOCKET_TOPICS.MEMBER(user.id));
+      webSocketService.disconnect();
+    };
+  }, [user, commuteStatus, team?.managerId, handleVideoCallWS, addDirectPingFromNotification]);
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playedPingsRef = useRef<Set<string>>(new Set());
-  const processedRequestsRef = useRef<Set<string>>(new Set());
+  const processedRequestsRef = useRef<Set<number>>(new Set());
 
   // 카메라 비디오 엘리먼트 소스 연결
   useEffect(() => {
@@ -100,14 +152,14 @@ export default function EmployeeView() {
       setConfidence(Math.round(lastResult.confidence * 100));
 
       if (user) {
-        const isBreak = lastResult.state === 'BREAK';
+        const isAway = lastResult.state === 'AWAY';
         const isWorking = lastResult.state === 'WORKING';
 
-        if (isBreak && userState === '근무 중') {
-          setUserState(user.id, user.username, '휴식 중').catch(err => {
+        if (isAway && userState === '근무 중') {
+          setUserState(user.id, user.username, '자리비움').catch(err => {
             console.error('AI 상태 업데이트 자동 트리거 실패:', err);
           });
-        } else if (isWorking && userState === '휴식 중') {
+        } else if (isWorking && userState === '자리비움') {
           setUserState(user.id, user.username, '근무 중').catch(err => {
             console.error('AI 상태 업데이트 자동 트리거 실패:', err);
           });
@@ -205,8 +257,6 @@ export default function EmployeeView() {
     }
   }, [joinRequests, activeRoom, user, joinRoom]);
 
-  const team = user?.id ? getEmployeeTeam(user.id) : undefined;
-
   // 오늘 날짜 문자열
   const todayStr = new Date().toISOString().split('T')[0];
   const myTodayStandup = standups.find(
@@ -263,7 +313,7 @@ export default function EmployeeView() {
   };
 
   // 데일리 스탠드업 제출 처리
-  const handleStandupSubmit = (e: React.FormEvent) => {
+  const handleStandupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (commuteStatus !== 'WORK') {
       alert('업무 시작(출근) 상태에서만 스탠드업을 등록할 수 있습니다.');
@@ -274,13 +324,17 @@ export default function EmployeeView() {
       return;
     }
     if (user) {
-      addStandup(user.id, user.username, todayGoal, todayResult);
-      alert('데일리 스탠드업이 등록/수정되었습니다.');
+      try {
+        await addStandup(user.id, user.username, todayGoal, todayResult);
+        alert('데일리 스탠드업이 등록/수정되었습니다.');
+      } catch (err: any) {
+        alert(err.message || '데일리 스탠드업 등록에 실패했습니다.');
+      }
     }
   };
 
   // 가상 영상통화 방 만들기
-  const handleCreateRoom = (e: React.FormEvent) => {
+  const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     if (commuteStatus !== 'WORK') {
       alert('업무 시작(출근)을 먼저 완료한 후 영상통화를 개설할 수 있습니다.');
@@ -291,10 +345,14 @@ export default function EmployeeView() {
       return;
     }
     if (user) {
-      createRoom(roomTitle, user.id, user.username);
-      setRoomTitle('');
-      setIsCreateRoomOpen(false);
-      setIsVideoModalOpen(true);
+      try {
+        await createRoom(roomTitle);
+        setRoomTitle('');
+        setIsCreateRoomOpen(false);
+        setIsVideoModalOpen(true);
+      } catch (err: any) {
+        alert(err.message || '회의실 개설에 실패했습니다.');
+      }
     }
   };
 
@@ -308,7 +366,7 @@ export default function EmployeeView() {
   };
 
   // 영상통화 참가하기
-  const handleJoinRoom = (roomId: string) => {
+  const handleJoinRoom = async (roomId: number) => {
     if (commuteStatus !== 'WORK') {
       alert('업무 시작(출근)을 먼저 완료해야 영상통화에 참가할 수 있습니다.');
       return;
@@ -321,7 +379,7 @@ export default function EmployeeView() {
       const isAlreadyParticipant = targetRoom.participants.some((p) => p.id === user.id);
 
       if (isHost || isAlreadyParticipant) {
-        joinRoom(roomId, user.id, user.username);
+        await joinRoom(roomId, user.id, user.username);
         setIsVideoModalOpen(true);
       } else {
         const hasPendingRequest = joinRequests.some(
@@ -332,8 +390,12 @@ export default function EmployeeView() {
           return;
         }
 
-        requestJoinRoom(roomId, user.id, user.username);
-        alert('참가 대기 요청을 보냈습니다. 호스트가 승인하면 입장됩니다.');
+        try {
+          await requestJoinRoom(roomId);
+          alert('참가 대기 요청을 보냈습니다. 호스트가 승인하면 입장됩니다.');
+        } catch (err: any) {
+          alert(err.message || '참가 대기 요청에 실패했습니다.');
+        }
       }
     }
   };
@@ -420,7 +482,7 @@ export default function EmployeeView() {
             </div>
 
             <div className="space-y-3">
-              {(['집중 근무', '회의 중', '휴식 중'] as const).map((status) => {
+              {(['집중 근무', '회의 중', '자리비움'] as const).map((status) => {
                 const isSelected = userState === status;
                 const getBtnStyles = () => {
                   if (!isSelected) return 'bg-slate-950/40 border-slate-800 text-slate-400 hover:bg-slate-800';
@@ -432,7 +494,7 @@ export default function EmployeeView() {
                 const getIcon = () => {
                   if (status === '집중 근무') return '🎯';
                   if (status === '회의 중') return '💬';
-                  return '☕';
+                  return '🚶';
                 };
 
                 return (
@@ -653,14 +715,14 @@ export default function EmployeeView() {
                 </p>
                 <div className="flex gap-2 mt-4 justify-end">
                   <button
-                    onClick={() => declineInvitation(inv.inviteId)}
+                    onClick={() => declineInvitation(inv.roomId, inv.inviteId)}
                     className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs font-bold transition duration-200 cursor-pointer"
                   >
                     거절
                   </button>
                   <button
-                    onClick={() => {
-                      acceptInvitation(inv.inviteId);
+                    onClick={async () => {
+                      await acceptInvitation(inv.roomId, inv.inviteId);
                       setIsVideoModalOpen(true);
                     }}
                     className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition duration-200 cursor-pointer"

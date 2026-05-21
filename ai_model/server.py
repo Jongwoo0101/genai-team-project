@@ -99,7 +99,7 @@ class MonitoringServer:
                         "fps": 0, # Not used in frontend currently
                     }))
 
-                    # 상태가 변경되었을 때 백엔드로 PUT /api/status/ai 전송 (WORKING / MEETING / BREAK)
+                    # 상태가 변경되었을 때 백엔드로 PUT /api/status/ai 전송 (WORKING / FOCUS / AWAY)
                     if result.should_report:
                         payload = EventPayload(
                             employee_id=employee_id,

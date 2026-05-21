@@ -26,6 +26,7 @@ export default function VideoCallModal({ onClose }: VideoCallModalProps) {
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
 
@@ -47,7 +48,49 @@ export default function VideoCallModal({ onClose }: VideoCallModalProps) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((track) => track.stop());
+      screenStreamRef.current = null;
+    }
     if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+  };
+
+  const startScreenShare = async () => {
+    try {
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true
+      });
+      screenStreamRef.current = screenStream;
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = screenStream;
+      }
+
+      const videoTrack = screenStream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.onended = () => {
+          stopScreenShare();
+        };
+      }
+      setIsScreenSharing(true);
+    } catch (err) {
+      console.error('화면 공유 획득 실패:', err);
+      setIsScreenSharing(false);
+    }
+  };
+
+  const stopScreenShare = () => {
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((track) => track.stop());
+      screenStreamRef.current = null;
+    }
+    setIsScreenSharing(false);
+    
+    if (videoRef.current && streamRef.current && mySession?.isCamOn) {
+      videoRef.current.srcObject = streamRef.current;
+    } else if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
   };
@@ -64,20 +107,28 @@ export default function VideoCallModal({ onClose }: VideoCallModalProps) {
           return;
         }
 
-        // 기존 스트림이 있다면 중지하여 리소스 정리 및 충돌 방지
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach((track) => track.stop());
-          streamRef.current = null;
+        if (!streamRef.current) {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: 640, height: 480 },
+            audio: { echoCancellation: true, noiseSuppression: true }
+          });
+          streamRef.current = stream;
         }
 
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: wantsCam ? { width: 640, height: 480 } : false,
-          audio: wantsMic ? { echoCancellation: true, noiseSuppression: true } : false
+        // 트랙 활성화/비활성화 조작
+        streamRef.current.getVideoTracks().forEach((track) => {
+          track.enabled = wantsCam;
+        });
+        streamRef.current.getAudioTracks().forEach((track) => {
+          track.enabled = wantsMic;
         });
 
-        streamRef.current = stream;
-        if (videoRef.current && wantsCam) {
-          videoRef.current.srcObject = stream;
+        if (videoRef.current && !isScreenSharing) {
+          if (!wantsCam) {
+            videoRef.current.srcObject = null;
+          } else if (videoRef.current.srcObject !== streamRef.current) {
+            videoRef.current.srcObject = streamRef.current;
+          }
         }
         setCameraError(null);
       } catch (err) {
@@ -94,12 +145,13 @@ export default function VideoCallModal({ onClose }: VideoCallModalProps) {
       stopCamera();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeRoom?.roomId, mySession?.isCamOn, mySession?.isMicOn]);
+  }, [activeRoom?.roomId, mySession?.isCamOn, mySession?.isMicOn, isScreenSharing]);
 
   const handleLeave = () => {
     if (user?.id) {
       leaveRoom(user.id);
     }
+    stopScreenShare();
     stopCamera();
     onClose();
   };
@@ -234,13 +286,13 @@ export default function VideoCallModal({ onClose }: VideoCallModalProps) {
                       <span className="text-xs font-semibold text-slate-200">{req.userName}</span>
                       <div className="flex gap-1.5">
                         <button
-                          onClick={() => approveJoinRequest(req.requestId)}
+                          onClick={() => approveJoinRequest(activeRoom.roomId, req.requestId)}
                           className="px-2.5 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-bold transition-all duration-200 cursor-pointer"
                         >
                           승인
                         </button>
                         <button
-                          onClick={() => rejectJoinRequest(req.requestId)}
+                          onClick={() => rejectJoinRequest(activeRoom.roomId, req.requestId)}
                           className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 text-[10px] font-bold border border-slate-700 transition-all duration-200 cursor-pointer"
                         >
                           거절
@@ -272,7 +324,7 @@ export default function VideoCallModal({ onClose }: VideoCallModalProps) {
                       <span className="text-xs font-semibold text-slate-200">{member.username}</span>
                       <button
                         disabled={isInvited}
-                        onClick={() => inviteUser(activeRoom.roomId, member.id, member.username, activeRoom.title, user?.username || '')}
+                        onClick={() => inviteUser(activeRoom.roomId, member.id)}
                         className={`px-2.5 py-1 rounded text-[10px] font-bold transition-all duration-200 cursor-pointer ${
                           isInvited
                             ? 'bg-slate-800 text-slate-600 border border-slate-750'
@@ -325,15 +377,21 @@ export default function VideoCallModal({ onClose }: VideoCallModalProps) {
             {mySession.isCamOn ? <VideoIcon className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
           </button>
 
-          {/* 가상 화면 공유 */}
+          {/* 실제 화면 공유 */}
           <button
-            onClick={() => setIsScreenSharing(!isScreenSharing)}
+            onClick={() => {
+              if (isScreenSharing) {
+                stopScreenShare();
+              } else {
+                void startScreenShare();
+              }
+            }}
             className={`p-4 rounded-full border transition-all duration-200 cursor-pointer ${
               isScreenSharing
                 ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/25'
                 : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
             }`}
-            title={isScreenSharing ? '화면 공유 중지' : '가상 화면 공유 시작'}
+            title={isScreenSharing ? '화면 공유 중지' : '화면 공유 시작'}
           >
             <MonitorUp className="w-5 h-5" />
           </button>

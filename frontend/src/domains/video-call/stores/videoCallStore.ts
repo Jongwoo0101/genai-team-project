@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { STORAGE_KEYS } from '../../../lib/constants';
+import * as api from '../../../lib/api';
 
 export interface Participant {
   id: number;
@@ -10,7 +11,7 @@ export interface Participant {
 }
 
 export interface VideoCallRoom {
-  roomId: string;
+  roomId: number;
   title: string;
   hostId: number;
   hostName: string;
@@ -19,16 +20,16 @@ export interface VideoCallRoom {
 }
 
 export interface JoinRequest {
-  requestId: string;
-  roomId: string;
+  requestId: number;
+  roomId: number;
   userId: number;
   userName: string;
   status: 'pending' | 'approved' | 'rejected';
 }
 
 export interface Invitation {
-  inviteId: string;
-  roomId: string;
+  inviteId: number;
+  roomId: number;
   roomTitle: string;
   hostName: string;
   inviteeId: number;
@@ -41,18 +42,22 @@ interface VideoCallState {
   activeRoom: VideoCallRoom | null;
   joinRequests: JoinRequest[];
   invitations: Invitation[];
-  createRoom: (title: string, hostId: number, hostName: string) => void;
-  joinRoom: (roomId: string, participantId: number, participantName: string) => void;
-  leaveRoom: (participantId: number) => void;
+  loadRooms: () => Promise<void>;
+  loadActiveRoomDetail: (roomId: number) => Promise<void>;
+  createRoom: (title: string) => Promise<void>;
+  joinRoom: (roomId: number, participantId: number, participantName: string) => Promise<void>;
+  leaveRoom: (roomId: number) => Promise<void>;
+  endRoom: (roomId: number) => Promise<void>;
   toggleCam: (participantId: number) => void;
   toggleMic: (participantId: number) => void;
   clearRooms: () => void;
-  requestJoinRoom: (roomId: string, userId: number, userName: string) => void;
-  approveJoinRequest: (requestId: string) => void;
-  rejectJoinRequest: (requestId: string) => void;
-  inviteUser: (roomId: string, inviteeId: number, inviteeName: string, roomTitle: string, hostName: string) => void;
-  acceptInvitation: (inviteId: string) => void;
-  declineInvitation: (inviteId: string) => void;
+  requestJoinRoom: (roomId: number) => Promise<void>;
+  approveJoinRequest: (roomId: number, requestId: number) => Promise<void>;
+  rejectJoinRequest: (roomId: number, requestId: number) => Promise<void>;
+  inviteUser: (roomId: number, inviteeId: number) => Promise<void>;
+  acceptInvitation: (roomId: number, inviteId: number) => Promise<void>;
+  declineInvitation: (roomId: number, inviteId: number) => Promise<void>;
+  handleWebsocketEvent: (msg: any) => Promise<void>;
 }
 
 export const useVideoCallStore = create<VideoCallState>()(
@@ -62,95 +67,99 @@ export const useVideoCallStore = create<VideoCallState>()(
       activeRoom: null,
       joinRequests: [],
       invitations: [],
-      createRoom: (title, hostId, hostName) => {
-        const roomId = `room-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-        const initialParticipant: Participant = {
-          id: hostId,
-          name: hostName,
-          isCamOn: true,
-          isMicOn: true,
-        };
-
-        const newRoom: VideoCallRoom = {
-          roomId,
-          title,
-          hostId,
-          hostName,
-          participants: [initialParticipant],
-          createdAt: new Date().toLocaleTimeString('ko-KR'),
-        };
-
-        set((state) => ({
-          rooms: [newRoom, ...state.rooms],
-          activeRoom: newRoom,
-        }));
-      },
-      joinRoom: (roomId, participantId, participantName) => {
-        const rooms = get().rooms;
-        const targetRoom = rooms.find((r) => r.roomId === roomId);
-        if (!targetRoom) return;
-
-        // 이미 참가해 있다면 무시
-        if (targetRoom.participants.some((p) => p.id === participantId)) {
-          set({ activeRoom: targetRoom });
-          return;
+      loadRooms: async () => {
+        try {
+          const list = await api.getMeetings();
+          const mapped: VideoCallRoom[] = list.map((r) => ({
+            roomId: r.roomId,
+            title: r.title,
+            hostId: r.hostId,
+            hostName: r.hostUsername,
+            participants: [], // 인원은 상세 조회를 통해 동기화
+            createdAt: new Date(r.createdAt).toLocaleTimeString('ko-KR'),
+          }));
+          set({ rooms: mapped });
+        } catch (err) {
+          console.error('회의실 목록 로드 실패:', err);
         }
-
-        const newParticipant: Participant = {
-          id: participantId,
-          name: participantName,
-          isCamOn: true,
-          isMicOn: true,
-        };
-
-        const updatedRoom = {
-          ...targetRoom,
-          participants: [...targetRoom.participants, newParticipant],
-        };
-
-        const updatedRooms = rooms.map((r) =>
-          r.roomId === roomId ? updatedRoom : r
-        );
-
-        set({
-          rooms: updatedRooms,
-          activeRoom: updatedRoom,
-        });
       },
-      leaveRoom: (participantId) => {
-        const activeRoom = get().activeRoom;
-        if (!activeRoom) return;
-
-        const rooms = get().rooms;
-        const updatedParticipants = activeRoom.participants.filter(
-          (p) => p.id !== participantId
-        );
-
-        let updatedRooms: VideoCallRoom[];
-
-        if (updatedParticipants.length === 0) {
-          // 더 이상 참가자가 없으면 방 폭파
-          updatedRooms = rooms.filter((r) => r.roomId !== activeRoom.roomId);
-        } else {
-          // 호스트가 나가고 참가자가 남았으면 첫 번째 사람을 임시 호스트로 지정
-          const isHostLeaving = activeRoom.hostId === participantId;
-          const newHost = isHostLeaving ? updatedParticipants[0] : null;
-
-          const updatedRoom: VideoCallRoom = {
-            ...activeRoom,
-            participants: updatedParticipants,
-            hostId: newHost ? newHost.id : activeRoom.hostId,
-            hostName: newHost ? newHost.name : activeRoom.hostName,
+      loadActiveRoomDetail: async (roomId) => {
+        try {
+          const detail = await api.getMeetingDetail(roomId);
+          const activeParticipants: Participant[] = detail.participants
+            .filter((p) => p.requestStatus === 'ACCEPTED')
+            .map((p) => ({
+              id: p.memberId,
+              name: p.username,
+              isCamOn: true,
+              isMicOn: true,
+            }));
+          const mappedActive: VideoCallRoom = {
+            roomId: detail.roomId,
+            title: detail.title,
+            hostId: detail.hostId,
+            hostName: detail.hostUsername,
+            participants: activeParticipants,
+            createdAt: new Date(detail.createdAt).toLocaleTimeString('ko-KR'),
           };
-          updatedRooms = rooms.map((r) =>
-            r.roomId === activeRoom.roomId ? updatedRoom : r
-          );
+          set({ activeRoom: mappedActive });
+        } catch (err) {
+          console.error('활성 회의실 상세 로드 실패:', err);
         }
-
-        set({
-          rooms: updatedRooms,
-          activeRoom: null,
-        });
+      },
+      createRoom: async (title) => {
+        try {
+          const room = await api.createMeeting(title);
+          const initialParticipant: Participant = {
+            id: room.hostId,
+            name: room.hostUsername,
+            isCamOn: true,
+            isMicOn: true,
+          };
+          const newRoom: VideoCallRoom = {
+            roomId: room.roomId,
+            title: room.title,
+            hostId: room.hostId,
+            hostName: room.hostUsername,
+            participants: [initialParticipant],
+            createdAt: new Date(room.createdAt).toLocaleTimeString('ko-KR'),
+          };
+          set((state) => ({
+            rooms: [newRoom, ...state.rooms],
+            activeRoom: newRoom,
+          }));
+        } catch (err) {
+          console.error('회의실 생성 실패:', err);
+          throw err;
+        }
+      },
+      joinRoom: async (roomId, _participantId, _participantName) => {
+        try {
+          // 입장 처리는 API 상 respondToJoinRequest/respondToInvitation 완료 후 
+          // 또는 생성자가 입장할 때 수행됨. 
+          // 여기서는 activeRoom 상세 정보를 갱신하고 스토어의 activeRoom을 설정한다.
+          await get().loadActiveRoomDetail(roomId);
+        } catch (err) {
+          console.error('회의실 참여 실패:', err);
+        }
+      },
+      leaveRoom: async (roomId) => {
+        try {
+          await api.leaveMeeting(roomId);
+          set({ activeRoom: null });
+          await get().loadRooms();
+        } catch (err) {
+          console.error('회의실 나가기 실패:', err);
+        }
+      },
+      endRoom: async (roomId) => {
+        try {
+          await api.endMeeting(roomId);
+          set({ activeRoom: null });
+          await get().loadRooms();
+        } catch (err) {
+          console.error('회의실 종료 실패:', err);
+        }
       },
       toggleCam: (participantId) => {
         const activeRoom = get().activeRoom;
@@ -160,18 +169,11 @@ export const useVideoCallStore = create<VideoCallState>()(
           p.id === participantId ? { ...p, isCamOn: !p.isCamOn } : p
         );
 
-        const updatedRoom = {
-          ...activeRoom,
-          participants: updatedParticipants,
-        };
-
-        const updatedRooms = get().rooms.map((r) =>
-          r.roomId === activeRoom.roomId ? updatedRoom : r
-        );
-
         set({
-          rooms: updatedRooms,
-          activeRoom: updatedRoom,
+          activeRoom: {
+            ...activeRoom,
+            participants: updatedParticipants,
+          },
         });
       },
       toggleMic: (participantId) => {
@@ -182,87 +184,144 @@ export const useVideoCallStore = create<VideoCallState>()(
           p.id === participantId ? { ...p, isMicOn: !p.isMicOn } : p
         );
 
-        const updatedRoom = {
-          ...activeRoom,
-          participants: updatedParticipants,
-        };
-
-        const updatedRooms = get().rooms.map((r) =>
-          r.roomId === activeRoom.roomId ? updatedRoom : r
-        );
-
         set({
-          rooms: updatedRooms,
-          activeRoom: updatedRoom,
+          activeRoom: {
+            ...activeRoom,
+            participants: updatedParticipants,
+          },
         });
       },
       clearRooms: () => {
         set({ rooms: [], activeRoom: null, joinRequests: [], invitations: [] });
       },
-      requestJoinRoom: (roomId, userId, userName) => {
-        const newRequest: JoinRequest = {
-          requestId: `req-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          roomId,
-          userId,
-          userName,
-          status: 'pending',
-        };
-        set((state) => ({
-          joinRequests: [newRequest, ...state.joinRequests],
-        }));
+      requestJoinRoom: async (roomId) => {
+        try {
+          await api.requestJoinMeeting(roomId);
+        } catch (err) {
+          console.error('회의실 참여 요청 실패:', err);
+          throw err;
+        }
       },
-      approveJoinRequest: (requestId) => {
-        const req = get().joinRequests.find((r) => r.requestId === requestId);
-        if (!req) return;
-
-        // 요청 승인 처리
-        const updatedRequests = get().joinRequests.map((r) =>
-          r.requestId === requestId ? { ...r, status: 'approved' as const } : r
-        );
-
-        set({ joinRequests: updatedRequests });
-
-        // 실제로 방에 참여자로 추가
-        get().joinRoom(req.roomId, req.userId, req.userName);
+      approveJoinRequest: async (roomId, requestId) => {
+        try {
+          await api.respondToJoinRequest(roomId, requestId, true);
+          set((state) => ({
+            joinRequests: state.joinRequests.filter((r) => r.requestId !== requestId),
+          }));
+          await get().loadActiveRoomDetail(roomId);
+        } catch (err) {
+          console.error('참여 요청 승인 실패:', err);
+        }
       },
-      rejectJoinRequest: (requestId) => {
-        const updatedRequests = get().joinRequests.map((r) =>
-          r.requestId === requestId ? { ...r, status: 'rejected' as const } : r
-        );
-        set({ joinRequests: updatedRequests });
+      rejectJoinRequest: async (roomId, requestId) => {
+        try {
+          await api.respondToJoinRequest(roomId, requestId, false);
+          set((state) => ({
+            joinRequests: state.joinRequests.filter((r) => r.requestId !== requestId),
+          }));
+        } catch (err) {
+          console.error('참여 요청 거절 실패:', err);
+        }
       },
-      inviteUser: (roomId, inviteeId, inviteeName, roomTitle, hostName) => {
-        const newInvitation: Invitation = {
-          inviteId: `inv-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          roomId,
-          roomTitle,
-          hostName,
-          inviteeId,
-          inviteeName,
-          status: 'pending',
-        };
-        set((state) => ({
-          invitations: [newInvitation, ...state.invitations],
-        }));
+      inviteUser: async (roomId, inviteeId) => {
+        try {
+          await api.inviteToMeeting(roomId, inviteeId);
+        } catch (err) {
+          console.error('직원 초대 실패:', err);
+          throw err;
+        }
       },
-      acceptInvitation: (inviteId) => {
-        const inv = get().invitations.find((i) => i.inviteId === inviteId);
-        if (!inv) return;
-
-        const updatedInvitations = get().invitations.map((i) =>
-          i.inviteId === inviteId ? { ...i, status: 'accepted' as const } : i
-        );
-
-        set({ invitations: updatedInvitations });
-
-        // 방 입장 처리
-        get().joinRoom(inv.roomId, inv.inviteeId, inv.inviteeName);
+      acceptInvitation: async (roomId, inviteId) => {
+        try {
+          await api.respondToInvitation(roomId, true);
+          set((state) => ({
+            invitations: state.invitations.filter((i) => i.inviteId !== inviteId),
+          }));
+          await get().loadActiveRoomDetail(roomId);
+        } catch (err) {
+          console.error('초대 수락 실패:', err);
+        }
       },
-      declineInvitation: (inviteId) => {
-        const updatedInvitations = get().invitations.map((i) =>
-          i.inviteId === inviteId ? { ...i, status: 'declined' as const } : i
-        );
-        set({ invitations: updatedInvitations });
+      declineInvitation: async (roomId, inviteId) => {
+        try {
+          await api.respondToInvitation(roomId, false);
+          set((state) => ({
+            invitations: state.invitations.filter((i) => i.inviteId !== inviteId),
+          }));
+        } catch (err) {
+          console.error('초대 거절 실패:', err);
+        }
+      },
+      handleWebsocketEvent: async (msg) => {
+        const { event, data } = msg;
+        if (!event) return;
+
+        switch (event) {
+          case 'ROOM_CREATED': {
+            await get().loadRooms();
+            break;
+          }
+          case 'ROOM_ENDED': {
+            const endedRoomId = data.roomId;
+            set((state) => ({
+              rooms: state.rooms.filter((r) => r.roomId !== endedRoomId),
+              activeRoom: state.activeRoom?.roomId === endedRoomId ? null : state.activeRoom,
+            }));
+            break;
+          }
+          case 'MEMBER_JOINED':
+          case 'MEMBER_LEFT': {
+            const roomId = data.roomId;
+            await get().loadRooms();
+            if (get().activeRoom?.roomId === roomId) {
+              await get().loadActiveRoomDetail(roomId);
+            }
+            break;
+          }
+          case 'JOIN_REQUESTED': {
+            const req: JoinRequest = {
+              requestId: data.participantId,
+              roomId: data.roomId,
+              userId: data.memberId,
+              userName: data.username,
+              status: 'pending',
+            };
+            set((state) => ({
+              joinRequests: [req, ...state.joinRequests.filter((r) => r.requestId !== req.requestId)],
+            }));
+            break;
+          }
+          case 'INVITED': {
+            const inv: Invitation = {
+              inviteId: data.participantId,
+              roomId: data.roomId,
+              roomTitle: data.roomTitle || '화상 회의실',
+              hostName: data.hostUsername || '매니저',
+              inviteeId: data.memberId,
+              inviteeName: data.username,
+              status: 'pending',
+            };
+            set((state) => ({
+              invitations: [inv, ...state.invitations.filter((i) => i.inviteId !== inv.inviteId)],
+            }));
+            break;
+          }
+          case 'REQUEST_ACCEPTED': {
+            const roomId = data.roomId;
+            await get().loadRooms();
+            await get().joinRoom(roomId, data.memberId, data.username);
+            break;
+          }
+          case 'REQUEST_REJECTED': {
+            const requestId = data.participantId;
+            set((state) => ({
+              joinRequests: state.joinRequests.filter((r) => r.requestId !== requestId),
+            }));
+            break;
+          }
+          default:
+            break;
+        }
       },
     }),
     {
@@ -280,7 +339,6 @@ if (typeof window !== 'undefined') {
         if (data) {
           const parsed = JSON.parse(data);
           if (parsed.state) {
-            // 내 활성 룸 데이터 업데이트 및 룸 목록 동기화
             const currentActive = useVideoCallStore.getState().activeRoom;
             const newRooms = parsed.state.rooms as VideoCallRoom[];
             const nextActive = currentActive

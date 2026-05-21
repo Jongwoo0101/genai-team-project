@@ -14,13 +14,13 @@ export interface CommuteLog {
   dateStr: string;
 }
 
-export type UserStateType = '집중 근무' | '회의 중' | '휴식 중' | '근무 중' | '오프라인';
+export type UserStateType = '집중 근무' | '회의 중' | '자리비움' | '근무 중' | '오프라인';
 
 export const mapKoStateToEnStatus = (koState: UserStateType): StatusType => {
   switch (koState) {
     case '집중 근무': return 'FOCUS';
     case '회의 중': return 'MEETING';
-    case '휴식 중': return 'BREAK';
+    case '자리비움': return 'AWAY';
     case '근무 중': return 'WORKING';
     case '오프라인': return 'OFFLINE';
     default: return 'WORKING';
@@ -31,7 +31,7 @@ export const mapEnStatusToKoState = (enStatus: StatusType): UserStateType => {
   switch (enStatus) {
     case 'FOCUS': return '집중 근무';
     case 'MEETING': return '회의 중';
-    case 'BREAK': return '휴식 중';
+    case 'AWAY': return '자리비움';
     case 'WORKING': return '근무 중';
     case 'OFFLINE': return '오프라인';
     default: return '근무 중';
@@ -62,8 +62,10 @@ interface CommuteState {
   startCamera: () => Promise<void>;
   stopCamera: () => void;
   resetTodayStatus: () => void;
-  sendDirectPing: (employeeId: number, fromName: string, message: string) => void;
-  dismissDirectPing: (pingId: string) => void;
+  sendDirectPing: (employeeId: number, fromName: string, message: string) => Promise<void>;
+  dismissDirectPing: (pingId: string) => Promise<void>;
+  loadDirectPings: () => Promise<void>;
+  addDirectPingFromNotification: (notif: any) => void;
 }
 
 export const useCommuteStore = create<CommuteState>()(
@@ -184,24 +186,57 @@ export const useCommuteStore = create<CommuteState>()(
           cameraStream: null,
         });
       },
-      sendDirectPing: (employeeId, fromName, message) => {
-        const newPing: DirectPing = {
-          id: `ping-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          employeeId,
-          fromName,
-          message,
-          timestamp: new Date().toLocaleString('ko-KR'),
-          status: 'pending',
+      sendDirectPing: async (employeeId, _fromName, message) => {
+        try {
+          await api.sendNotification(employeeId, message, 'IMPORTANT');
+        } catch (err) {
+          console.error('알림 발송 실패:', err);
+          throw err;
+        }
+      },
+      dismissDirectPing: async (pingId) => {
+        try {
+          await api.readNotification(Number(pingId));
+          set((state) => ({
+            directPings: state.directPings.map((p) =>
+              p.id === pingId ? { ...p, status: 'dismissed' as const } : p
+            ),
+          }));
+        } catch (err) {
+          console.error('알림 읽음 처리 실패:', err);
+          throw err;
+        }
+      },
+      loadDirectPings: async () => {
+        try {
+          const notifs = await api.getUnreadNotifications();
+          const pings: DirectPing[] = notifs
+            .filter((n) => n.notificationType === 'IMPORTANT')
+            .map((n) => ({
+              id: String(n.notificationId),
+              employeeId: n.receiverId,
+              fromName: n.senderUsername,
+              message: n.message,
+              timestamp: new Date(n.createdAt).toLocaleString('ko-KR'),
+              status: n.read ? ('dismissed' as const) : ('pending' as const),
+            }));
+          set({ directPings: pings });
+        } catch (err) {
+          console.error('알림 로드 실패:', err);
+        }
+      },
+      addDirectPingFromNotification: (notif) => {
+        if (notif.notificationType !== 'IMPORTANT') return;
+        const ping: DirectPing = {
+          id: String(notif.notificationId),
+          employeeId: notif.receiverId,
+          fromName: notif.senderUsername,
+          message: notif.message,
+          timestamp: new Date(notif.createdAt).toLocaleString('ko-KR'),
+          status: notif.read ? ('dismissed' as const) : ('pending' as const),
         };
         set((state) => ({
-          directPings: [newPing, ...state.directPings],
-        }));
-      },
-      dismissDirectPing: (pingId) => {
-        set((state) => ({
-          directPings: state.directPings.map((p) =>
-            p.id === pingId ? { ...p, status: 'dismissed' as const } : p
-          ),
+          directPings: [ping, ...state.directPings.filter((p) => p.id !== ping.id)],
         }));
       },
     }),

@@ -4,11 +4,13 @@ import { useAuthStore } from '../domains/auth/stores/authStore';
 import { useTeamStore } from '../domains/team/stores/teamStore';
 import { useCommuteStore, mapEnStatusToKoState } from '../domains/commute/stores/commuteStore';
 import type { UserStateType } from '../domains/commute/stores/commuteStore';
+import { STATUS_UI_SETTINGS } from '../domains/commute/constants/statusSettings';
+import { WEBSOCKET_TOPICS } from '../lib/constants';
 import { useStandupStore } from '../domains/standup/stores/standupStore';
 import { useVideoCallStore } from '../domains/video-call/stores/videoCallStore';
 import VideoCallModal from '../domains/video-call/components/VideoCallModal';
 import { webSocketService } from '../lib/websocket';
-import type { TeamStatusBroadcast, StatusType } from '../lib/types';
+import type { StatusType } from '../lib/types';
 import * as api from '../lib/api';
 import {
   AreaChart,
@@ -44,8 +46,8 @@ export default function ManagerDashboard() {
     logs: localCommuteLogs,
     sendDirectPing 
   } = useCommuteStore();
-  const { standups } = useStandupStore();
-  const { rooms, activeRoom, joinRoom } = useVideoCallStore();
+  const { standups, loadTeamStandups } = useStandupStore();
+  const { rooms, activeRoom, joinRoom, loadRooms, handleWebsocketEvent: handleVideoCallWS } = useVideoCallStore();
 
   const [copied, setCopied] = useState(false);
   
@@ -68,8 +70,10 @@ export default function ManagerDashboard() {
   useEffect(() => {
     if (user?.id) {
       void fetchTeamMembers(user.id);
+      void loadRooms();
+      void loadTeamStandups(standupFilterDate);
     }
-  }, [fetchTeamMembers, user?.id]);
+  }, [fetchTeamMembers, user?.id, loadRooms, loadTeamStandups, standupFilterDate]);
 
   // 실시간 상태 데이터 조회 및 실시간 웹소켓 구독
   useEffect(() => {
@@ -94,29 +98,45 @@ export default function ManagerDashboard() {
     });
 
     // 3. 토픽 구독 (/topic/team/{managerId})
-    const topic = `/topic/team/${user.id}`;
-    webSocketService.subscribe(topic, (broadcast: TeamStatusBroadcast) => {
+    const topic = WEBSOCKET_TOPICS.TEAM(user.id);
+    webSocketService.subscribe(topic, (broadcast: any) => {
       console.log('실시간 상태 브로드캐스트 수신:', broadcast);
 
-      // 상태 갱신
-      setMemberStatuses((prev) => ({
-        ...prev,
-        [broadcast.memberId]: broadcast.statusType
-      }));
+      if (broadcast.event) {
+        handleVideoCallWS(broadcast);
+        useStandupStore.getState().handleWebsocketEvent(broadcast);
+      }
 
-      // 알림 로그에 적재
-      const logMsg = {
-        id: `log-${Date.now()}-${Math.random()}`,
-        employeeName: broadcast.username,
-        eventType: broadcast.statusType,
-        eventTime: new Date(broadcast.changedAt).toLocaleTimeString('ko-KR'),
-        confidence: 1.0
-      };
-      setAlerts((prev: any) => [logMsg, ...prev].slice(0, 50));
+      if (broadcast.memberId) {
+        // 상태 갱신
+        setMemberStatuses((prev) => ({
+          ...prev,
+          [broadcast.memberId]: broadcast.statusType
+        }));
+
+        // 알림 로그에 적재
+        const logMsg = {
+          id: `log-${Date.now()}-${Math.random()}`,
+          employeeName: broadcast.username,
+          eventType: broadcast.statusType,
+          eventTime: new Date(broadcast.changedAt).toLocaleTimeString('ko-KR'),
+          confidence: 1.0
+        };
+        setAlerts((prev: any) => [logMsg, ...prev].slice(0, 50));
+      }
+    });
+
+    // 4. 개인 채널 구독 (/topic/members/{userId})
+    const memberTopic = WEBSOCKET_TOPICS.MEMBER(user.id);
+    webSocketService.subscribe(memberTopic, (msg) => {
+      if (msg.event) {
+        handleVideoCallWS(msg);
+      }
     });
 
     return () => {
       webSocketService.unsubscribe(topic);
+      webSocketService.unsubscribe(memberTopic);
       webSocketService.disconnect();
     };
   }, [user, teamId]);
@@ -133,9 +153,9 @@ export default function ManagerDashboard() {
   };
 
   // 영상통화 빠른 참여
-  const handleJoinCall = (roomId: string) => {
+  const handleJoinCall = async (roomId: number) => {
     if (user) {
-      joinRoom(roomId, user.id, user.username);
+      await joinRoom(roomId, user.id, user.username);
       setIsVideoModalOpen(true);
     }
   };
@@ -214,7 +234,7 @@ export default function ManagerDashboard() {
   const onlineCount = membersStatus.filter((m) => m.isOnline).length;
   const workingCount = membersStatus.filter((m) => m.status === '집중 근무').length;
   const meetingCount = membersStatus.filter((m) => m.status === '회의 중').length;
-  const restingCount = membersStatus.filter((m) => m.status === '휴식 중').length;
+  const restingCount = membersStatus.filter((m) => m.status === '자리비움').length;
 
   // 3. Recharts 순 인원 차트 시각화 데이터 구성
   // - 업무 시간(09:00 ~ 18:00) 내 온라인 상태인 직원의 수
@@ -243,16 +263,12 @@ export default function ManagerDashboard() {
   );
 
   const getStatusBadge = (status: UserStateType) => {
-    switch (status) {
-      case '집중 근무':
-        return <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-violet-500/10 text-violet-400 border border-violet-500/20">🎯 집중 근무</span>;
-      case '회의 중':
-        return <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">💬 회의 중</span>;
-      case '휴식 중':
-        return <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20">☕ 휴식 중</span>;
-      default:
-        return <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-500 border border-slate-700">😴 오프라인</span>;
-    }
+    const setting = STATUS_UI_SETTINGS[status] || STATUS_UI_SETTINGS['오프라인'];
+    return (
+      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${setting.bgStyle} ${setting.textStyle}`}>
+        {setting.icon} {setting.label}
+      </span>
+    );
   };
 
   return (
@@ -313,7 +329,7 @@ export default function ManagerDashboard() {
             <p className="text-xs font-bold text-slate-500 uppercase">회의 / 휴식</p>
             <div className="flex items-baseline gap-2 mt-2">
               <span className="text-3xl font-black text-amber-400">{meetingCount + restingCount}</span>
-              <span className="text-xs text-slate-600">명 (회의 {meetingCount} / 휴식 {restingCount})</span>
+              <span className="text-xs text-slate-600">명 (회의 {meetingCount} / 자리비움 {restingCount})</span>
             </div>
           </div>
         </div>
@@ -536,7 +552,7 @@ export default function ManagerDashboard() {
                         <span className="text-xs font-black text-cyan-400">
                           {alert.eventType === 'WORKING' ? '🟢 근무 중' :
                            alert.eventType === 'MEETING' ? '💬 회의 중' :
-                           alert.eventType === 'BREAK' ? '☕ 휴식 중' :
+                           alert.eventType === 'AWAY' ? '🚶 자리비움' :
                            alert.eventType === 'FOCUS' ? '🎯 집중 근무' : '😴 오프라인'}
                         </span>
                       </div>

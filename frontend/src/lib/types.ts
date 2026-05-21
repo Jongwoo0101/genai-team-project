@@ -7,7 +7,7 @@
 export type Role = 'EMPLOYEE' | 'MANAGER';
 
 /** AI 모델 → 프론트 WebSocket 상태 (backend: StatusType 기반 AI 판별 상태) */
-export type AiStatusType = 'WORKING' | 'MEETING' | 'BREAK';
+export type AiStatusType = 'WORKING' | 'MEETING' | 'AWAY' | 'FOCUS';
 
 /** ──────────── 인증 관련 DTO ──────────── */
 
@@ -166,7 +166,7 @@ export interface WSErrorMsg {
 
 /** ──────────── v2.0 출퇴근 및 상태 관리 DTO ──────────── */
 
-export type StatusType = 'WORKING' | 'MEETING' | 'BREAK' | 'FOCUS' | 'OFFLINE';
+export type StatusType = 'WORKING' | 'MEETING' | 'AWAY' | 'FOCUS' | 'OFFLINE';
 
 export interface ClockInResponse {
   workLogId: number;
@@ -204,4 +204,77 @@ export interface TeamStatusBroadcast {
   username: string;
   statusType: StatusType;
   changedAt: string;
+}
+
+/** ──────────── 미팅룸 관련 DTO ──────────── */
+export interface MeetingParticipantResponse {
+  memberId: number;
+  username: string;
+  requestStatus: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  invited: boolean;
+}
+
+export interface MeetingRoomResponse {
+  roomId: number;
+  title: string;
+  hostId: number;
+  hostUsername: string;
+  active: boolean;
+  participantCount: number;
+  createdAt: string;
+}
+
+export interface MeetingRoomDetailResponse {
+  roomId: number;
+  title: string;
+  hostId: number;
+  hostUsername: string;
+  active: boolean;
+  participants: MeetingParticipantResponse[];
+  createdAt: string;
+}
+
+export interface JoinRequestResponse {
+  participantId: number;
+  roomId: number;
+  memberId: number;
+  username: string;
+  requestStatus: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+}
+
+/** ──────────── 알림 관련 DTO ──────────── */
+export type NotificationType = 'GENERAL' | 'IMPORTANT';
+
+export interface NotificationResponse {
+  notificationId: number;
+  senderId: number;
+  senderUsername: string;
+  receiverId: number;
+  receiverUsername: string;
+  message: string;
+  notificationType: NotificationType;
+  read: boolean;
+  createdAt: string;
+  readAt: string | null;
+}
+
+export interface UnreadCountResponse {
+  unreadCount: number;
+}
+
+/** ──────────── 데일리 스탠드업 관련 DTO ──────────── */
+export interface StandupResponse {
+  standupId: number;
+  memberId: number;
+  username: string;
+  standupDate: string;
+  goal: string;
+  result: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TeamStandupResponse {
+  standupDate: string;
+  standups: StandupResponse[];
 }

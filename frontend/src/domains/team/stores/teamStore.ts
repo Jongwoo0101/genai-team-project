@@ -236,6 +236,8 @@ export const useTeamStore = create<TeamState>((set, get) => {
           
           set({ teams: updatedTeams, memberTeamMap: updatedMap });
           saveTeamStorage(updatedTeams, updatedMap);
+          // 팀 멤버 목록도 함께 가져와서 동기화
+          await get().fetchTeamMembers(res.managerId);
         }
       } catch (err) {
         if (err instanceof Error && err.message === 'NOT_JOINED') {
