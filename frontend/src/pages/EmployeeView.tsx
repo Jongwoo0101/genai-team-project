@@ -251,7 +251,7 @@ export default function EmployeeView() {
       );
       if (approvedRequest) {
         processedRequestsRef.current.add(approvedRequest.requestId);
-        joinRoom(approvedRequest.roomId, user.id, user.username);
+        joinRoom(approvedRequest.roomId);
         setIsVideoModalOpen(true);
       }
     }
@@ -379,7 +379,7 @@ export default function EmployeeView() {
       const isAlreadyParticipant = targetRoom.participants.some((p) => p.id === user.id);
 
       if (isHost || isAlreadyParticipant) {
-        await joinRoom(roomId, user.id, user.username);
+        await joinRoom(roomId);
         setIsVideoModalOpen(true);
       } else {
         const hasPendingRequest = joinRequests.some(

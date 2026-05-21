@@ -43,11 +43,17 @@ export default function VideoCallModal({ onClose }: VideoCallModalProps) {
       !activeRoom?.participants.some((p) => p.id === member.id)
   );
 
-  const stopCamera = () => {
+  // Camera/mic stream only (screen share is untouched)
+  const stopMediaTracks = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
+  };
+
+  // Everything (used only on unmount / leave)
+  const stopAllMedia = () => {
+    stopMediaTracks();
     if (screenStreamRef.current) {
       screenStreamRef.current.getTracks().forEach((track) => track.stop());
       screenStreamRef.current = null;
@@ -87,7 +93,7 @@ export default function VideoCallModal({ onClose }: VideoCallModalProps) {
       screenStreamRef.current = null;
     }
     setIsScreenSharing(false);
-    
+
     if (videoRef.current && streamRef.current && mySession?.isCamOn) {
       videoRef.current.srcObject = streamRef.current;
     } else if (videoRef.current) {
@@ -95,40 +101,17 @@ export default function VideoCallModal({ onClose }: VideoCallModalProps) {
     }
   };
 
-  // 카메라/마이크 하드웨어 스트림 제어
+  // Effect 1: 방 입장 시 미디어 스트림 획득 (방이 바뀔 때만 실행)
   useEffect(() => {
-    const updateHardwareStream = async () => {
+    const acquireStream = async () => {
       try {
-        const wantsCam = !!mySession?.isCamOn;
-        const wantsMic = !!mySession?.isMicOn;
-
-        if (!wantsCam && !wantsMic) {
-          stopCamera();
-          return;
-        }
-
-        if (!streamRef.current) {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: { width: 640, height: 480 },
-            audio: { echoCancellation: true, noiseSuppression: true }
-          });
-          streamRef.current = stream;
-        }
-
-        // 트랙 활성화/비활성화 조작
-        streamRef.current.getVideoTracks().forEach((track) => {
-          track.enabled = wantsCam;
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 640, height: 480 },
+          audio: { echoCancellation: true, noiseSuppression: true },
         });
-        streamRef.current.getAudioTracks().forEach((track) => {
-          track.enabled = wantsMic;
-        });
-
+        streamRef.current = stream;
         if (videoRef.current && !isScreenSharing) {
-          if (!wantsCam) {
-            videoRef.current.srcObject = null;
-          } else if (videoRef.current.srcObject !== streamRef.current) {
-            videoRef.current.srcObject = streamRef.current;
-          }
+          videoRef.current.srcObject = stream;
         }
         setCameraError(null);
       } catch (err) {
@@ -138,21 +121,46 @@ export default function VideoCallModal({ onClose }: VideoCallModalProps) {
     };
 
     if (activeRoom && mySession) {
-      void updateHardwareStream();
+      void acquireStream();
     }
 
     return () => {
-      stopCamera();
+      // 방에서 나갈 때만 전체 정리
+      stopAllMedia();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeRoom?.roomId, mySession?.isCamOn, mySession?.isMicOn, isScreenSharing]);
+  }, [activeRoom?.roomId]);
+
+  // Effect 2: 카메라/마이크 토글 시 트랙 enabled만 조작 (스트림 재획득 없음)
+  useEffect(() => {
+    if (!streamRef.current) return;
+
+    const wantsCam = !!mySession?.isCamOn;
+    const wantsMic = !!mySession?.isMicOn;
+
+    streamRef.current.getVideoTracks().forEach((track) => {
+      track.enabled = wantsCam;
+    });
+    streamRef.current.getAudioTracks().forEach((track) => {
+      track.enabled = wantsMic;
+    });
+
+    // 화면 공유 중이 아닐 때만 비디오 엘리먼트 업데이트
+    if (videoRef.current && !isScreenSharing) {
+      if (!wantsCam) {
+        videoRef.current.srcObject = null;
+      } else if (videoRef.current.srcObject !== streamRef.current) {
+        videoRef.current.srcObject = streamRef.current;
+      }
+    }
+  }, [mySession?.isCamOn, mySession?.isMicOn, isScreenSharing]);
 
   const handleLeave = () => {
-    if (user?.id) {
-      leaveRoom(user.id);
+    if (activeRoom) {
+      leaveRoom(activeRoom.roomId);
     }
     stopScreenShare();
-    stopCamera();
+    stopAllMedia();
     onClose();
   };
 

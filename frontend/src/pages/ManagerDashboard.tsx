@@ -155,7 +155,7 @@ export default function ManagerDashboard() {
   // 영상통화 빠른 참여
   const handleJoinCall = async (roomId: number) => {
     if (user) {
-      await joinRoom(roomId, user.id, user.username);
+      await joinRoom(roomId);
       setIsVideoModalOpen(true);
     }
   };

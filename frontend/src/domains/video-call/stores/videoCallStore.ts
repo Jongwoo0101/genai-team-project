@@ -45,7 +45,7 @@ interface VideoCallState {
   loadRooms: () => Promise<void>;
   loadActiveRoomDetail: (roomId: number) => Promise<void>;
   createRoom: (title: string) => Promise<void>;
-  joinRoom: (roomId: number, participantId: number, participantName: string) => Promise<void>;
+  joinRoom: (roomId: number) => Promise<void>;
   leaveRoom: (roomId: number) => Promise<void>;
   endRoom: (roomId: number) => Promise<void>;
   toggleCam: (participantId: number) => void;
@@ -133,7 +133,7 @@ export const useVideoCallStore = create<VideoCallState>()(
           throw err;
         }
       },
-      joinRoom: async (roomId, _participantId, _participantName) => {
+      joinRoom: async (roomId) => {
         try {
           // 입장 처리는 API 상 respondToJoinRequest/respondToInvitation 완료 후 
           // 또는 생성자가 입장할 때 수행됨. 
@@ -308,8 +308,18 @@ export const useVideoCallStore = create<VideoCallState>()(
           }
           case 'REQUEST_ACCEPTED': {
             const roomId = data.roomId;
+            const acceptedParticipantId = data.participantId;
+            // joinRequests의 status를 'approved'로 갱신하여
+            // EmployeeView의 useEffect가 감지하고 모달을 자동으로 열 수 있도록 함
+            set((state) => ({
+              joinRequests: state.joinRequests.map((r) =>
+                r.requestId === acceptedParticipantId
+                  ? { ...r, status: 'approved' as const }
+                  : r
+              ),
+            }));
             await get().loadRooms();
-            await get().joinRoom(roomId, data.memberId, data.username);
+            await get().joinRoom(roomId);
             break;
           }
           case 'REQUEST_REJECTED': {
