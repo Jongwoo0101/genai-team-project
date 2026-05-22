@@ -26,11 +26,14 @@ public class WorkLogDto {
             LocalDateTime clockOutTime
     ) {}
 
-    /** WebSocket 브로드캐스트용 — 팀 전체에 전송 */
-    public record TeamStatusBroadcast(
+    /**
+     * WebSocket 브로드캐스트용 상태 페이로드
+     * WsEnvelope.data 에 담겨 전송됨
+     * occurredAt 은 WsEnvelope 레벨에서 관리하므로 여기선 제거
+     */
+    public record TeamStatusPayload(
             Long memberId,
             String username,
-            StatusType statusType,  // WORKING or OFFLINE
-            LocalDateTime changedAt
+            StatusType statusType
     ) {}
 }

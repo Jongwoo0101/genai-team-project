@@ -1,6 +1,8 @@
 package com.worksight.api.service;
 
 import com.worksight.api.dto.MemberStatusDto.*;
+import com.worksight.api.dto.WsEnvelope;
+import com.worksight.api.dto.WorkLogDto.TeamStatusPayload;
 import com.worksight.api.entity.Member;
 import com.worksight.api.entity.MemberStatus;
 import com.worksight.api.enums.StatusType;
@@ -14,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Slf4j
@@ -28,13 +29,8 @@ public class StatusService {
 
     /**
      * AI 캠 분석 결과 상태 업데이트
-     *
      * 허용: WORKING / AWAY / FOCUS
-     *   - AWAY  : 키보드·마우스 5분 무입력 + 캠으로 자리비움 판별
-     *   - FOCUS : 시선 80% 이상 모니터 고정 + 상체 기울기 10분 유지
-     *
-     * 불허: MEETING (미팅룸 입장 시 MeetingRoomService에서 자동 변경)
-     *       OFFLINE (퇴근 시 WorkLogService에서 자동 변경)
+     * 불허: MEETING (미팅룸 입장 시 자동), OFFLINE (퇴근 시 자동)
      */
     @Transactional
     public StatusUpdateResponse updateAiStatus(Member member, AiStatusUpdateRequest request) {
@@ -51,8 +47,7 @@ public class StatusService {
     }
 
     /**
-     * 사용자 수동 상태 설정
-     * FOCUS 만 허용
+     * 사용자 수동 상태 설정 — FOCUS 만 허용
      */
     @Transactional
     public StatusUpdateResponse updateManualStatus(Member member, ManualStatusUpdateRequest request) {
@@ -82,8 +77,7 @@ public class StatusService {
     }
 
     /**
-     * 패키지 내부 공개 — MeetingRoomService에서 MEETING 상태 변경 시 호출
-     * (미팅룸 입장/퇴장 시 상태 자동 전환용)
+     * 패키지 내부 공개 — MeetingRoomService 에서 호출
      */
     @Transactional
     public void updateStatusInternal(Member member, StatusType statusType) {
@@ -118,6 +112,11 @@ public class StatusService {
     }
 
     private void broadcastAfterCommit(Member member, StatusType statusType) {
+        WsEnvelope envelope = WsEnvelope.of(
+                WsEnvelope.Event.STATUS_CHANGED,
+                new TeamStatusPayload(member.getId(), member.getUsername(), statusType)
+        );
+
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
@@ -125,13 +124,7 @@ public class StatusService {
                         ? "/topic/team/" + member.getManagerId()
                         : "/topic/members/" + member.getId();
 
-                messagingTemplate.convertAndSend(topic, new TeamMemberStatusResponse(
-                        member.getId(),
-                        member.getUsername(),
-                        statusType,
-                        LocalDateTime.now()
-                ));
-
+                messagingTemplate.convertAndSend(topic, envelope);
                 log.info("Status broadcasted: memberId={}, status={}, topic={}",
                         member.getId(), statusType, topic);
             }

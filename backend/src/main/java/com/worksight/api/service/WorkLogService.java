@@ -1,5 +1,6 @@
 package com.worksight.api.service;
 
+import com.worksight.api.dto.WsEnvelope;
 import com.worksight.api.dto.WorkLogDto.*;
 import com.worksight.api.entity.Member;
 import com.worksight.api.entity.MemberStatus;
@@ -29,24 +30,15 @@ public class WorkLogService {
     private final MemberRepository memberRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
-    /**
-     * 업무 시작 (출근)
-     * 1. 당일 중복 출근 방지
-     * 2. WorkLog 생성
-     * 3. MemberStatus → WORKING 으로 upsert
-     * 4. 트랜잭션 커밋 후 팀 전체에 WebSocket 브로드캐스트
-     */
     @Transactional
     public ClockInResponse clockIn(Member member) {
         LocalDate today = LocalDate.now();
 
-        // 이미 출근한 경우 방지
         workLogRepository.findByMemberAndWorkDate(member, today)
                 .ifPresent(w -> {
                     throw new IllegalStateException("이미 오늘 출근하셨습니다.");
                 });
 
-        // WorkLog 생성
         WorkLog workLog = WorkLog.builder()
                 .member(member)
                 .workDate(today)
@@ -54,12 +46,10 @@ public class WorkLogService {
                 .build();
         workLogRepository.save(workLog);
 
-        // MemberStatus upsert → WORKING
         updateMemberStatus(member, StatusType.WORKING);
 
         log.info("Clock-in: memberId={}, time={}", member.getId(), workLog.getClockInTime());
 
-        // 커밋 후 팀 전체 브로드캐스트
         broadcastAfterCommit(member, StatusType.WORKING);
 
         return new ClockInResponse(
@@ -71,13 +61,6 @@ public class WorkLogService {
         );
     }
 
-    /**
-     * 업무 종료 (퇴근)
-     * 1. 당일 출근 기록 조회
-     * 2. clockOutTime 업데이트
-     * 3. MemberStatus → OFFLINE
-     * 4. 트랜잭션 커밋 후 팀 전체에 WebSocket 브로드캐스트
-     */
     @Transactional
     public ClockOutResponse clockOut(Member member) {
         LocalDate today = LocalDate.now();
@@ -90,13 +73,10 @@ public class WorkLogService {
         }
 
         workLog.clockOut(LocalDateTime.now());
-
-        // MemberStatus → OFFLINE
         updateMemberStatus(member, StatusType.OFFLINE);
 
         log.info("Clock-out: memberId={}, time={}", member.getId(), workLog.getClockOutTime());
 
-        // 커밋 후 팀 전체 브로드캐스트
         broadcastAfterCommit(member, StatusType.OFFLINE);
 
         return new ClockOutResponse(
@@ -111,9 +91,7 @@ public class WorkLogService {
 
     // ── 내부 헬퍼 ────────────────────────────────────────────────
 
-    /** MemberStatus upsert (없으면 생성, 있으면 업데이트) */
     private void updateMemberStatus(Member member, StatusType statusType) {
-        // @AuthenticationPrincipal 객체는 영속성 컨텍스트 밖이므로 DB에서 재조회
         Member managed = memberRepository.findById(member.getId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
 
@@ -127,17 +105,11 @@ public class WorkLogService {
         memberStatusRepository.save(status);
     }
 
-    /**
-     * 트랜잭션 커밋 완료 후 WebSocket 브로드캐스트
-     * - /topic/team/{managerId} 로 전송
-     * - managerId가 없는 경우(팀 미소속) 개인 토픽으로 폴백
-     */
     private void broadcastAfterCommit(Member member, StatusType statusType) {
-        TeamStatusBroadcast payload = new TeamStatusBroadcast(
-                member.getId(),
-                member.getUsername(),
-                statusType,
-                LocalDateTime.now()
+        // WsEnvelope 표준 구조로 발신
+        WsEnvelope envelope = WsEnvelope.of(
+                WsEnvelope.Event.STATUS_CHANGED,
+                new TeamStatusPayload(member.getId(), member.getUsername(), statusType)
         );
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -147,7 +119,7 @@ public class WorkLogService {
                         ? "/topic/team/" + member.getManagerId()
                         : "/topic/members/" + member.getId();
 
-                messagingTemplate.convertAndSend(topic, payload);
+                messagingTemplate.convertAndSend(topic, envelope);
                 log.info("Broadcasted status: memberId={}, status={}, topic={}",
                         member.getId(), statusType, topic);
             }

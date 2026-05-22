@@ -23,7 +23,7 @@ public class MemberStatusDto {
             StatusType statusType
     ) {}
 
-    /** 상태 변경 응답 */
+    /** 상태 변경 REST 응답 */
     public record StatusUpdateResponse(
             Long memberId,
             String username,
@@ -31,7 +31,10 @@ public class MemberStatusDto {
             LocalDateTime updatedAt
     ) {}
 
-    /** 팀 전체 상태 조회 응답 (1인 1건) */
+    /**
+     * 팀 전체 상태 조회 REST 응답 (1인 1건)
+     * WebSocket 브로드캐스트 시에는 WsEnvelope.data 에 TeamStatusPayload 사용
+     */
     public record TeamMemberStatusResponse(
             Long memberId,
             String username,

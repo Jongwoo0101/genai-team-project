@@ -1,6 +1,7 @@
 package com.worksight.api.service;
 
 import com.worksight.api.dto.DailyStandupDto.*;
+import com.worksight.api.dto.WsEnvelope;
 import com.worksight.api.entity.DailyStandup;
 import com.worksight.api.entity.Member;
 import com.worksight.api.repository.DailyStandupRepository;
@@ -26,12 +27,6 @@ public class DailyStandupService {
     private final MemberRepository memberRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
-    /**
-     * 오늘의 목표 작성 (하루 시작)
-     * - 당일 스탠드업이 없으면 새로 생성
-     * - 이미 있으면 목표 수정
-     * - 팀 전체에 WebSocket 브로드캐스트
-     */
     @Transactional
     public DailyStandupResponse writeGoal(Member member, WriteGoalRequest request) {
         Member managed = getManagedMember(member);
@@ -50,16 +45,11 @@ public class DailyStandupService {
 
         log.info("Goal written: memberId={}, date={}", managed.getId(), today);
 
-        broadcastAfterCommit(managed, "GOAL_UPDATED");
+        broadcastAfterCommit(managed, WsEnvelope.Event.GOAL_UPDATED, today);
 
         return toResponse(standup);
     }
 
-    /**
-     * 오늘의 결과 작성 (하루 끝)
-     * - 당일 목표가 먼저 작성되어 있어야 함
-     * - 팀 전체에 WebSocket 브로드캐스트
-     */
     @Transactional
     public DailyStandupResponse writeResult(Member member, WriteResultRequest request) {
         Member managed = getManagedMember(member);
@@ -67,38 +57,28 @@ public class DailyStandupService {
 
         DailyStandup standup = dailyStandupRepository
                 .findByMemberAndStandupDate(managed, today)
-                .orElseThrow(() -> new IllegalStateException(
-                        "오늘의 목표를 먼저 작성해주세요."));
+                .orElseThrow(() -> new IllegalStateException("오늘의 목표를 먼저 작성해주세요."));
 
         standup.updateResult(request.result());
 
         log.info("Result written: memberId={}, date={}", managed.getId(), today);
 
-        broadcastAfterCommit(managed, "RESULT_UPDATED");
+        broadcastAfterCommit(managed, WsEnvelope.Event.RESULT_UPDATED, today);
 
         return toResponse(standup);
     }
 
-    /**
-     * 내 오늘 스탠드업 조회
-     */
     @Transactional(readOnly = true)
     public DailyStandupResponse getMyStandup(Member member) {
         Member managed = getManagedMember(member);
 
         DailyStandup standup = dailyStandupRepository
                 .findByMemberAndStandupDate(managed, LocalDate.now())
-                .orElseThrow(() -> new IllegalStateException(
-                        "오늘 작성된 스탠드업이 없습니다."));
+                .orElseThrow(() -> new IllegalStateException("오늘 작성된 스탠드업이 없습니다."));
 
         return toResponse(standup);
     }
 
-    /**
-     * 팀 전체 오늘 스탠드업 조회
-     * - date 파라미터 없으면 오늘 날짜 기준
-     * - MANAGER / EMPLOYEE 모두 조회 가능
-     */
     @Transactional(readOnly = true)
     public TeamStandupResponse getTeamStandup(Member member, LocalDate date) {
         LocalDate targetDate = (date != null) ? date : LocalDate.now();
@@ -122,30 +102,22 @@ public class DailyStandupService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
     }
 
-    /**
-     * 커밋 후 팀 전체 브로드캐스트
-     * /topic/team/{managerId} 로 스탠드업 업데이트 이벤트 전송
-     */
-    private void broadcastAfterCommit(Member member, String eventType) {
+    /** WsEnvelope 표준 구조로 팀 전체 브로드캐스트 */
+    private void broadcastAfterCommit(Member member, String event, LocalDate date) {
+        WsEnvelope envelope = WsEnvelope.of(event, Map.of(
+                "memberId", member.getId(),
+                "username", member.getUsername(),
+                "date", date.toString()
+        ));
+
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
                 Long managerId = member.getManagerId() != null
-                        ? member.getManagerId()
-                        : member.getId();
+                        ? member.getManagerId() : member.getId();
 
-                messagingTemplate.convertAndSend(
-                        "/topic/team/" + managerId,
-                        Map.of(
-                                "type", eventType,
-                                "memberId", member.getId(),
-                                "username", member.getUsername(),
-                                "date", LocalDate.now().toString()
-                        )
-                );
-
-                log.info("Standup broadcasted: memberId={}, event={}",
-                        member.getId(), eventType);
+                messagingTemplate.convertAndSend("/topic/team/" + managerId, envelope);
+                log.info("Standup broadcasted: memberId={}, event={}", member.getId(), event);
             }
         });
     }
