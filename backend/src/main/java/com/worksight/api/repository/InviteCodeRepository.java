@@ -10,8 +10,8 @@ import java.util.Optional;
 public interface InviteCodeRepository extends JpaRepository<InviteCode, Long> {
 
     /**
-     * 아직 사용되지 않은(used = false) 특정 초대 코드를 조회합니다.
-     * MemberService의 joinTeam 메서드에서 사용됩니다.
+     * 특정 초대 코드를 조회합니다.
+     * 만료 여부는 Service 단의 시간(expiresAt) 검증을 통해 확인합니다.
      */
-    Optional<InviteCode> findByCodeAndUsedFalse(String code);
+    Optional<InviteCode> findByCode(String code);
 }

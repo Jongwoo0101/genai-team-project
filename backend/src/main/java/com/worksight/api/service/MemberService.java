@@ -87,11 +87,6 @@ public class MemberService {
                 member.getRole(), member.getVirtualBalance());
     }
 
-    /**
-     * MANAGER 초대 코드 생성
-     * 만료 시간: 설정값(app.invite.expiration-seconds) 기준
-     * DB 저장 방식으로 전환 (서버 재시작 후에도 유효)
-     */
     @Transactional
     public InviteCodeResponse generateInviteCode(Member manager) {
         String code = "WS-" + randomSegment() + "-" + randomSegment();
@@ -110,12 +105,13 @@ public class MemberService {
 
     /**
      * EMPLOYEE 초대 코드로 팀 참가
-     * DB에서 코드 조회 및 검증
+     * 다회용 사용을 위해 DB 코드 조회 후 시간만 검증하도록 수정
      */
     @Transactional
     public void joinTeam(JoinTeamRequest request, Member employee) {
+        // 1. 조회 메서드 변경: findByCode
         com.worksight.api.entity.InviteCode inviteCode =
-                inviteCodeRepository.findByCodeAndUsedFalse(request.inviteCode())
+                inviteCodeRepository.findByCode(request.inviteCode())
                         .orElseThrow(() -> new IllegalArgumentException(
                                 "유효하지 않거나 만료된 초대 코드입니다."));
 
@@ -127,9 +123,9 @@ public class MemberService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 직원입니다."));
 
         managedEmployee.linkManager(inviteCode.getManagerId());
-        inviteCode.markAsUsed(); // 일회성 처리
 
-        // WsEnvelope 표준 구조로 TEAM_LINKED 발신
+        // 2. 일회성 처리 제거됨: inviteCode.markAsUsed();
+
         messagingTemplate.convertAndSend(
                 "/topic/members/" + managedEmployee.getId(),
                 WsEnvelope.of(

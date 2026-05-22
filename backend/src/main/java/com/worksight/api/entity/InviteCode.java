@@ -25,13 +25,5 @@ public class InviteCode {
     @Column(nullable = false)
     private Instant expiresAt;
 
-    @Column(nullable = false)
-    private boolean used; // 기본값 false
-
-    /**
-     * 일회성 초대 코드 처리를 위한 비즈니스 메서드
-     */
-    public void markAsUsed() {
-        this.used = true;
-    }
+    // used 필드 및 markAsUsed() 메서드 제거됨
 }
