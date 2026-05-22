@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { STORAGE_KEYS } from '../../../lib/constants';
 import * as api from '../../../lib/api';
+import { formatDateTimeKo, toEpochMs, toIsoString } from '../../../lib/datetime';
+import { parseWsEnvelope } from '../../../lib/wsEvent';
 
 export interface Standup {
   id: string;
@@ -10,7 +12,9 @@ export interface Standup {
   dateStr: string;
   todayGoal: string;
   todayResult: string;
-  timestamp: string;
+  timestampIso: string;
+  timestampDisplay: string;
+  epochMs: number;
 }
 
 interface StandupState {
@@ -21,7 +25,7 @@ interface StandupState {
   loadTeamStandups: (dateStr?: string) => Promise<void>;
   loadMyTodayStandup: () => Promise<void>;
   clearAll: () => void;
-  handleWebsocketEvent: (msg: any) => Promise<void>;
+  handleWebsocketEvent: (msg: unknown) => Promise<void>;
 }
 
 export const useStandupStore = create<StandupState>()(
@@ -59,7 +63,9 @@ export const useStandupStore = create<StandupState>()(
             dateStr: s.standupDate,
             todayGoal: s.goal,
             todayResult: s.result || '',
-            timestamp: new Date(s.createdAt).toLocaleString('ko-KR'),
+            timestampIso: toIsoString(s.createdAt),
+            timestampDisplay: formatDateTimeKo(toIsoString(s.createdAt)),
+            epochMs: toEpochMs(toIsoString(s.createdAt)),
           }));
           set({ standups: mapped });
         } catch (err) {
@@ -76,7 +82,9 @@ export const useStandupStore = create<StandupState>()(
             dateStr: s.standupDate,
             todayGoal: s.goal,
             todayResult: s.result || '',
-            timestamp: new Date(s.createdAt).toLocaleString('ko-KR'),
+            timestampIso: toIsoString(s.createdAt),
+            timestampDisplay: formatDateTimeKo(toIsoString(s.createdAt)),
+            epochMs: toEpochMs(toIsoString(s.createdAt)),
           };
           set((state) => {
             const filtered = state.standups.filter(
@@ -84,8 +92,8 @@ export const useStandupStore = create<StandupState>()(
             );
             return { standups: [mapped, ...filtered] };
           });
-        } catch (err: any) {
-          if (err.message === 'NO_STANDUP') {
+        } catch (err: unknown) {
+          if (err instanceof Error && err.message === 'NO_STANDUP') {
             return;
           }
           console.error('내 오늘 스탠드업 로드 실패:', err);
@@ -95,8 +103,9 @@ export const useStandupStore = create<StandupState>()(
         set({ standups: [] });
       },
       handleWebsocketEvent: async (msg) => {
-        const { event } = msg;
-        if (event === 'GOAL_UPDATED' || event === 'RESULT_UPDATED') {
+        const envelope = parseWsEnvelope(msg);
+        if (!envelope) return;
+        if (envelope.event === 'GOAL_UPDATED' || envelope.event === 'RESULT_UPDATED') {
           const todayStr = new Date().toISOString().split('T')[0];
           await get().loadTeamStandups(todayStr);
         }

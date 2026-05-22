@@ -2,6 +2,13 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { STORAGE_KEYS } from '../../../lib/constants';
 import * as api from '../../../lib/api';
+import { parseWsEnvelope } from '../../../lib/wsEvent';
+
+const toNumber = (value: unknown): number | null =>
+  typeof value === 'number' ? value : null;
+
+const toString = (value: unknown): string | null =>
+  typeof value === 'string' ? value : null;
 
 export interface Participant {
   id: number;
@@ -57,7 +64,7 @@ interface VideoCallState {
   inviteUser: (roomId: number, inviteeId: number) => Promise<void>;
   acceptInvitation: (roomId: number, inviteId: number) => Promise<void>;
   declineInvitation: (roomId: number, inviteId: number) => Promise<void>;
-  handleWebsocketEvent: (msg: any) => Promise<void>;
+  handleWebsocketEvent: (msg: unknown) => Promise<void>;
 }
 
 export const useVideoCallStore = create<VideoCallState>()(
@@ -253,8 +260,9 @@ export const useVideoCallStore = create<VideoCallState>()(
         }
       },
       handleWebsocketEvent: async (msg) => {
-        const { event, data } = msg;
-        if (!event) return;
+        const envelope = parseWsEnvelope(msg);
+        if (!envelope) return;
+        const { event, data } = envelope;
 
         switch (event) {
           case 'ROOM_CREATED': {
@@ -262,7 +270,8 @@ export const useVideoCallStore = create<VideoCallState>()(
             break;
           }
           case 'ROOM_ENDED': {
-            const endedRoomId = data.roomId;
+            const endedRoomId = toNumber(data.roomId);
+            if (!endedRoomId) break;
             set((state) => ({
               rooms: state.rooms.filter((r) => r.roomId !== endedRoomId),
               activeRoom: state.activeRoom?.roomId === endedRoomId ? null : state.activeRoom,
@@ -271,7 +280,8 @@ export const useVideoCallStore = create<VideoCallState>()(
           }
           case 'MEMBER_JOINED':
           case 'MEMBER_LEFT': {
-            const roomId = data.roomId;
+            const roomId = toNumber(data.roomId);
+            if (!roomId) break;
             await get().loadRooms();
             if (get().activeRoom?.roomId === roomId) {
               await get().loadActiveRoomDetail(roomId);
@@ -279,11 +289,16 @@ export const useVideoCallStore = create<VideoCallState>()(
             break;
           }
           case 'JOIN_REQUESTED': {
+            const participantId = toNumber(data.participantId);
+            const roomId = toNumber(data.roomId);
+            const memberId = toNumber(data.memberId);
+            const username = toString(data.username);
+            if (!participantId || !roomId || !memberId || !username) break;
             const req: JoinRequest = {
-              requestId: data.participantId,
-              roomId: data.roomId,
-              userId: data.memberId,
-              userName: data.username,
+              requestId: participantId,
+              roomId,
+              userId: memberId,
+              userName: username,
               status: 'pending',
             };
             set((state) => ({
@@ -292,13 +307,18 @@ export const useVideoCallStore = create<VideoCallState>()(
             break;
           }
           case 'INVITED': {
+            const participantId = toNumber(data.participantId);
+            const roomId = toNumber(data.roomId);
+            const memberId = toNumber(data.memberId);
+            const username = toString(data.username);
+            if (!participantId || !roomId || !memberId || !username) break;
             const inv: Invitation = {
-              inviteId: data.participantId,
-              roomId: data.roomId,
-              roomTitle: data.roomTitle || '화상 회의실',
-              hostName: data.hostUsername || '매니저',
-              inviteeId: data.memberId,
-              inviteeName: data.username,
+              inviteId: participantId,
+              roomId,
+              roomTitle: toString(data.roomTitle) || '화상 회의실',
+              hostName: toString(data.hostUsername) || '매니저',
+              inviteeId: memberId,
+              inviteeName: username,
               status: 'pending',
             };
             set((state) => ({
@@ -307,8 +327,9 @@ export const useVideoCallStore = create<VideoCallState>()(
             break;
           }
           case 'REQUEST_ACCEPTED': {
-            const roomId = data.roomId;
-            const acceptedParticipantId = data.participantId;
+            const roomId = toNumber(data.roomId);
+            const acceptedParticipantId = toNumber(data.participantId);
+            if (!roomId || !acceptedParticipantId) break;
             // joinRequests의 status를 'approved'로 갱신하여
             // EmployeeView의 useEffect가 감지하고 모달을 자동으로 열 수 있도록 함
             set((state) => ({
@@ -323,7 +344,8 @@ export const useVideoCallStore = create<VideoCallState>()(
             break;
           }
           case 'REQUEST_REJECTED': {
-            const requestId = data.participantId;
+            const requestId = toNumber(data.participantId);
+            if (!requestId) break;
             set((state) => ({
               joinRequests: state.joinRequests.filter((r) => r.requestId !== requestId),
             }));

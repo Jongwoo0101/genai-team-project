@@ -21,6 +21,8 @@
 - [x] Jongwoo0101 원격 브랜치 변경 사항 추적 및 frontend 브랜치 병합 (신규 상태 관리 API StatusController & StatusService 및 README.md 등 백엔드 전면 병합 완료) (@fe-dev, @qa-tester, 2026-05-20)
 - [x] 백엔드 v2.0 API 스펙 대조 및 매니저 대시보드 teamId NaN 버그 수정 (@fe-dev, @qa-tester, 2026-05-20)
 - [x] Jongwoo0101 원격 브랜치의 백엔드 API 추가 기능(데일리 스탠드업, 회의실, 알림 API 등 11개 커밋) 가져오기 완료 (2026-05-21)
+- [x] 프론트엔드 스펙 이슈(공유 상태, 웹소켓 페이로드, 시간 정규화, 타입 안전성, 구조 분리) 수정 및 검증 완료 (@fe-dev, @qa-tester, 2026-05-22)
+- [x] GitHub Pull Request 생성 및 병합 준비 (@ops-manager, 2026-05-22)
 
 ## 진행 중
 
