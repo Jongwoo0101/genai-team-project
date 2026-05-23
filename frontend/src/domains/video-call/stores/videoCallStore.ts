@@ -74,6 +74,7 @@ export const useVideoCallStore = create<VideoCallState>()(
       activeRoom: null,
       joinRequests: [],
       invitations: [],
+
       loadRooms: async () => {
         try {
           const list = await api.getMeetings();
@@ -82,7 +83,10 @@ export const useVideoCallStore = create<VideoCallState>()(
             title: r.title,
             hostId: r.hostId,
             hostName: r.hostUsername,
-            participants: [], // 인원은 상세 조회를 통해 동기화
+            // ✅ 수정: participants를 빈 배열로 버리지 않고 기존 activeRoom의 참가자 유지
+            participants: get().activeRoom?.roomId === r.roomId
+              ? get().activeRoom!.participants
+              : [],
             createdAt: new Date(r.createdAt).toLocaleTimeString('ko-KR'),
           }));
           set({ rooms: mapped });
@@ -90,6 +94,7 @@ export const useVideoCallStore = create<VideoCallState>()(
           console.error('회의실 목록 로드 실패:', err);
         }
       },
+
       loadActiveRoomDetail: async (roomId) => {
         try {
           const detail = await api.getMeetingDetail(roomId);
@@ -114,6 +119,7 @@ export const useVideoCallStore = create<VideoCallState>()(
           console.error('활성 회의실 상세 로드 실패:', err);
         }
       },
+
       createRoom: async (title) => {
         try {
           const room = await api.createMeeting(title);
@@ -140,16 +146,28 @@ export const useVideoCallStore = create<VideoCallState>()(
           throw err;
         }
       },
+
       joinRoom: async (roomId) => {
         try {
-          // 입장 처리는 API 상 respondToJoinRequest/respondToInvitation 완료 후 
-          // 또는 생성자가 입장할 때 수행됨. 
-          // 여기서는 activeRoom 상세 정보를 갱신하고 스토어의 activeRoom을 설정한다.
+          // ✅ 수정: 상세 조회로 participants(ACCEPTED 목록) 먼저 세팅
           await get().loadActiveRoomDetail(roomId);
+
+          // loadActiveRoomDetail 후 activeRoom이 세팅됐는지 확인
+          // 세팅이 됐다면 rooms 목록도 동기화
+          const active = get().activeRoom;
+          if (active && active.roomId === roomId) {
+            set((state) => ({
+              rooms: state.rooms.map((r) =>
+                r.roomId === roomId ? { ...r, participants: active.participants } : r
+              ),
+            }));
+          }
         } catch (err) {
           console.error('회의실 참여 실패:', err);
+          throw err;
         }
       },
+
       leaveRoom: async (roomId) => {
         try {
           await api.leaveMeeting(roomId);
@@ -159,6 +177,7 @@ export const useVideoCallStore = create<VideoCallState>()(
           console.error('회의실 나가기 실패:', err);
         }
       },
+
       endRoom: async (roomId) => {
         try {
           await api.endMeeting(roomId);
@@ -168,39 +187,37 @@ export const useVideoCallStore = create<VideoCallState>()(
           console.error('회의실 종료 실패:', err);
         }
       },
+
       toggleCam: (participantId) => {
         const activeRoom = get().activeRoom;
         if (!activeRoom) return;
-
-        const updatedParticipants = activeRoom.participants.map((p) =>
-          p.id === participantId ? { ...p, isCamOn: !p.isCamOn } : p
-        );
-
         set({
           activeRoom: {
             ...activeRoom,
-            participants: updatedParticipants,
+            participants: activeRoom.participants.map((p) =>
+              p.id === participantId ? { ...p, isCamOn: !p.isCamOn } : p
+            ),
           },
         });
       },
+
       toggleMic: (participantId) => {
         const activeRoom = get().activeRoom;
         if (!activeRoom) return;
-
-        const updatedParticipants = activeRoom.participants.map((p) =>
-          p.id === participantId ? { ...p, isMicOn: !p.isMicOn } : p
-        );
-
         set({
           activeRoom: {
             ...activeRoom,
-            participants: updatedParticipants,
+            participants: activeRoom.participants.map((p) =>
+              p.id === participantId ? { ...p, isMicOn: !p.isMicOn } : p
+            ),
           },
         });
       },
+
       clearRooms: () => {
         set({ rooms: [], activeRoom: null, joinRequests: [], invitations: [] });
       },
+
       requestJoinRoom: async (roomId) => {
         try {
           await api.requestJoinMeeting(roomId);
@@ -209,6 +226,7 @@ export const useVideoCallStore = create<VideoCallState>()(
           throw err;
         }
       },
+
       approveJoinRequest: async (roomId, requestId) => {
         try {
           await api.respondToJoinRequest(roomId, requestId, true);
@@ -220,6 +238,7 @@ export const useVideoCallStore = create<VideoCallState>()(
           console.error('참여 요청 승인 실패:', err);
         }
       },
+
       rejectJoinRequest: async (roomId, requestId) => {
         try {
           await api.respondToJoinRequest(roomId, requestId, false);
@@ -230,6 +249,7 @@ export const useVideoCallStore = create<VideoCallState>()(
           console.error('참여 요청 거절 실패:', err);
         }
       },
+
       inviteUser: async (roomId, inviteeId) => {
         try {
           await api.inviteToMeeting(roomId, inviteeId);
@@ -238,6 +258,7 @@ export const useVideoCallStore = create<VideoCallState>()(
           throw err;
         }
       },
+
       acceptInvitation: async (roomId, inviteId) => {
         try {
           await api.respondToInvitation(roomId, true);
@@ -249,6 +270,7 @@ export const useVideoCallStore = create<VideoCallState>()(
           console.error('초대 수락 실패:', err);
         }
       },
+
       declineInvitation: async (roomId, inviteId) => {
         try {
           await api.respondToInvitation(roomId, false);
@@ -259,6 +281,7 @@ export const useVideoCallStore = create<VideoCallState>()(
           console.error('초대 거절 실패:', err);
         }
       },
+
       handleWebsocketEvent: async (msg) => {
         const envelope = parseWsEnvelope(msg);
         if (!envelope) return;
@@ -330,8 +353,6 @@ export const useVideoCallStore = create<VideoCallState>()(
             const roomId = toNumber(data.roomId);
             const acceptedParticipantId = toNumber(data.participantId);
             if (!roomId || !acceptedParticipantId) break;
-            // joinRequests의 status를 'approved'로 갱신하여
-            // EmployeeView의 useEffect가 감지하고 모달을 자동으로 열 수 있도록 함
             set((state) => ({
               joinRequests: state.joinRequests.map((r) =>
                 r.requestId === acceptedParticipantId
@@ -340,6 +361,7 @@ export const useVideoCallStore = create<VideoCallState>()(
               ),
             }));
             await get().loadRooms();
+            // ✅ 수정: joinRoom 호출 전 loadActiveRoomDetail로 participants 먼저 세팅
             await get().joinRoom(roomId);
             break;
           }
@@ -376,7 +398,7 @@ if (typeof window !== 'undefined') {
             const nextActive = currentActive
               ? newRooms.find((r) => r.roomId === currentActive.roomId) || null
               : null;
-            
+
             useVideoCallStore.setState({
               rooms: newRooms,
               activeRoom: nextActive,

@@ -17,6 +17,7 @@ import { webSocketService } from '../lib/websocket';
 import { WEBSOCKET_TOPICS } from '../lib/constants';
 import { formatDateTimeKo } from '../lib/datetime';
 import { parseWsEnvelope } from '../lib/wsEvent';
+import * as api from '../lib/api';
 
 export default function EmployeeView() {
   const getErrorMessage = (err: unknown, fallback: string): string =>
@@ -390,37 +391,60 @@ export default function EmployeeView() {
   };
 
   // 영상통화 참가하기
+// EmployeeView.tsx — handleJoinRoom 함수만 아래 내용으로 교체하세요
+
   const handleJoinRoom = async (roomId: number) => {
     if (commuteStatus !== 'WORK') {
       alert('업무 시작(출근)을 먼저 완료해야 영상통화에 참가할 수 있습니다.');
       return;
     }
-    if (user) {
-      const targetRoom = rooms.find((r) => r.roomId === roomId);
-      if (!targetRoom) return;
+    if (!user) return;
 
-      const isHost = targetRoom.hostId === user.id;
-      const isAlreadyParticipant = targetRoom.participants.some((p) => p.id === user.id);
+    const targetRoom = rooms.find((r) => r.roomId === roomId);
+    if (!targetRoom) return;
 
-      if (isHost || isAlreadyParticipant) {
+    const isHost = targetRoom.hostId === user.id;
+
+    if (isHost) {
+      // ✅ 수정: 호스트는 바로 상세 조회 후 입장
+      // (rooms의 participants는 항상 빈 배열이므로 isAlreadyParticipant 체크 제거)
+      await joinRoom(roomId);
+      setIsVideoModalOpen(true);
+      return;
+    }
+
+    // ✅ 수정: 호스트가 아닌 경우 — 상세 조회로 ACCEPTED 여부 확인
+    try {
+      const detail = await api.getMeetingDetail(roomId);
+      const isAccepted = detail.participants.some(
+        (p) => p.memberId === user.id && p.requestStatus === 'ACCEPTED'
+      );
+
+      if (isAccepted) {
+        // 이미 수락된 참가자면 바로 입장
         await joinRoom(roomId);
         setIsVideoModalOpen(true);
-      } else {
-        const hasPendingRequest = joinRequests.some(
-          (r) => r.roomId === roomId && r.userId === user.id && r.status === 'pending'
-        );
-        if (hasPendingRequest) {
-          alert('이미 참가 대기 요청을 보냈습니다. 호스트의 승인을 기다려 주세요.');
-          return;
-        }
-
-        try {
-          await requestJoinRoom(roomId);
-          alert('참가 대기 요청을 보냈습니다. 호스트가 승인하면 입장됩니다.');
-        } catch (err: unknown) {
-          alert(getErrorMessage(err, '참가 대기 요청에 실패했습니다.'));
-        }
+        return;
       }
+    } catch {
+      // 상세 조회 실패 시 참가 요청으로 폴백
+    }
+
+    // 이미 대기 중인 요청이 있는지 확인
+    const hasPendingRequest = joinRequests.some(
+      (r) => r.roomId === roomId && r.userId === user.id && r.status === 'pending'
+    );
+    if (hasPendingRequest) {
+      alert('이미 참가 대기 요청을 보냈습니다. 호스트의 승인을 기다려 주세요.');
+      return;
+    }
+
+    // 참가 요청 전송
+    try {
+      await requestJoinRoom(roomId);
+      alert('참가 대기 요청을 보냈습니다. 호스트가 승인하면 입장됩니다.');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, '참가 대기 요청에 실패했습니다.'));
     }
   };
 
