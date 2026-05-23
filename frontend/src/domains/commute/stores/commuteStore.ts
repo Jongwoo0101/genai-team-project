@@ -99,7 +99,7 @@ export const createEmployeeScopedCommuteState = (
 
 export const useCommuteStore = create<CommuteState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ownerEmployeeId: null,
       commuteStatus: 'NONE',
       userState: '오프라인',
@@ -157,8 +157,11 @@ export const useCommuteStore = create<CommuteState>()(
             checkOutTime: newLog.timestampIso,
             logs: [newLog, ...state.logs],
           }));
-        } catch (err) {
+        } catch (err: unknown) {
           console.error('퇴근 API 호출 실패:', err);
+          if (err instanceof Error && err.message === '오늘 출근 기록이 없습니다.') {
+            get().resetTodayStatus();
+          }
           throw err;
         }
       },
@@ -188,8 +191,11 @@ export const useCommuteStore = create<CommuteState>()(
             userState: status,
             logs: [newLog, ...state.logs],
           }));
-        } catch (err) {
-          console.error('상태 업데이트 API 호출 실패:', err);
+        } catch (err: unknown) {
+          console.error('상태 변경 API 호출 실패:', err);
+          if (err instanceof Error && err.message === '오늘 출근 기록이 없습니다.') {
+            get().resetTodayStatus();
+          }
           throw err;
         }
       },
