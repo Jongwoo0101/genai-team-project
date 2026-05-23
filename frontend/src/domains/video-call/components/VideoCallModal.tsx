@@ -11,10 +11,12 @@ interface VideoCallModalProps {
 
 export default function VideoCallModal({ onClose }: VideoCallModalProps) {
   const { user } = useAuthStore();
-  const { getEmployeeTeam } = useTeamStore();
+  const memberTeamMap = useTeamStore((s) => s.memberTeamMap);
+  const teams = useTeamStore((s) => s.teams);
   const { 
     activeRoom, 
-    leaveRoom, 
+    leaveRoom,
+    endRoom,
     toggleCam, 
     toggleMic, 
     joinRequests, 
@@ -31,7 +33,12 @@ export default function VideoCallModal({ onClose }: VideoCallModalProps) {
   const [isScreenSharing, setIsScreenSharing] = useState(false);
 
   const mySession = activeRoom?.participants.find((p) => p.id === user?.id);
-  const team = user?.id ? getEmployeeTeam(user.id) : undefined;
+  const team = (() => {
+    if (!user?.id) return undefined;
+    const teamId = memberTeamMap[user.id];
+    if (!teamId) return undefined;
+    return teams.find((t) => t.id === teamId);
+  })();
 
   const pendingRequests = joinRequests.filter(
     (r) => r.roomId === activeRoom?.roomId && r.status === 'pending'
@@ -157,7 +164,11 @@ export default function VideoCallModal({ onClose }: VideoCallModalProps) {
 
   const handleLeave = () => {
     if (activeRoom) {
-      leaveRoom(activeRoom.roomId);
+      if (activeRoom.hostId === user?.id) {
+        endRoom(activeRoom.roomId);
+      } else {
+        leaveRoom(activeRoom.roomId);
+      }
     }
     stopScreenShare();
     stopAllMedia();

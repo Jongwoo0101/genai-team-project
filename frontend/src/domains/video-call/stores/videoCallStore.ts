@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { STORAGE_KEYS } from '../../../lib/constants';
 import * as api from '../../../lib/api';
-import { parseWsEnvelope } from '../../../lib/wsEvent';
+import type { WsEnvelope } from '../../../lib/wsEvent';
 
 const toNumber = (value: unknown): number | null =>
   typeof value === 'number' ? value : null;
@@ -64,7 +64,7 @@ interface VideoCallState {
   inviteUser: (roomId: number, inviteeId: number) => Promise<void>;
   acceptInvitation: (roomId: number, inviteId: number) => Promise<void>;
   declineInvitation: (roomId: number, inviteId: number) => Promise<void>;
-  handleWebsocketEvent: (msg: unknown) => Promise<void>;
+  handleWebsocketEvent: (envelope: WsEnvelope) => Promise<void>;
 }
 
 export const useVideoCallStore = create<VideoCallState>()(
@@ -282,9 +282,7 @@ export const useVideoCallStore = create<VideoCallState>()(
         }
       },
 
-      handleWebsocketEvent: async (msg) => {
-        const envelope = parseWsEnvelope(msg);
-        if (!envelope) return;
+      handleWebsocketEvent: async (envelope) => {
         const { event, data } = envelope;
 
         switch (event) {

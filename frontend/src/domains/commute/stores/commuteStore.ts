@@ -300,7 +300,10 @@ if (typeof window !== 'undefined') {
         if (data) {
           const parsed = JSON.parse(data);
           if (parsed.state) {
-            useCommuteStore.setState(parsed.state);
+            const currentOwnerId = useCommuteStore.getState().ownerEmployeeId;
+            if (currentOwnerId !== null && parsed.state.ownerEmployeeId === currentOwnerId) {
+              useCommuteStore.setState(parsed.state);
+            }
           }
         }
       } catch (err) {

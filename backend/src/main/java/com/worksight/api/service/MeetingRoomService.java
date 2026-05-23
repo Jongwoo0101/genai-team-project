@@ -87,6 +87,7 @@ public class MeetingRoomService {
                 .findAllByMeetingRoom(room)
                 .stream()
                 .map(p -> new ParticipantInfo(
+                        p.getId(),
                         p.getMember().getId(),
                         p.getMember().getUsername(),
                         p.getRequestStatus(),
@@ -119,9 +120,10 @@ public class MeetingRoomService {
                 .build();
         participantRepository.save(participant);
 
-        // 주최자에게 개인 알림
+        // Notify host with participantId for approval/rejection
         notifyMemberAfterCommit(room.getHost(), WsEnvelope.Event.JOIN_REQUESTED,
                 Map.of("roomId", room.getId(),
+                        "participantId", participant.getId(),
                         "memberId", managed.getId(),
                         "username", managed.getUsername()));
 
@@ -150,7 +152,12 @@ public class MeetingRoomService {
         participantRepository.save(participant);
 
         notifyMemberAfterCommit(invitee, WsEnvelope.Event.INVITED,
-                Map.of("roomId", room.getId(), "title", room.getTitle()));
+                Map.of("roomId", room.getId(),
+                        "participantId", participant.getId(),
+                        "memberId", invitee.getId(),
+                        "username", invitee.getUsername(),
+                        "roomTitle", room.getTitle(),
+                        "hostUsername", host.getUsername()));
 
         log.info("Member invited: roomId={}, invitee={}", roomId, invitee.getUsername());
         return toRequestResponse(participant);
@@ -169,11 +176,15 @@ public class MeetingRoomService {
             participant.accept();
             statusService.updateStatusInternal(participant.getMember(), StatusType.MEETING);
             notifyMemberAfterCommit(participant.getMember(), WsEnvelope.Event.REQUEST_ACCEPTED,
-                    Map.of("roomId", room.getId(), "title", room.getTitle()));
+                    Map.of("roomId", room.getId(),
+                            "participantId", participant.getId(),
+                            "title", room.getTitle()));
         } else {
             participant.reject();
             notifyMemberAfterCommit(participant.getMember(), WsEnvelope.Event.REQUEST_REJECTED,
-                    Map.of("roomId", room.getId(), "title", room.getTitle()));
+                    Map.of("roomId", room.getId(),
+                            "participantId", participant.getId(),
+                            "title", room.getTitle()));
         }
 
         return toRequestResponse(participant);

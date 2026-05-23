@@ -6,7 +6,9 @@ import * as api from '../lib/api';
 
 export default function JoinTeam() {
   const { user, isAuthenticated } = useAuthStore();
-  const { getEmployeeTeam, fetchMyTeam } = useTeamStore();
+  const fetchMyTeam = useTeamStore((s) => s.fetchMyTeam);
+  const teams = useTeamStore((s) => s.teams);
+  const memberTeamMap = useTeamStore((s) => s.memberTeamMap);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -24,7 +26,11 @@ export default function JoinTeam() {
   }
 
   // 이미 팀에 소속되어 있으면 직원 모니터링 화면으로
-  const existingTeam = getEmployeeTeam(user.id);
+  const existingTeam = (() => {
+    const teamId = memberTeamMap[user.id];
+    if (!teamId) return undefined;
+    return teams.find((t) => t.id === teamId);
+  })();
   if (existingTeam && !successTeam) {
     return <Navigate to="/employee" replace />;
   }

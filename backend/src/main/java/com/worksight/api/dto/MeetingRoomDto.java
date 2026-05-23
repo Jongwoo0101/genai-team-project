@@ -36,6 +36,7 @@ public class MeetingRoomDto {
 
     /** 참가자 정보 */
     public record ParticipantInfo(
+            Long participantId,
             Long memberId,
             String username,
             MeetingRequestStatus requestStatus,

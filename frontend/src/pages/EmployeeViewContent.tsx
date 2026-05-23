@@ -33,7 +33,9 @@ export default function EmployeeView() {
       && typeof v.notificationType === 'string';
   };
   const { user, token, isAuthenticated } = useAuthStore();
-  const { getEmployeeTeam, fetchMyTeam } = useTeamStore();
+  const fetchMyTeam = useTeamStore((s) => s.fetchMyTeam);
+  const teams = useTeamStore((s) => s.teams);
+  const memberTeamMap = useTeamStore((s) => s.memberTeamMap);
   
   // Zustand 스토어들 연동
   const { 
@@ -111,7 +113,12 @@ export default function EmployeeView() {
     return () => clearInterval(timer);
   }, []);
 
-  const team = user?.id ? getEmployeeTeam(user.id) : undefined;
+  const team = (() => {
+    if (!user?.id) return undefined;
+    const teamId = memberTeamMap[user.id];
+    if (!teamId) return undefined;
+    return teams.find((t) => t.id === teamId);
+  })();
 
   // 실시간 웹소켓 구독 (매니저 토픽 및 개인 알림)
   useEffect(() => {

@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import { STORAGE_KEYS } from '../../../lib/constants';
 import * as api from '../../../lib/api';
 import { formatDateTimeKo, toEpochMs, toIsoString } from '../../../lib/datetime';
-import { parseWsEnvelope } from '../../../lib/wsEvent';
+import type { WsEnvelope } from '../../../lib/wsEvent';
 
 export interface Standup {
   id: string;
@@ -25,7 +25,7 @@ interface StandupState {
   loadTeamStandups: (dateStr?: string) => Promise<void>;
   loadMyTodayStandup: () => Promise<void>;
   clearAll: () => void;
-  handleWebsocketEvent: (msg: unknown) => Promise<void>;
+  handleWebsocketEvent: (envelope: WsEnvelope) => Promise<void>;
 }
 
 export const useStandupStore = create<StandupState>()(
@@ -102,9 +102,7 @@ export const useStandupStore = create<StandupState>()(
       clearAll: () => {
         set({ standups: [] });
       },
-      handleWebsocketEvent: async (msg) => {
-        const envelope = parseWsEnvelope(msg);
-        if (!envelope) return;
+      handleWebsocketEvent: async (envelope) => {
         if (envelope.event === 'GOAL_UPDATED' || envelope.event === 'RESULT_UPDATED') {
           const todayStr = new Date().toISOString().split('T')[0];
           await get().loadTeamStandups(todayStr);

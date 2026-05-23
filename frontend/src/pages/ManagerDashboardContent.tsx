@@ -37,9 +37,10 @@ import {
 
 export default function ManagerDashboard() {
   const { user, isAuthenticated } = useAuthStore();
-  const { getTeamById, fetchTeamMembers } = useTeamStore();
   const { teamId } = useParams<{ teamId: string }>();
   const navigate = useNavigate();
+  const fetchTeamMembers = useTeamStore((s) => s.fetchTeamMembers);
+  const team = useTeamStore((s) => teamId ? s.teams.find((t) => t.id === teamId) : undefined);
 
   // Zustand 스토어들 연동
   const { 
@@ -67,7 +68,7 @@ export default function ManagerDashboard() {
   const [pingTarget, setPingTarget] = useState<{ id: number; name: string } | null>(null);
   const [pingMessage, setPingMessage] = useState('');
 
-  const team = teamId ? getTeamById(teamId) : undefined;
+  // team is now reactively derived from Zustand selector above
 
   useEffect(() => {
     if (user?.id) {
