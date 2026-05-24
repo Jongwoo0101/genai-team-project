@@ -2,7 +2,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { STORAGE_KEYS } from '../../../lib/constants';
 import * as api from '../../../lib/api';
-import type { StatusType } from '../../../lib/types';
+import type { NotificationResponse, StatusType } from '../../../lib/types';
+import { formatDateTimeKo, toEpochMs, toIsoString } from '../../../lib/datetime';
 
 export interface CommuteLog {
   id: string;
@@ -10,7 +11,9 @@ export interface CommuteLog {
   employeeName: string;
   type: 'IN' | 'OUT' | 'STATE';
   statusDetail?: string; // '집중 근무', '회의 중', '휴식 중' 등
-  timestamp: string;
+  timestampIso: string;
+  timestampDisplay: string;
+  epochMs: number;
   dateStr: string;
 }
 
@@ -43,11 +46,14 @@ export interface DirectPing {
   employeeId: number;
   fromName: string;
   message: string;
-  timestamp: string;
+  timestampIso: string;
+  timestampDisplay: string;
+  epochMs: number;
   status: 'pending' | 'dismissed';
 }
 
 interface CommuteState {
+  ownerEmployeeId: number | null;
   commuteStatus: 'NONE' | 'WORK' | 'LEAVE';
   userState: UserStateType;
   checkInTime: string | null;
@@ -65,12 +71,36 @@ interface CommuteState {
   sendDirectPing: (employeeId: number, fromName: string, message: string) => Promise<void>;
   dismissDirectPing: (pingId: string) => Promise<void>;
   loadDirectPings: () => Promise<void>;
-  addDirectPingFromNotification: (notif: any) => void;
+  addDirectPingFromNotification: (notif: NotificationResponse) => void;
+  syncEmployeeContext: (employeeId: number) => void;
 }
+
+export const createEmployeeScopedCommuteState = (
+  prevState: Pick<CommuteState, 'ownerEmployeeId' | 'commuteStatus' | 'userState' | 'checkInTime' | 'checkOutTime' | 'logs' | 'isCameraActive' | 'cameraStream' | 'directPings'>,
+  employeeId: number
+) => {
+  if (prevState.ownerEmployeeId === employeeId) {
+    return prevState;
+  }
+
+  return {
+    ...prevState,
+    ownerEmployeeId: employeeId,
+    commuteStatus: 'NONE' as const,
+    userState: '오프라인' as const,
+    checkInTime: null,
+    checkOutTime: null,
+    logs: [],
+    isCameraActive: false,
+    cameraStream: null,
+    directPings: prevState.directPings.filter((ping) => ping.employeeId === employeeId),
+  };
+};
 
 export const useCommuteStore = create<CommuteState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
+      ownerEmployeeId: null,
       commuteStatus: 'NONE',
       userState: '오프라인',
       checkInTime: null,
@@ -83,20 +113,21 @@ export const useCommuteStore = create<CommuteState>()(
         try {
           const res = await api.clockIn();
           const now = new Date();
-          const timestamp = now.toLocaleString('ko-KR');
           const dateStr = now.toISOString().split('T')[0];
           const newLog: CommuteLog = {
             id: `${employeeId}-${Date.now()}-IN`,
             employeeId,
             employeeName,
             type: 'IN',
-            timestamp: res.clockInTime ? new Date(res.clockInTime).toLocaleString('ko-KR') : timestamp,
+            timestampIso: toIsoString(res.clockInTime),
+            timestampDisplay: formatDateTimeKo(toIsoString(res.clockInTime)),
+            epochMs: toEpochMs(toIsoString(res.clockInTime)),
             dateStr,
           };
           set((state) => ({
             commuteStatus: 'WORK',
             userState: '근무 중',
-            checkInTime: newLog.timestamp,
+            checkInTime: newLog.timestampIso,
             checkOutTime: null,
             logs: [newLog, ...state.logs],
           }));
@@ -109,24 +140,28 @@ export const useCommuteStore = create<CommuteState>()(
         try {
           const res = await api.clockOut();
           const now = new Date();
-          const timestamp = now.toLocaleString('ko-KR');
           const dateStr = now.toISOString().split('T')[0];
           const newLog: CommuteLog = {
             id: `${employeeId}-${Date.now()}-OUT`,
             employeeId,
             employeeName,
             type: 'OUT',
-            timestamp: res.clockOutTime ? new Date(res.clockOutTime).toLocaleString('ko-KR') : timestamp,
+            timestampIso: toIsoString(res.clockOutTime),
+            timestampDisplay: formatDateTimeKo(toIsoString(res.clockOutTime)),
+            epochMs: toEpochMs(toIsoString(res.clockOutTime)),
             dateStr,
           };
           set((state) => ({
             commuteStatus: 'LEAVE',
             userState: '오프라인',
-            checkOutTime: newLog.timestamp,
+            checkOutTime: newLog.timestampIso,
             logs: [newLog, ...state.logs],
           }));
-        } catch (err) {
+        } catch (err: unknown) {
           console.error('퇴근 API 호출 실패:', err);
+          if (err instanceof Error && err.message === '오늘 출근 기록이 없습니다.') {
+            get().resetTodayStatus();
+          }
           throw err;
         }
       },
@@ -140,7 +175,6 @@ export const useCommuteStore = create<CommuteState>()(
           }
 
           const now = new Date();
-          const timestamp = now.toLocaleString('ko-KR');
           const dateStr = now.toISOString().split('T')[0];
           const newLog: CommuteLog = {
             id: `${employeeId}-${Date.now()}-STATE-${status}`,
@@ -148,15 +182,20 @@ export const useCommuteStore = create<CommuteState>()(
             employeeName,
             type: 'STATE',
             statusDetail: status,
-            timestamp,
+            timestampIso: now.toISOString(),
+            timestampDisplay: formatDateTimeKo(now.toISOString()),
+            epochMs: now.getTime(),
             dateStr,
           };
           set((state) => ({
             userState: status,
             logs: [newLog, ...state.logs],
           }));
-        } catch (err) {
-          console.error('상태 업데이트 API 호출 실패:', err);
+        } catch (err: unknown) {
+          console.error('상태 변경 API 호출 실패:', err);
+          if (err instanceof Error && err.message === '오늘 출근 기록이 없습니다.') {
+            get().resetTodayStatus();
+          }
           throw err;
         }
       },
@@ -217,7 +256,9 @@ export const useCommuteStore = create<CommuteState>()(
               employeeId: n.receiverId,
               fromName: n.senderUsername,
               message: n.message,
-              timestamp: new Date(n.createdAt).toLocaleString('ko-KR'),
+              timestampIso: toIsoString(n.createdAt),
+              timestampDisplay: formatDateTimeKo(toIsoString(n.createdAt)),
+              epochMs: toEpochMs(toIsoString(n.createdAt)),
               status: n.read ? ('dismissed' as const) : ('pending' as const),
             }));
           set({ directPings: pings });
@@ -232,12 +273,17 @@ export const useCommuteStore = create<CommuteState>()(
           employeeId: notif.receiverId,
           fromName: notif.senderUsername,
           message: notif.message,
-          timestamp: new Date(notif.createdAt).toLocaleString('ko-KR'),
+          timestampIso: toIsoString(notif.createdAt),
+          timestampDisplay: formatDateTimeKo(toIsoString(notif.createdAt)),
+          epochMs: toEpochMs(toIsoString(notif.createdAt)),
           status: notif.read ? ('dismissed' as const) : ('pending' as const),
         };
         set((state) => ({
           directPings: [ping, ...state.directPings.filter((p) => p.id !== ping.id)],
         }));
+      },
+      syncEmployeeContext: (employeeId) => {
+        set((state) => createEmployeeScopedCommuteState(state, employeeId));
       },
     }),
     {
@@ -260,7 +306,10 @@ if (typeof window !== 'undefined') {
         if (data) {
           const parsed = JSON.parse(data);
           if (parsed.state) {
-            useCommuteStore.setState(parsed.state);
+            const currentOwnerId = useCommuteStore.getState().ownerEmployeeId;
+            if (currentOwnerId !== null && parsed.state.ownerEmployeeId === currentOwnerId) {
+              useCommuteStore.setState(parsed.state);
+            }
           }
         }
       } catch (err) {

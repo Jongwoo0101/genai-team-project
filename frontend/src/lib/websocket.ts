@@ -6,7 +6,7 @@ const SOCKET_URL = '/ws';
 
 interface SubscriptionDetail {
   stompSubscription: Stomp.Subscription | null;
-  callback: (payload: any) => void;
+  callback: (payload: unknown) => void;
 }
 
 class WebSocketService {
@@ -99,7 +99,7 @@ class WebSocketService {
     }, 2000);
   }
 
-  subscribe(topic: string, callback: (payload: any) => void) {
+  subscribe(topic: string, callback: (payload: unknown) => void) {
     // 기존에 동일 토픽이 있다면 해제
     this.unsubscribe(topic);
 

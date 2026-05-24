@@ -2,6 +2,7 @@ import type { CommuteLog, UserStateType } from '../stores/commuteStore';
 import type { Standup } from '../../standup/stores/standupStore';
 import { Clock, BookOpen, AlertCircle, CheckCircle } from 'lucide-react';
 import { STATUS_UI_SETTINGS } from '../constants/statusSettings';
+import { formatTimeKo } from '../../../lib/datetime';
 
 interface EmployeeSidebarProps {
   username: string;
@@ -138,7 +139,7 @@ export default function EmployeeSidebar({
                     <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotColor}`} />
                     <span className={`text-xs font-bold ${textColor}`}>{detailText}</span>
                   </div>
-                  <span className="text-[9px] text-slate-600 font-mono">{log.timestamp.split(' ').slice(1).join(' ')}</span>
+                  <span className="text-[9px] text-slate-600 font-mono">{formatTimeKo(log.timestampIso)}</span>
                 </div>
               );
             })}

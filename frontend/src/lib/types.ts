@@ -208,6 +208,7 @@ export interface TeamStatusBroadcast {
 
 /** ──────────── 미팅룸 관련 DTO ──────────── */
 export interface MeetingParticipantResponse {
+  participantId: number;
   memberId: number;
   username: string;
   requestStatus: 'PENDING' | 'ACCEPTED' | 'REJECTED';
