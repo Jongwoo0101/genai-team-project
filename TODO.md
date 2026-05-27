@@ -24,6 +24,8 @@
 - [x] 프론트엔드 스펙 이슈(공유 상태, 웹소켓 페이로드, 시간 정규화, 타입 안전성, 구조 분리) 수정 및 검증 완료 (@fe-dev, @qa-tester, 2026-05-22)
 - [x] GitHub Pull Request 생성 및 병합 준비 (@ops-manager, 2026-05-22)
 - [x] 다중 브라우저 출근 중복 처리 버그 수정 (Zustand 반응성 누수 및 participantId 계약 정합성 해결, 웹소켓 파싱 중복 정리) (@fe-dev, @qa-tester, 2026-05-23)
+- [x] Zustand Persist 스토어의 다중 사용자 로컬스토리지 격리 구현 (@fe-dev, @qa-tester, 2026-05-27)
+- [x] Zustand 스토어 격리 보완 작업 (로그아웃 정리 및 마이그레이션) (@fe-dev, @qa-tester, 2026-05-27)
 
 
 ## 진행 중

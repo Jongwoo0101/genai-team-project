@@ -7,14 +7,18 @@ import * as api from '../lib/api';
 export default function JoinTeam() {
   const { user, isAuthenticated } = useAuthStore();
   const fetchMyTeam = useTeamStore((s) => s.fetchMyTeam);
+  const syncTeamContext = useTeamStore((s) => s.syncMemberContext);
   const teams = useTeamStore((s) => s.teams);
   const memberTeamMap = useTeamStore((s) => s.memberTeamMap);
   const navigate = useNavigate();
 
   useEffect(() => {
     // 마운트 시점에 서버에서 내 팀 정보가 있는지 확인
-    fetchMyTeam();
-  }, [fetchMyTeam]);
+    if (user?.id) {
+      syncTeamContext(user.id);
+      void fetchMyTeam();
+    }
+  }, [fetchMyTeam, syncTeamContext, user?.id]);
 
   const [teamCode, setTeamCode] = useState('');
   const [error, setError] = useState<string | null>(null);

@@ -13,6 +13,7 @@ export const STORAGE_KEYS = {
   VIDEOCALL_STATE: 'worksight-videocall-storage',
   TEAM_DATA: 'worksight-team-storage',
   MEMBER_MAP: 'worksight-member-map-storage',
+  TEAM_OWNER: 'worksight-team-owner-storage',
 } as const;
 
 export type StorageKeyType = typeof STORAGE_KEYS[keyof typeof STORAGE_KEYS];

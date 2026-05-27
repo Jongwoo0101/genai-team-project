@@ -29,8 +29,11 @@ export default function VideoCallModal({ onClose }: VideoCallModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const micGainNodeRef = useRef<GainNode | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [micGain, setMicGain] = useState(1);
 
   const mySession = activeRoom?.participants.find((p) => p.id === user?.id);
   const team = (() => {
@@ -58,9 +61,18 @@ export default function VideoCallModal({ onClose }: VideoCallModalProps) {
     }
   };
 
+  const closeAudioGraph = () => {
+    micGainNodeRef.current = null;
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => undefined);
+      audioContextRef.current = null;
+    }
+  };
+
   // Everything (used only on unmount / leave)
   const stopAllMedia = () => {
     stopMediaTracks();
+    closeAudioGraph();
     if (screenStreamRef.current) {
       screenStreamRef.current.getTracks().forEach((track) => track.stop());
       screenStreamRef.current = null;
@@ -112,13 +124,39 @@ export default function VideoCallModal({ onClose }: VideoCallModalProps) {
   useEffect(() => {
     const acquireStream = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        const rawStream = await navigator.mediaDevices.getUserMedia({
           video: { width: 640, height: 480 },
           audio: { echoCancellation: true, noiseSuppression: true },
         });
-        streamRef.current = stream;
+
+        const nextStream = new MediaStream(rawStream.getVideoTracks());
+        const audioTracks = rawStream.getAudioTracks();
+        if (audioTracks.length > 0) {
+          const AudioCtor = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+          if (AudioCtor) {
+            const audioContext = new AudioCtor();
+            const source = audioContext.createMediaStreamSource(new MediaStream(audioTracks));
+            const gainNode = audioContext.createGain();
+            const destination = audioContext.createMediaStreamDestination();
+            gainNode.gain.value = micGain;
+            source.connect(gainNode);
+            gainNode.connect(destination);
+            const processedTrack = destination.stream.getAudioTracks()[0];
+            if (processedTrack) {
+              nextStream.addTrack(processedTrack);
+            } else {
+              nextStream.addTrack(audioTracks[0]);
+            }
+            audioContextRef.current = audioContext;
+            micGainNodeRef.current = gainNode;
+          } else {
+            nextStream.addTrack(audioTracks[0]);
+          }
+        }
+
+        streamRef.current = nextStream;
         if (videoRef.current && !isScreenSharing) {
-          videoRef.current.srcObject = stream;
+          videoRef.current.srcObject = nextStream;
         }
         setCameraError(null);
       } catch (err) {
@@ -161,6 +199,12 @@ export default function VideoCallModal({ onClose }: VideoCallModalProps) {
       }
     }
   }, [mySession?.isCamOn, mySession?.isMicOn, isScreenSharing]);
+
+  useEffect(() => {
+    if (micGainNodeRef.current) {
+      micGainNodeRef.current.gain.value = micGain;
+    }
+  }, [micGain]);
 
   const handleLeave = () => {
     if (activeRoom) {
@@ -365,7 +409,7 @@ export default function VideoCallModal({ onClose }: VideoCallModalProps) {
       <div className="border-t border-slate-850/80 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
         {/* 설명 영역 */}
         <div className="hidden md:block">
-          <p className="text-xs text-slate-500">마이크 및 카메라 토글 시 다른 팀원들에게 실시간으로 내 방송 상태가 동기화됩니다.</p>
+          <p className="text-xs text-slate-500">마이크/카메라 상태 동기화 및 마이크 감도 조절을 지원합니다.</p>
         </div>
 
         {/* 제어 버튼 그룹 */}
@@ -423,6 +467,22 @@ export default function VideoCallModal({ onClose }: VideoCallModalProps) {
           >
             <PhoneOff className="w-5 h-5" />
           </button>
+        </div>
+
+        <div className="w-full max-w-56 md:max-w-44">
+          <label htmlFor="mic-gain" className="block text-[11px] text-slate-400 mb-1">
+            마이크 감도 ({Math.round(micGain * 100)}%)
+          </label>
+          <input
+            id="mic-gain"
+            type="range"
+            min={0}
+            max={2}
+            step={0.05}
+            value={micGain}
+            onChange={(e) => setMicGain(Number(e.target.value))}
+            className="w-full accent-cyan-500 cursor-pointer"
+          />
         </div>
 
         {/* 빈 공간 보정 */}

@@ -8,7 +8,8 @@ import { STATUS_UI_SETTINGS } from '../domains/commute/constants/statusSettings'
 import { WEBSOCKET_TOPICS } from '../lib/constants';
 import { useStandupStore } from '../domains/standup/stores/standupStore';
 import { useVideoCallStore } from '../domains/video-call/stores/videoCallStore';
-import VideoCallModal from '../domains/video-call/components/VideoCallModal';
+import MeetingRoomModalHost from './meetingroom/MeetingRoomModalHost';
+import { useMeetingRoomController } from './meetingroom/useMeetingRoomController';
 import { webSocketService } from '../lib/websocket';
 import type { StatusType } from '../lib/types';
 import * as api from '../lib/api';
@@ -40,6 +41,7 @@ export default function ManagerDashboard() {
   const { teamId } = useParams<{ teamId: string }>();
   const navigate = useNavigate();
   const fetchTeamMembers = useTeamStore((s) => s.fetchTeamMembers);
+  const syncTeamContext = useTeamStore((s) => s.syncMemberContext);
   const team = useTeamStore((s) => teamId ? s.teams.find((t) => t.id === teamId) : undefined);
 
   // Zustand 스토어들 연동
@@ -49,15 +51,21 @@ export default function ManagerDashboard() {
     logs: localCommuteLogs,
     sendDirectPing 
   } = useCommuteStore();
-  const { standups, loadTeamStandups } = useStandupStore();
-  const { rooms, activeRoom, joinRoom, loadRooms, handleWebsocketEvent: handleVideoCallWS } = useVideoCallStore();
+  const { standups, loadTeamStandups, syncMemberContext: syncStandupContext } = useStandupStore();
+  const { handleWebsocketEvent: handleVideoCallWS } = useVideoCallStore();
+  const {
+    rooms,
+    activeRoom,
+    isVideoModalOpen,
+    setIsVideoModalOpen,
+    openJoinedRoom,
+  } = useMeetingRoomController({ user });
 
   const [copied, setCopied] = useState(false);
   
   // 검색 및 필터 상태
   const [searchTerm, setSearchTerm] = useState('');
   const [standupFilterDate, setStandupFilterDate] = useState(new Date().toISOString().split('T')[0]);
-  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   // 실시간 알림 수신 상태
   const [alerts, setAlerts] = useState<DashboardAlert[]>([]);
@@ -72,11 +80,12 @@ export default function ManagerDashboard() {
 
   useEffect(() => {
     if (user?.id) {
+      syncTeamContext(user.id);
+      syncStandupContext(user.id);
       void fetchTeamMembers(user.id);
-      void loadRooms();
       void loadTeamStandups(standupFilterDate);
     }
-  }, [fetchTeamMembers, user?.id, loadRooms, loadTeamStandups, standupFilterDate]);
+  }, [fetchTeamMembers, user?.id, loadTeamStandups, standupFilterDate, syncTeamContext, syncStandupContext]);
 
   // 실시간 상태 데이터 조회 및 실시간 웹소켓 구독
   useEffect(() => {
@@ -149,7 +158,7 @@ export default function ManagerDashboard() {
       webSocketService.unsubscribe(memberTopic);
       webSocketService.disconnect();
     };
-  }, [user, teamId]);
+  }, [user, teamId, handleVideoCallWS]);
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!team) return <Navigate to="/teams" replace />;
@@ -165,8 +174,7 @@ export default function ManagerDashboard() {
   // 영상통화 빠른 참여
   const handleJoinCall = async (roomId: number) => {
     if (user) {
-      await joinRoom(roomId);
-      setIsVideoModalOpen(true);
+      await openJoinedRoom(roomId);
     }
   };
 
@@ -596,10 +604,11 @@ export default function ManagerDashboard() {
 
       </div>
 
-      {/* 가상 영상통화 룸 오버레이 모달 */}
-      {isVideoModalOpen && activeRoom && (
-        <VideoCallModal onClose={() => setIsVideoModalOpen(false)} />
-      )}
+      <MeetingRoomModalHost
+        activeRoom={activeRoom}
+        isOpen={isVideoModalOpen}
+        onClose={() => setIsVideoModalOpen(false)}
+      />
 
       {/* 디렉토링 경보 작성 모달 */}
       {pingTarget && (

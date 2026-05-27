@@ -1,9 +1,10 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { STORAGE_KEYS } from '../../../lib/constants';
 import * as api from '../../../lib/api';
 import type { NotificationResponse, StatusType } from '../../../lib/types';
 import { formatDateTimeKo, toEpochMs, toIsoString } from '../../../lib/datetime';
+import { userScopedStorage, getScopedKey } from '../../../lib/userScopedStorage';
 
 export interface CommuteLog {
   id: string;
@@ -288,6 +289,7 @@ export const useCommuteStore = create<CommuteState>()(
     }),
     {
       name: STORAGE_KEYS.COMMUTE_STATE,
+      storage: createJSONStorage(() => userScopedStorage),
       partialize: (state) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { cameraStream, isCameraActive, ...rest } = state;
@@ -300,13 +302,15 @@ export const useCommuteStore = create<CommuteState>()(
 // 다른 브라우저 탭에서 변경 시 자동으로 연동되도록 이벤트 수신
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
-    if (e.key === STORAGE_KEYS.COMMUTE_STATE) {
+    const currentOwnerId = useCommuteStore.getState().ownerEmployeeId;
+    const scopedKey = getScopedKey(STORAGE_KEYS.COMMUTE_STATE, currentOwnerId);
+
+    if (e.key === scopedKey) {
       try {
-        const data = localStorage.getItem(STORAGE_KEYS.COMMUTE_STATE);
+        const data = localStorage.getItem(scopedKey);
         if (data) {
           const parsed = JSON.parse(data);
           if (parsed.state) {
-            const currentOwnerId = useCommuteStore.getState().ownerEmployeeId;
             if (currentOwnerId !== null && parsed.state.ownerEmployeeId === currentOwnerId) {
               useCommuteStore.setState(parsed.state);
             }

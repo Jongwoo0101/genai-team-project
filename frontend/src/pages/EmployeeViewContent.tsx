@@ -7,17 +7,16 @@ import { useCommuteStore } from '../domains/commute/stores/commuteStore';
 import type { UserStateType } from '../domains/commute/stores/commuteStore';
 import { useStandupStore } from '../domains/standup/stores/standupStore';
 import { useVideoCallStore } from '../domains/video-call/stores/videoCallStore';
+import MeetingRoomPanel from './meetingroom/MeetingRoomPanel';
 import { useMonitorWS } from '../hooks/useMonitorWS';
 import type { AiStatusType, NotificationResponse } from '../lib/types';
 import { Navigate } from 'react-router-dom';
 import EmployeeSidebar from '../domains/commute/components/EmployeeSidebar';
-import VideoCallModal from '../domains/video-call/components/VideoCallModal';
-import { Clock, LogIn, LogOut, Video, Play, Plus, BookOpen, Send } from 'lucide-react';
+import { Clock, LogIn, LogOut, Play, BookOpen, Send } from 'lucide-react';
 import { webSocketService } from '../lib/websocket';
 import { WEBSOCKET_TOPICS } from '../lib/constants';
 import { formatDateTimeKo } from '../lib/datetime';
 import { parseWsEnvelope } from '../lib/wsEvent';
-import * as api from '../lib/api';
 
 export default function EmployeeView() {
   const getErrorMessage = (err: unknown, fallback: string): string =>
@@ -36,6 +35,7 @@ export default function EmployeeView() {
   const fetchMyTeam = useTeamStore((s) => s.fetchMyTeam);
   const teams = useTeamStore((s) => s.teams);
   const memberTeamMap = useTeamStore((s) => s.memberTeamMap);
+  const syncTeamContext = useTeamStore((s) => s.syncMemberContext);
   
   // Zustand 스토어들 연동
   const { 
@@ -57,28 +57,16 @@ export default function EmployeeView() {
     addDirectPingFromNotification,
     syncEmployeeContext
   } = useCommuteStore();
-  const { standups, addStandup, loadMyTodayStandup } = useStandupStore();
-  const { 
-    rooms, 
-    activeRoom, 
-    createRoom, 
-    joinRoom, 
-    invitations, 
-    acceptInvitation, 
-    declineInvitation, 
-    joinRequests, 
-    requestJoinRoom,
-    loadRooms,
-    handleWebsocketEvent: handleVideoCallWS
-  } = useVideoCallStore();
+  const standups = useStandupStore((s) => s.standups);
+  const addStandup = useStandupStore((s) => s.addStandup);
+  const loadMyTodayStandup = useStandupStore((s) => s.loadMyTodayStandup);
+  const syncStandupContext = useStandupStore((s) => s.syncMemberContext);
+  const { handleWebsocketEvent: handleVideoCallWS } = useVideoCallStore();
 
   // 입력용 로컬 상태
   const [todayGoal, setTodayGoal] = useState('');
   const [todayResult, setTodayResult] = useState('');
-  const [roomTitle, setRoomTitle] = useState('');
-  const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   // AI 모니터링 관련 상태
   const [isMonitoring, setIsMonitoring] = useState(false);
@@ -87,23 +75,26 @@ export default function EmployeeView() {
 
   // 팀 정보 조회
   useEffect(() => {
-    fetchMyTeam();
-  }, [fetchMyTeam]);
+    if (user && user.id) {
+      syncTeamContext(user.id);
+      syncStandupContext(user.id);
+      void fetchMyTeam();
+    }
+  }, [fetchMyTeam, user, syncTeamContext, syncStandupContext]);
 
   // 마운트 시 데이터 로드
   useEffect(() => {
-    if (user?.id) {
+    if (user && user.id) {
       syncEmployeeContext(user.id);
     }
-  }, [user?.id, syncEmployeeContext]);
+  }, [user, syncEmployeeContext]);
 
   useEffect(() => {
     if (user) {
       loadMyTodayStandup();
-      loadRooms();
       loadDirectPings();
     }
-  }, [user, loadMyTodayStandup, loadRooms, loadDirectPings]);
+  }, [user, loadMyTodayStandup, loadDirectPings]);
 
   // 실시간 시계 작동
   useEffect(() => {
@@ -161,7 +152,7 @@ export default function EmployeeView() {
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playedPingsRef = useRef<Set<string>>(new Set());
-  const processedRequestsRef = useRef<Set<number>>(new Set());
+  const alarmAudioContextRef = useRef<AudioContext | null>(null);
 
   // 카메라 비디오 엘리먼트 소스 연결
   useEffect(() => {
@@ -228,9 +219,19 @@ export default function EmployeeView() {
   // 경보음 합성 재생 함수
   const playAlarm = () => {
     try {
-      const WebAudioContext = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      const WebAudioContext =
+        window.AudioContext ||
+        (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!WebAudioContext) return;
-      const ctx = new WebAudioContext();
+
+      if (!alarmAudioContextRef.current || alarmAudioContextRef.current.state === 'closed') {
+        alarmAudioContextRef.current = new WebAudioContext();
+      }
+      const ctx = alarmAudioContextRef.current;
+      if (!ctx) return;
+      if (ctx.state === 'suspended') {
+        void ctx.resume();
+      }
       const now = ctx.currentTime;
       
       const playBeep = (time: number, freq: number, duration: number) => {
@@ -275,19 +276,26 @@ export default function EmployeeView() {
     }
   }, [directPings, user]);
 
-  // 내가 보낸 참가 요청이 승인되면 자동으로 회의실 입장
   useEffect(() => {
-    if (user && !activeRoom) {
-      const approvedRequest = joinRequests.find(
-        (r) => r.userId === user.id && r.status === 'approved' && !processedRequestsRef.current.has(r.requestId)
-      );
-      if (approvedRequest) {
-        processedRequestsRef.current.add(approvedRequest.requestId);
-        joinRoom(approvedRequest.roomId);
-        setIsVideoModalOpen(true);
+    if (!user) return;
+    const activePingIds = new Set(
+      directPings.filter((p) => p.employeeId === user.id).map((p) => p.id)
+    );
+    playedPingsRef.current.forEach((id) => {
+      if (!activePingIds.has(id)) {
+        playedPingsRef.current.delete(id);
       }
-    }
-  }, [joinRequests, activeRoom, user, joinRoom]);
+    });
+  }, [directPings, user]);
+
+  useEffect(() => {
+    return () => {
+      if (alarmAudioContextRef.current && alarmAudioContextRef.current.state !== 'closed') {
+        void alarmAudioContextRef.current.close();
+      }
+      alarmAudioContextRef.current = null;
+    };
+  }, []);
 
   // 오늘 날짜 문자열
   const todayStr = new Date().toISOString().split('T')[0];
@@ -365,29 +373,6 @@ export default function EmployeeView() {
     }
   };
 
-  // 가상 영상통화 방 만들기
-  const handleCreateRoom = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (commuteStatus !== 'WORK') {
-      alert('업무 시작(출근)을 먼저 완료한 후 영상통화를 개설할 수 있습니다.');
-      return;
-    }
-    if (!roomTitle.trim()) {
-      alert('방 제목을 입력해 주세요.');
-      return;
-    }
-    if (user) {
-      try {
-        await createRoom(roomTitle);
-        setRoomTitle('');
-        setIsCreateRoomOpen(false);
-        setIsVideoModalOpen(true);
-      } catch (err: unknown) {
-        alert(getErrorMessage(err, '회의실 개설에 실패했습니다.'));
-      }
-    }
-  };
-
   // AI 모니터링 시작 토글
   const handleToggleMonitoring = () => {
     if (commuteStatus !== 'WORK') {
@@ -395,64 +380,6 @@ export default function EmployeeView() {
       return;
     }
     setIsMonitoring(!isMonitoring);
-  };
-
-  // 영상통화 참가하기
-// EmployeeView.tsx — handleJoinRoom 함수만 아래 내용으로 교체하세요
-
-  const handleJoinRoom = async (roomId: number) => {
-    if (commuteStatus !== 'WORK') {
-      alert('업무 시작(출근)을 먼저 완료해야 영상통화에 참가할 수 있습니다.');
-      return;
-    }
-    if (!user) return;
-
-    const targetRoom = rooms.find((r) => r.roomId === roomId);
-    if (!targetRoom) return;
-
-    const isHost = targetRoom.hostId === user.id;
-
-    if (isHost) {
-      // ✅ 수정: 호스트는 바로 상세 조회 후 입장
-      // (rooms의 participants는 항상 빈 배열이므로 isAlreadyParticipant 체크 제거)
-      await joinRoom(roomId);
-      setIsVideoModalOpen(true);
-      return;
-    }
-
-    // ✅ 수정: 호스트가 아닌 경우 — 상세 조회로 ACCEPTED 여부 확인
-    try {
-      const detail = await api.getMeetingDetail(roomId);
-      const isAccepted = detail.participants.some(
-        (p) => p.memberId === user.id && p.requestStatus === 'ACCEPTED'
-      );
-
-      if (isAccepted) {
-        // 이미 수락된 참가자면 바로 입장
-        await joinRoom(roomId);
-        setIsVideoModalOpen(true);
-        return;
-      }
-    } catch {
-      // 상세 조회 실패 시 참가 요청으로 폴백
-    }
-
-    // 이미 대기 중인 요청이 있는지 확인
-    const hasPendingRequest = joinRequests.some(
-      (r) => r.roomId === roomId && r.userId === user.id && r.status === 'pending'
-    );
-    if (hasPendingRequest) {
-      alert('이미 참가 대기 요청을 보냈습니다. 호스트의 승인을 기다려 주세요.');
-      return;
-    }
-
-    // 참가 요청 전송
-    try {
-      await requestJoinRoom(roomId);
-      alert('참가 대기 요청을 보냈습니다. 호스트가 승인하면 입장됩니다.');
-    } catch (err: unknown) {
-      alert(getErrorMessage(err, '참가 대기 요청에 실패했습니다.'));
-    }
   };
 
   if (!isAuthenticated || user?.role !== 'EMPLOYEE') {
@@ -651,85 +578,7 @@ export default function EmployeeView() {
                 </form>
               </div>
 
-              {/* ──── 온라인 영상통화 회의실 ──── */}
-              <div className="rounded-2xl bg-slate-900 border border-white/5 p-6 shadow-xl">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-slate-300 font-semibold flex items-center gap-2 text-sm">
-                    <Video className="w-4 h-4 text-cyan-400" /> 실시간 가상 영상통화 회의실
-                  </span>
-                  <button
-                    onClick={() => {
-                      if (commuteStatus !== 'WORK') {
-                        alert('업무 시작(출근)을 완료해 주세요.');
-                        return;
-                      }
-                      setIsCreateRoomOpen(!isCreateRoomOpen);
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 transition cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> 방 개설하기
-                  </button>
-                </div>
-                <p className="text-xs text-slate-500 mb-6">팀원들과 실시간 화상 대화가 필요할 때 방을 만들거나 다른 팀원의 회의에 참여하세요.</p>
-
-                {isCreateRoomOpen && (
-                  <form onSubmit={handleCreateRoom} className="mb-6 p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row gap-3">
-                    <input
-                      type="text"
-                      placeholder="개설할 회의실 제목을 입력해 주세요"
-                      value={roomTitle}
-                      onChange={(e) => setRoomTitle(e.target.value)}
-                      className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-500"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsCreateRoomOpen(false)}
-                        className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs cursor-pointer"
-                      >
-                        취소
-                      </button>
-                      <button
-                        type="submit"
-                        className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs cursor-pointer"
-                      >
-                        개설 완료
-                      </button>
-                    </div>
-                  </form>
-                )}
-
-                {rooms.length === 0 ? (
-                  <div className="py-12 border border-dashed border-slate-800 rounded-xl text-center">
-                    <Video className="w-8 h-8 text-slate-700 mx-auto mb-2.5 opacity-50" />
-                    <p className="text-xs text-slate-600">현재 개설된 영상통화 회의실이 없습니다.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {rooms.map((room) => (
-                      <div
-                        key={room.roomId}
-                        className="p-4 rounded-xl bg-slate-950 border border-slate-850 flex flex-col justify-between gap-4 group hover:border-cyan-500/30 transition-all duration-300"
-                      >
-                        <div>
-                          <h4 className="text-sm font-bold text-white truncate">{room.title}</h4>
-                          <span className="text-[10px] text-slate-500 mt-0.5 block">개설자: {room.hostName}</span>
-                          <span className="inline-flex items-center gap-1 mt-2 text-[10px] text-cyan-400 font-semibold bg-cyan-500/5 px-2 py-0.5 rounded border border-cyan-500/10">
-                            참여자 {room.participants.length}명
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => handleJoinRoom(room.roomId)}
-                          className="w-full py-2 rounded-lg bg-slate-800 hover:bg-cyan-600 hover:text-white text-slate-300 font-semibold text-xs transition duration-200 flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <Video className="w-3.5 h-3.5" />
-                          <span>회의 입장하기</span>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <MeetingRoomPanel user={user} commuteStatus={commuteStatus} requireWorkStatus />
             </div>
 
             {/* 우측 사이드바 영역 */}
@@ -746,62 +595,25 @@ export default function EmployeeView() {
         )}
       </div>
 
-      {/* 가상 영상통화 룸 오버레이 모달 */}
-      {isVideoModalOpen && activeRoom && (
-        <VideoCallModal onClose={() => setIsVideoModalOpen(false)} />
-      )}
-
-      {/* 회의 초대 알림 */}
-      {invitations
-        .filter((i) => i.inviteeId === user?.id && i.status === 'pending')
-        .map((inv) => (
-          <div
-            key={inv.inviteId}
-            className="fixed bottom-6 right-6 z-50 bg-slate-900 border border-indigo-500/30 rounded-2xl p-5 shadow-2xl w-80 backdrop-blur-md animate-bounce"
-          >
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
-                <Video className="w-5 h-5" />
-              </div>
-              <div className="flex-1">
-                <h4 className="text-sm font-bold text-white">회의 초대 도착</h4>
-                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  <strong>{inv.hostName}</strong>님이 <strong>{inv.roomTitle}</strong> 회의에 초대하셨습니다.
-                </p>
-                <div className="flex gap-2 mt-4 justify-end">
-                  <button
-                    onClick={() => declineInvitation(inv.roomId, inv.inviteId)}
-                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs font-bold transition duration-200 cursor-pointer"
-                  >
-                    거절
-                  </button>
-                  <button
-                    onClick={async () => {
-                      await acceptInvitation(inv.roomId, inv.inviteId);
-                      setIsVideoModalOpen(true);
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition duration-200 cursor-pointer"
-                  >
-                    수락 및 입장
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-
       {/* 상사 직접 경보(DirectPing) 모달 */}
-      {directPings
-        .filter((p) => p.employeeId === user?.id && p.status === 'pending')
-        .map((ping) => (
-          <div key={ping.id} className="fixed inset-0 z-[110] bg-red-950/80 backdrop-blur-md flex items-center justify-center p-6">
+      {(() => {
+        const pendingPings = directPings.filter(
+          (p) => p.employeeId === user?.id && p.status === 'pending'
+        );
+        const ping = pendingPings[0];
+        if (!ping) return null;
+        return (
+          <div className="fixed inset-0 z-[110] bg-red-950/80 backdrop-blur-md flex items-center justify-center p-6">
             <div className="bg-slate-900 border-2 border-red-500 rounded-3xl p-8 max-w-md w-full shadow-2xl flex flex-col items-center text-center">
               <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-500 text-3xl font-extrabold mb-4 animate-ping">
                 ⚠️
               </div>
               <h3 className="text-xl font-black text-red-400 tracking-tight mb-2">상사 긴급 경고</h3>
-              <p className="text-sm text-slate-400 mb-6">
+              <p className="text-sm text-slate-400 mb-2">
                 <strong>{ping.fromName}</strong> 상사로부터 메시지가 전달되었습니다.
+              </p>
+              <p className="text-xs text-slate-500 mb-6">
+                {pendingPings.length > 1 ? `${pendingPings.length}건 중 1건 표시` : '1건 표시'}
               </p>
               <div className="w-full bg-slate-950/80 border border-red-500/20 rounded-2xl p-5 mb-8 text-left text-sm text-slate-100 font-medium leading-relaxed shadow-inner">
                 {ping.message}
@@ -814,7 +626,8 @@ export default function EmployeeView() {
               </button>
             </div>
           </div>
-        ))}
+        );
+      })()}
     </div>
   );
 }
