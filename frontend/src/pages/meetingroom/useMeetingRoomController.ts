@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useVideoCallStore } from '../../domains/video-call/stores/videoCallStore';
+import { useTeamStore } from '../../domains/team/stores/teamStore';
+import { webSocketService } from '../../lib/websocket';
+import { WEBSOCKET_TOPICS } from '../../lib/constants';
+import { parseWsEnvelope } from '../../lib/wsEvent';
 import type { AuthUser } from '../../lib/types';
 
 interface UseMeetingRoomControllerOptions {
@@ -35,6 +39,67 @@ export function useMeetingRoomController({
   const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const processedRequestsRef = useRef<Set<number>>(new Set());
+
+  const { teams, memberTeamMap, syncMemberContext: syncTeamContext, fetchMyTeam, fetchTeamMembers } = useTeamStore();
+
+  const team = (() => {
+    if (!user) return undefined;
+    if (user.role === 'MANAGER') {
+      return teams.find((t) => t.managerId === user.id);
+    }
+    const teamId = memberTeamMap[user.id];
+    if (!teamId) return undefined;
+    return teams.find((t) => t.id === teamId);
+  })();
+
+  const managerId = user?.role === 'MANAGER' ? user.id : team?.managerId;
+
+  useEffect(() => {
+    if (user) {
+      syncTeamContext(user.id);
+      if (user.role === 'EMPLOYEE') {
+        void fetchMyTeam();
+      } else if (user.role === 'MANAGER') {
+        void fetchTeamMembers(user.id);
+      }
+    }
+  }, [user, syncTeamContext, fetchMyTeam, fetchTeamMembers]);
+
+  useEffect(() => {
+    if (!user || !managerId) return;
+
+    webSocketService.connect((connected) => {
+      if (connected) {
+        // 1. 팀 토픽 구독
+        const teamTopic = WEBSOCKET_TOPICS.TEAM(managerId);
+        webSocketService.subscribe(teamTopic, (msg) => {
+          const envelope = parseWsEnvelope(msg);
+          if (!envelope) return;
+          void handleWebsocketEvent(envelope);
+        });
+
+        // 2. 개인 토픽 구독
+        const memberTopic = WEBSOCKET_TOPICS.MEMBER(user.id);
+        webSocketService.subscribe(memberTopic, (msg) => {
+          const envelope = parseWsEnvelope(msg);
+          if (!envelope) return;
+          if (
+            envelope.event === 'INVITED' ||
+            envelope.event === 'REQUEST_ACCEPTED' ||
+            envelope.event === 'REQUEST_REJECTED'
+          ) {
+            void handleWebsocketEvent(envelope);
+          }
+        });
+      }
+    });
+
+    return () => {
+      webSocketService.unsubscribe(WEBSOCKET_TOPICS.TEAM(managerId));
+      webSocketService.unsubscribe(WEBSOCKET_TOPICS.MEMBER(user.id));
+      webSocketService.disconnect();
+    };
+  }, [user, managerId, handleWebsocketEvent]);
 
   useEffect(() => {
     if (user) {
