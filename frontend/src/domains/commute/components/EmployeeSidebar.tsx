@@ -125,7 +125,10 @@ export default function EmployeeSidebar({
                 dotColor = 'bg-slate-400';
                 textColor = 'text-slate-400';
               } else if (log.type === 'STATE' && log.statusDetail) {
-                detailText = `상태 변경: ${log.statusDetail}`;
+                const isAiState = log.statusDetail === '자리비움' || log.statusDetail === '근무 중';
+                const prefix = isAiState ? 'AI 자동 감지' : '상태 변경';
+                detailText = `${prefix}: ${log.statusDetail}`;
+                
                 const colors = STATUS_UI_SETTINGS[log.statusDetail as UserStateType];
                 if (colors) {
                   dotColor = colors.dotStyle;

@@ -3,7 +3,7 @@ import { useAuthStore } from '../domains/auth/stores/authStore';
 import CameraBadge from '../components/CameraBadge';
 import CameraPanel from '../components/CameraPanel';
 import { useTeamStore } from '../domains/team/stores/teamStore';
-import { useCommuteStore } from '../domains/commute/stores/commuteStore';
+import { useCommuteStore, mapEnStatusToKoState } from '../domains/commute/stores/commuteStore';
 import type { UserStateType } from '../domains/commute/stores/commuteStore';
 import { useStandupStore } from '../domains/standup/stores/standupStore';
 import { useVideoCallStore } from '../domains/video-call/stores/videoCallStore';
@@ -72,6 +72,35 @@ export default function EmployeeView() {
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [currentStatus, setCurrentStatus] = useState<AiStatusType>('WORKING');
   const [confidence, setConfidence] = useState(100);
+
+  // 키보드/마우스 입력 무감지 상태
+  const [isIdle, setIsIdle] = useState(false);
+
+  useEffect(() => {
+    let idleTimer: ReturnType<typeof setTimeout>;
+    
+    const resetIdle = () => {
+      setIsIdle(false);
+      clearTimeout(idleTimer);
+      // 5분(300,000ms) 동안 이벤트가 없으면 idle 상태로 전환 (AI가 인식하지 못하는 경우의 백업)
+      idleTimer = setTimeout(() => setIsIdle(true), 300000); 
+    };
+
+    window.addEventListener('mousemove', resetIdle);
+    window.addEventListener('keydown', resetIdle);
+    window.addEventListener('scroll', resetIdle);
+    window.addEventListener('click', resetIdle);
+
+    resetIdle();
+
+    return () => {
+      window.removeEventListener('mousemove', resetIdle);
+      window.removeEventListener('keydown', resetIdle);
+      window.removeEventListener('scroll', resetIdle);
+      window.removeEventListener('click', resetIdle);
+      clearTimeout(idleTimer);
+    };
+  }, []);
 
   // 팀 정보 조회
   useEffect(() => {
@@ -170,27 +199,29 @@ export default function EmployeeView() {
 
   // AI 모니터링 연동 및 상태 자동 갱신
   useEffect(() => {
-    if (lastResult) {
+    if (lastResult && user) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentStatus(lastResult.state);
       setConfidence(Math.round(lastResult.confidence * 100));
 
-      if (user) {
-        const isAway = lastResult.state === 'AWAY';
-        const isWorking = lastResult.state === 'WORKING';
-
-        if (isAway && userState === '근무 중') {
-          setUserState(user.id, user.username, '자리비움').catch(err => {
-            console.error('AI 상태 업데이트 자동 트리거 실패:', err);
-          });
-        } else if (isWorking && userState === '자리비움') {
-          setUserState(user.id, user.username, '근무 중').catch(err => {
-            console.error('AI 상태 업데이트 자동 트리거 실패:', err);
-          });
-        }
+      // AI 결과값을 한글 상태로 매핑
+      const mappedAiState = mapEnStatusToKoState(lastResult.state);
+      
+      // AI가 자리비움으로 판단했거나, 키보드/마우스 입력이 5분간 없었던 경우
+      const effectiveState = isIdle ? '자리비움' : mappedAiState;
+      
+      // 수동으로 설정한 '회의 중', '집중 근무' 상태를 덮어쓰지 않도록 '근무 중'과 '자리비움' 사이에서만 자동 전환
+      if (effectiveState === '자리비움' && userState === '근무 중') {
+        setUserState(user.id, user.username, '자리비움').catch(err => {
+          console.error('AI 상태 업데이트 자동 트리거 실패:', err);
+        });
+      } else if (effectiveState === '근무 중' && userState === '자리비움') {
+        setUserState(user.id, user.username, '근무 중').catch(err => {
+          console.error('AI 상태 업데이트 자동 트리거 실패:', err);
+        });
       }
     }
-  }, [lastResult, user, userState, setUserState]);
+  }, [lastResult, isIdle, user, userState, setUserState]);
 
   // 250ms 간격 프레임 전송 루프
   useEffect(() => {
@@ -205,8 +236,9 @@ export default function EmployeeView() {
         canvas.height = 240;
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         try {
-          const base64 = canvas.toDataURL('image/jpeg', 0.6);
-          sendFrame(base64);
+          const base64DataUrl = canvas.toDataURL('image/jpeg', 0.6);
+          const pureBase64 = base64DataUrl.split(',')[1] || base64DataUrl;
+          sendFrame(pureBase64);
         } catch (e) {
           console.error('Frame capturing failed:', e);
         }
