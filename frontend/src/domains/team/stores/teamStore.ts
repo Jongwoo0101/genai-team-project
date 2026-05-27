@@ -3,10 +3,9 @@ import * as api from '../../../lib/api';
 import { useAuthStore } from '../../auth/stores/authStore';
 import {
   clearTeamStorage as clearStoredTeams,
+  isTeamStorageEventKey,
   loadTeamStorage,
-  MEMBER_MAP_STORAGE_KEY,
   saveTeamStorage,
-  TEAM_STORAGE_KEY
 } from './teamStorage';
 
 // ========================
@@ -31,9 +30,12 @@ export interface TeamMember {
 }
 
 interface TeamState {
+  ownerMemberId: number | null;
   teams: Team[];
   // 직원의 소속 팀 (employeeId -> teamId)
   memberTeamMap: Record<number, string>;
+
+  syncMemberContext: (memberId: number) => void;
 
   // 관리자 액션
   createTeam: (name: string, description: string, managerId: number, managerName: string, teamCode?: string) => Team;
@@ -70,15 +72,28 @@ function generateTeamCode(): string {
 
 export function clearTeamStorage() {
   clearStoredTeams();
-  useTeamStore.setState({ teams: [], memberTeamMap: {} });
+  useTeamStore.setState({ ownerMemberId: null, teams: [], memberTeamMap: {} });
 }
 
 export const useTeamStore = create<TeamState>((set, get) => {
   const initial = loadTeamStorage();
 
   return {
+    ownerMemberId: initial.ownerMemberId,
     teams: initial.teams,
     memberTeamMap: initial.memberTeamMap,
+
+    syncMemberContext: (memberId) => {
+      if (get().ownerMemberId === memberId) return;
+
+      const latest = loadTeamStorage(memberId);
+      set({
+        ownerMemberId: memberId,
+        teams: latest.teams,
+        memberTeamMap: latest.memberTeamMap,
+      });
+      saveTeamStorage(latest.teams, latest.memberTeamMap, memberId);
+    },
 
     createTeam: (name, description, managerId, managerName, providedTeamCode) => {
       // 이제 백엔드에서는 초대 코드가 발급되면 자동으로 매니저와 연결되므로, 
@@ -97,8 +112,9 @@ export const useTeamStore = create<TeamState>((set, get) => {
       };
 
       const updated = [...get().teams, newTeam];
-      set({ teams: updated });
-      saveTeamStorage(updated, get().memberTeamMap);
+      const ownerMemberId = get().ownerMemberId ?? managerId;
+      set({ ownerMemberId, teams: updated });
+      saveTeamStorage(updated, get().memberTeamMap, ownerMemberId);
       return newTeam;
     },
 
@@ -113,8 +129,9 @@ export const useTeamStore = create<TeamState>((set, get) => {
       });
 
       const updated = get().teams.filter((t) => t.id !== teamId);
-      set({ teams: updated, memberTeamMap: newMap });
-      saveTeamStorage(updated, newMap);
+      const ownerMemberId = get().ownerMemberId ?? managerId;
+      set({ ownerMemberId, teams: updated, memberTeamMap: newMap });
+      saveTeamStorage(updated, newMap, ownerMemberId);
       return true;
     },
 
@@ -128,8 +145,8 @@ export const useTeamStore = create<TeamState>((set, get) => {
 
     joinTeam: (teamCode, employeeId, employeeName) => {
       // 1. 최신 상태 강제 동기화 (다른 창에서 방금 생성된 팀을 인식하기 위함)
-      const latest = loadTeamStorage();
-      set({ teams: latest.teams, memberTeamMap: latest.memberTeamMap });
+      const latest = loadTeamStorage(employeeId);
+      set({ ownerMemberId: employeeId, teams: latest.teams, memberTeamMap: latest.memberTeamMap });
 
       // 이미 팀에 소속되어 있는지 확인
       const existingTeamId = get().memberTeamMap[employeeId];
@@ -164,8 +181,9 @@ export const useTeamStore = create<TeamState>((set, get) => {
       );
       const updatedMap = { ...get().memberTeamMap, [employeeId]: team.id };
 
-      set({ teams: updatedTeams, memberTeamMap: updatedMap });
-      saveTeamStorage(updatedTeams, updatedMap);
+      const ownerMemberId = get().ownerMemberId ?? employeeId;
+      set({ ownerMemberId, teams: updatedTeams, memberTeamMap: updatedMap });
+      saveTeamStorage(updatedTeams, updatedMap, ownerMemberId);
 
       return { success: true, teamName: team.name };
     },
@@ -180,8 +198,9 @@ export const useTeamStore = create<TeamState>((set, get) => {
       const updatedMap = { ...get().memberTeamMap };
       delete updatedMap[employeeId];
 
-      set({ teams: updatedTeams, memberTeamMap: updatedMap });
-      saveTeamStorage(updatedTeams, updatedMap);
+      const ownerMemberId = get().ownerMemberId ?? employeeId;
+      set({ ownerMemberId, teams: updatedTeams, memberTeamMap: updatedMap });
+      saveTeamStorage(updatedTeams, updatedMap, ownerMemberId);
     },
 
     getEmployeeTeam: (employeeId) => {
@@ -204,8 +223,9 @@ export const useTeamStore = create<TeamState>((set, get) => {
       const updatedMap = { ...get().memberTeamMap };
       delete updatedMap[memberId];
 
+      const ownerMemberId = get().ownerMemberId;
       set({ teams: updatedTeams, memberTeamMap: updatedMap });
-      saveTeamStorage(updatedTeams, updatedMap);
+      saveTeamStorage(updatedTeams, updatedMap, ownerMemberId);
       return true;
     },
 
@@ -234,8 +254,9 @@ export const useTeamStore = create<TeamState>((set, get) => {
             updatedMap[user.id] = teamId;
           }
           
-          set({ teams: updatedTeams, memberTeamMap: updatedMap });
-          saveTeamStorage(updatedTeams, updatedMap);
+          const ownerMemberId = user?.id ?? get().ownerMemberId;
+          set({ ownerMemberId, teams: updatedTeams, memberTeamMap: updatedMap });
+          saveTeamStorage(updatedTeams, updatedMap, ownerMemberId);
           // 팀 멤버 목록도 함께 가져와서 동기화
           await get().fetchTeamMembers(res.managerId);
         }
@@ -262,8 +283,9 @@ export const useTeamStore = create<TeamState>((set, get) => {
           const updatedTeams = get().teams.map(t =>
             (t.managerId === managerId) ? { ...t, members: teamMembers } : t
           );
-          set({ teams: updatedTeams });
-          saveTeamStorage(updatedTeams, get().memberTeamMap);
+          const ownerMemberId = get().ownerMemberId ?? managerId;
+          set({ ownerMemberId, teams: updatedTeams });
+          saveTeamStorage(updatedTeams, get().memberTeamMap, ownerMemberId);
         }
       } catch (err) {
         console.error('멤버 목록 동기화 실패:', err);
@@ -275,8 +297,12 @@ export const useTeamStore = create<TeamState>((set, get) => {
 // 다른 탭에서 로컬 스토리지가 변경될 때 자동으로 현재 탭의 상태를 동기화합니다.
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
-    if (e.key === TEAM_STORAGE_KEY || e.key === MEMBER_MAP_STORAGE_KEY) {
-      const latest = loadTeamStorage();
+    if (isTeamStorageEventKey(e.key)) {
+      const currentOwnerId = useTeamStore.getState().ownerMemberId;
+      if (currentOwnerId === null) {
+        return;
+      }
+      const latest = loadTeamStorage(currentOwnerId);
       useTeamStore.setState({ teams: latest.teams, memberTeamMap: latest.memberTeamMap });
     }
   });

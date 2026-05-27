@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { STORAGE_KEYS } from '../../../lib/constants';
 import * as api from '../../../lib/api';
 import type { WsEnvelope } from '../../../lib/wsEvent';
+import { userScopedStorage, getScopedKey } from '../../../lib/userScopedStorage';
 
 const toNumber = (value: unknown): number | null =>
   typeof value === 'number' ? value : null;
@@ -45,6 +46,7 @@ export interface Invitation {
 }
 
 interface VideoCallState {
+  ownerMemberId: number | null;
   rooms: VideoCallRoom[];
   activeRoom: VideoCallRoom | null;
   joinRequests: JoinRequest[];
@@ -59,17 +61,34 @@ interface VideoCallState {
   toggleMic: (participantId: number) => void;
   clearRooms: () => void;
   requestJoinRoom: (roomId: number) => Promise<void>;
+  enterRoom: (roomId: number, userId: number) => Promise<'joined' | 'requested' | 'pending'>;
   approveJoinRequest: (roomId: number, requestId: number) => Promise<void>;
   rejectJoinRequest: (roomId: number, requestId: number) => Promise<void>;
   inviteUser: (roomId: number, inviteeId: number) => Promise<void>;
   acceptInvitation: (roomId: number, inviteId: number) => Promise<void>;
   declineInvitation: (roomId: number, inviteId: number) => Promise<void>;
   handleWebsocketEvent: (envelope: WsEnvelope) => Promise<void>;
+  syncMemberContext: (memberId: number) => void;
 }
+
+const createMemberScopedVideoCallState = (
+  prevState: Pick<VideoCallState, 'ownerMemberId' | 'rooms' | 'activeRoom' | 'joinRequests' | 'invitations'>,
+  memberId: number
+) => {
+  if (prevState.ownerMemberId === memberId) return prevState;
+  return {
+    ownerMemberId: memberId,
+    rooms: [],
+    activeRoom: null,
+    joinRequests: [],
+    invitations: [],
+  };
+};
 
 export const useVideoCallStore = create<VideoCallState>()(
   persist(
     (set, get) => ({
+      ownerMemberId: null,
       rooms: [],
       activeRoom: null,
       joinRequests: [],
@@ -227,6 +246,35 @@ export const useVideoCallStore = create<VideoCallState>()(
         }
       },
 
+      enterRoom: async (roomId, userId) => {
+        const targetRoom = get().rooms.find((r) => r.roomId === roomId);
+        if (targetRoom?.hostId === userId) {
+          await get().joinRoom(roomId);
+          return 'joined';
+        }
+
+        try {
+          const detail = await api.getMeetingDetail(roomId);
+          const isAccepted = detail.participants.some(
+            (p) => p.memberId === userId && p.requestStatus === 'ACCEPTED'
+          );
+          if (isAccepted) {
+            await get().joinRoom(roomId);
+            return 'joined';
+          }
+        } catch {
+          // 상세 조회 실패 시 아래 대기/요청 처리로 폴백
+        }
+
+        const hasPendingRequest = get().joinRequests.some(
+          (r) => r.roomId === roomId && r.userId === userId && r.status === 'pending'
+        );
+        if (hasPendingRequest) return 'pending';
+
+        await get().requestJoinRoom(roomId);
+        return 'requested';
+      },
+
       approveJoinRequest: async (roomId, requestId) => {
         try {
           await api.respondToJoinRequest(roomId, requestId, true);
@@ -375,9 +423,13 @@ export const useVideoCallStore = create<VideoCallState>()(
             break;
         }
       },
+      syncMemberContext: (memberId) => {
+        set((state) => createMemberScopedVideoCallState(state, memberId));
+      },
     }),
     {
       name: STORAGE_KEYS.VIDEOCALL_STATE,
+      storage: createJSONStorage(() => userScopedStorage),
     }
   )
 );
@@ -385,24 +437,30 @@ export const useVideoCallStore = create<VideoCallState>()(
 // 다른 브라우저 탭에서 변경 시 자동으로 연동되도록 이벤트 수신
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
-    if (e.key === STORAGE_KEYS.VIDEOCALL_STATE) {
+    const currentOwnerId = useVideoCallStore.getState().ownerMemberId;
+    const scopedKey = getScopedKey(STORAGE_KEYS.VIDEOCALL_STATE, currentOwnerId);
+
+    if (e.key === scopedKey) {
       try {
-        const data = localStorage.getItem(STORAGE_KEYS.VIDEOCALL_STATE);
+        const data = localStorage.getItem(scopedKey);
         if (data) {
           const parsed = JSON.parse(data);
           if (parsed.state) {
-            const currentActive = useVideoCallStore.getState().activeRoom;
-            const newRooms = parsed.state.rooms as VideoCallRoom[];
-            const nextActive = currentActive
-              ? newRooms.find((r) => r.roomId === currentActive.roomId) || null
-              : null;
+            if (currentOwnerId !== null && parsed.state.ownerMemberId === currentOwnerId) {
+              const currentActive = useVideoCallStore.getState().activeRoom;
+              const newRooms = parsed.state.rooms as VideoCallRoom[];
+              const nextActive = currentActive
+                ? newRooms.find((r) => r.roomId === currentActive.roomId) || null
+                : null;
 
-            useVideoCallStore.setState({
-              rooms: newRooms,
-              activeRoom: nextActive,
-              joinRequests: parsed.state.joinRequests || [],
-              invitations: parsed.state.invitations || [],
-            });
+              useVideoCallStore.setState({
+                ownerMemberId: parsed.state.ownerMemberId,
+                rooms: newRooms,
+                activeRoom: nextActive,
+                joinRequests: parsed.state.joinRequests || [],
+                invitations: parsed.state.invitations || [],
+              });
+            }
           }
         }
       } catch (err) {

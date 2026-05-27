@@ -6,16 +6,17 @@ import CreateTeamModal from '../components/CreateTeamModal';
 
 export default function TeamList() {
   const { user, isAuthenticated } = useAuthStore();
-  const { getTeamsByManager, deleteTeam, fetchTeamMembers } = useTeamStore();
+  const { getTeamsByManager, deleteTeam, fetchTeamMembers, syncMemberContext } = useTeamStore();
   const navigate = useNavigate();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.id) {
-      fetchTeamMembers(user.id);
+      syncMemberContext(user.id);
+      void fetchTeamMembers(user.id);
     }
-  }, [user?.id, fetchTeamMembers]);
+  }, [user?.id, fetchTeamMembers, syncMemberContext]);
 
   if (!isAuthenticated || user?.role !== 'MANAGER') {
     return <Navigate to="/login" replace />;

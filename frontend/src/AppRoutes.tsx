@@ -8,6 +8,7 @@ import Checkout from './pages/Checkout';
 import Login from './pages/Login';
 import EmployeeView from './pages/EmployeeView';
 import ManagerDashboard from './pages/ManagerDashboard';
+import MeetingRoomPage from './pages/meetingroom/MeetingRoomPage';
 import TeamList from './pages/TeamList';
 import JoinTeam from './pages/JoinTeam';
 import Terms from './pages/Terms';
@@ -54,6 +55,10 @@ export default function AppRoutes() {
         <Route 
           path="/employee" 
           element={isAuthenticated ? <EmployeeView /> : <Navigate to="/login" replace />} 
+        />
+        <Route
+          path="/meetingroom"
+          element={isAuthenticated ? <MeetingRoomPage /> : <Navigate to="/login" replace />}
         />
       </Route>
     </Routes>

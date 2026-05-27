@@ -107,7 +107,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
-    // 프론트엔드 캐시(토큰 등) 완전 초기화
+    // 프론트엔드 캐시(토큰 등) 및 로컬 스토리지 정리
+    const { user } = get();
+    if (user?.id) {
+      localStorage.removeItem(`${STORAGE_KEYS.COMMUTE_STATE}:${user.id}`);
+      localStorage.removeItem(`${STORAGE_KEYS.STANDUP_STATE}:${user.id}`);
+      localStorage.removeItem(`${STORAGE_KEYS.VIDEOCALL_STATE}:${user.id}`);
+      localStorage.removeItem(`${STORAGE_KEYS.TEAM_DATA}:${user.id}`);
+      localStorage.removeItem(`${STORAGE_KEYS.MEMBER_MAP}:${user.id}`);
+      localStorage.removeItem(STORAGE_KEYS.TEAM_OWNER);
+    }
     sessionStorage.clear();
     set({ user: null, token: null, isAuthenticated: false });
   },

@@ -1,9 +1,10 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { STORAGE_KEYS } from '../../../lib/constants';
 import * as api from '../../../lib/api';
 import { formatDateTimeKo, toEpochMs, toIsoString } from '../../../lib/datetime';
 import type { WsEnvelope } from '../../../lib/wsEvent';
+import { userScopedStorage, getScopedKey } from '../../../lib/userScopedStorage';
 
 export interface Standup {
   id: string;
@@ -18,7 +19,9 @@ export interface Standup {
 }
 
 interface StandupState {
+  ownerMemberId: number | null;
   standups: Standup[];
+  syncMemberContext: (memberId: number) => void;
   addStandup: (employeeId: number, employeeName: string, todayGoal: string, todayResult: string) => Promise<void>;
   getStandupsByDate: (dateStr: string) => Standup[];
   getStandupsByEmployee: (employeeId: number) => Standup[];
@@ -28,10 +31,20 @@ interface StandupState {
   handleWebsocketEvent: (envelope: WsEnvelope) => Promise<void>;
 }
 
+const createMemberScopedStandupState = (memberId: number): Pick<StandupState, 'ownerMemberId' | 'standups'> => ({
+  ownerMemberId: memberId,
+  standups: [],
+});
+
 export const useStandupStore = create<StandupState>()(
   persist(
     (set, get) => ({
+      ownerMemberId: null,
       standups: [],
+      syncMemberContext: (memberId) => {
+        if (get().ownerMemberId === memberId) return;
+        set(createMemberScopedStandupState(memberId));
+      },
       addStandup: async (_employeeId, _employeeName, todayGoal, todayResult) => {
         try {
           // 목표 등록
@@ -111,6 +124,7 @@ export const useStandupStore = create<StandupState>()(
     }),
     {
       name: STORAGE_KEYS.STANDUP_STATE,
+      storage: createJSONStorage(() => userScopedStorage),
     }
   )
 );
@@ -118,13 +132,18 @@ export const useStandupStore = create<StandupState>()(
 // 다른 브라우저 탭에서 변경 시 자동으로 연동되도록 이벤트 수신
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
-    if (e.key === STORAGE_KEYS.STANDUP_STATE) {
+    const currentOwnerId = useStandupStore.getState().ownerMemberId;
+    const scopedKey = getScopedKey(STORAGE_KEYS.STANDUP_STATE, currentOwnerId);
+
+    if (e.key === scopedKey) {
       try {
-        const data = localStorage.getItem(STORAGE_KEYS.STANDUP_STATE);
+        const data = localStorage.getItem(scopedKey);
         if (data) {
           const parsed = JSON.parse(data);
           if (parsed.state) {
-            useStandupStore.setState(parsed.state);
+            if (currentOwnerId !== null && parsed.state.ownerMemberId === currentOwnerId) {
+              useStandupStore.setState(parsed.state);
+            }
           }
         }
       } catch (err) {
