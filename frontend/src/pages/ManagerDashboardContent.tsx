@@ -158,7 +158,7 @@ export default function ManagerDashboard() {
       webSocketService.unsubscribe(memberTopic);
       webSocketService.disconnect();
     };
-  }, [user, teamId]);
+  }, [user, teamId, handleVideoCallWS]);
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!team) return <Navigate to="/teams" replace />;

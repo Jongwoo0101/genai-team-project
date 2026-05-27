@@ -35,6 +35,7 @@ export default function EmployeeView() {
   const fetchMyTeam = useTeamStore((s) => s.fetchMyTeam);
   const teams = useTeamStore((s) => s.teams);
   const memberTeamMap = useTeamStore((s) => s.memberTeamMap);
+  const syncTeamContext = useTeamStore((s) => s.syncMemberContext);
   
   // Zustand 스토어들 연동
   const { 
@@ -59,6 +60,7 @@ export default function EmployeeView() {
   const standups = useStandupStore((s) => s.standups);
   const addStandup = useStandupStore((s) => s.addStandup);
   const loadMyTodayStandup = useStandupStore((s) => s.loadMyTodayStandup);
+  const syncStandupContext = useStandupStore((s) => s.syncMemberContext);
   const { handleWebsocketEvent: handleVideoCallWS } = useVideoCallStore();
 
   // 입력용 로컬 상태
@@ -74,11 +76,11 @@ export default function EmployeeView() {
   // 팀 정보 조회
   useEffect(() => {
     if (user && user.id) {
-      useTeamStore.getState().syncMemberContext(user.id);
-      useStandupStore.getState().syncMemberContext(user.id);
+      syncTeamContext(user.id);
+      syncStandupContext(user.id);
       void fetchMyTeam();
     }
-  }, [fetchMyTeam, user]);
+  }, [fetchMyTeam, user, syncTeamContext, syncStandupContext]);
 
   // 마운트 시 데이터 로드
   useEffect(() => {

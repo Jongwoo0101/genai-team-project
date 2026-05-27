@@ -158,7 +158,7 @@ async function requestWithAuth<T>(url: string, method: string, body?: unknown): 
 
   try {
     return await res.json();
-  } catch (err) {
+  } catch {
     return undefined as T;
   }
 }
