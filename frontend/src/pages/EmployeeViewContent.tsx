@@ -131,7 +131,7 @@ export default function EmployeeView() {
         webSocketService.subscribe(memberTopic, (msg) => {
           const envelope = parseWsEnvelope(msg);
           if (!envelope) return;
-          if (envelope.event === 'INVITED' || envelope.event === 'REQUEST_ACCEPTED' || envelope.event === 'REQUEST_REJECTED') {
+          if (envelope.event === 'INVITED' || envelope.event === 'JOIN_REQUESTED' || envelope.event === 'REQUEST_ACCEPTED' || envelope.event === 'REQUEST_REJECTED') {
             handleVideoCallWS(envelope);
           }
           if (isNotificationResponse(envelope.data)) {
