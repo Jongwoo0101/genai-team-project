@@ -86,6 +86,7 @@ export function useMeetingRoomController({
           if (!envelope) return;
           if (
             envelope.event === 'INVITED' ||
+            envelope.event === 'JOIN_REQUESTED' ||
             envelope.event === 'REQUEST_ACCEPTED' ||
             envelope.event === 'REQUEST_REJECTED'
           ) {
