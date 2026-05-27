@@ -1,4 +1,4 @@
-import { vi, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 // Mock localStorage globally before importing the store
 const mockLocalStorage = (() => {
