@@ -1,6 +1,6 @@
 package com.worksight.api.dto;
 
-import com.worksight.api.entity.Role;
+import com.worksight.api.enums.Role;
 
 public class TeamDto {
 

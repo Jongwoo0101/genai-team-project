@@ -6,7 +6,9 @@ import * as api from '../lib/api';
 
 export default function JoinTeam() {
   const { user, isAuthenticated } = useAuthStore();
-  const { joinTeam, getEmployeeTeam, fetchMyTeam } = useTeamStore();
+  const fetchMyTeam = useTeamStore((s) => s.fetchMyTeam);
+  const teams = useTeamStore((s) => s.teams);
+  const memberTeamMap = useTeamStore((s) => s.memberTeamMap);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -24,7 +26,11 @@ export default function JoinTeam() {
   }
 
   // 이미 팀에 소속되어 있으면 직원 모니터링 화면으로
-  const existingTeam = getEmployeeTeam(user.id);
+  const existingTeam = (() => {
+    const teamId = memberTeamMap[user.id];
+    if (!teamId) return undefined;
+    return teams.find((t) => t.id === teamId);
+  })();
   if (existingTeam && !successTeam) {
     return <Navigate to="/employee" replace />;
   }
@@ -44,29 +50,15 @@ export default function JoinTeam() {
     try {
       // 1) 백엔드 API 호출 시도
       await api.joinTeam({ inviteCode: code });
-      // API 성공 → localStorage에도 동기화
-      const localResult = joinTeam(code, user.id, user.username);
-      if (!localResult.success) {
-        await fetchMyTeam();
-      }
+      
+      // API 성공 시 전역 스토어 갱신
+      await fetchMyTeam();
+      
       setSuccessTeam('팀');
       setTimeout(() => navigate('/employee'), 1500);
     } catch (err: unknown) {
       const serverMsg = err instanceof Error ? err.message : '';
-      
-      // 서버가 명확한 비즈니스 에러를 반환한 경우 (400, 401 등) → 그대로 표시
-      if (serverMsg && !serverMsg.startsWith('Failed to fetch') && !serverMsg.includes('NetworkError')) {
-        setError(serverMsg);
-      } else {
-        // 네트워크 에러 → localStorage 폴백 시도
-        const result = joinTeam(code, user.id, user.username);
-        if (result.success) {
-          setSuccessTeam(result.teamName || '팀');
-          setTimeout(() => navigate('/employee'), 1500);
-        } else {
-          setError(result.error || '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
-        }
-      }
+      setError(serverMsg || '서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
     } finally {
       setIsJoining(false);
     }

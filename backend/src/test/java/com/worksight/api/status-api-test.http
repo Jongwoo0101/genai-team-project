@@ -32,7 +32,7 @@ Content-Type: application/json
 Authorization: Bearer {{employeeToken}}
 
 {
-  "statusType": "BREAK"
+  "statusType": "AWAY"
 }
 
 ### 4. AI → FOCUS 설정 시도 ← 400 기대 (AI는 FOCUS 설정 불가)

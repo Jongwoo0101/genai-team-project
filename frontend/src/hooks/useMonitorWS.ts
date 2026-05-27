@@ -19,7 +19,8 @@ export function useMonitorWS(isMonitoring: boolean, employeeId: number, token: s
     setLastResult(null);
     setWsReady(false);
 
-    const ws = new WebSocket('ws://localhost:8765/ws/monitor');
+    const wsUrl = import.meta.env.VITE_AI_WS_URL || 'ws://localhost:8765/ws/monitor';
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {

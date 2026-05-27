@@ -2,7 +2,7 @@ package com.worksight.api.service;
 
 import com.worksight.api.dto.TeamDto.*;
 import com.worksight.api.entity.Member;
-import com.worksight.api.entity.Role;
+import com.worksight.api.enums.Role;
 import com.worksight.api.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

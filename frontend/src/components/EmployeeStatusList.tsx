@@ -1,5 +1,6 @@
 import type { MonitoringStatus } from '../lib/types';
-import { eventTypeLabels, eventTypeColors } from '../lib/mockData';
+import { STATUS_UI_SETTINGS } from '../domains/commute/constants/statusSettings';
+import { mapEnStatusToKoState } from '../domains/commute/stores/commuteStore';
 
 interface EmployeeStatusListProps {
   statuses: MonitoringStatus[];
@@ -29,7 +30,8 @@ export default function EmployeeStatusList({ statuses, isLoading, wsConnected }:
         ) : statuses.length === 0 ? (
           <div className="py-16 text-center text-slate-600 text-sm">연결된 직원이 없습니다</div>
         ) : statuses.map((s) => {
-          const c = eventTypeColors[s.currentStatus];
+          const koState = mapEnStatusToKoState(s.currentStatus);
+          const setting = STATUS_UI_SETTINGS[koState] || STATUS_UI_SETTINGS['오프라인'];
           return (
             <div key={s.memberId} className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-all group">
               <div className="flex items-center gap-3 min-w-0">
@@ -43,7 +45,9 @@ export default function EmployeeStatusList({ statuses, isLoading, wsConnected }:
                 </div>
               </div>
               <div className="flex flex-col items-end gap-1">
-                <span className={`flex-shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg ${c.bg} ${c.text}`}>{eventTypeLabels[s.currentStatus]}</span>
+                <span className={`flex-shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-lg ${setting.bgStyle} ${setting.textStyle}`}>
+                  {setting.icon} {setting.label}
+                </span>
                 <span className="text-[10px] text-slate-600 font-mono">{s.confidence}%</span>
               </div>
             </div>

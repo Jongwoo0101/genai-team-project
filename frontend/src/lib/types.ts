@@ -6,8 +6,8 @@
 /** 사용자 역할 (backend: Role.java) */
 export type Role = 'EMPLOYEE' | 'MANAGER';
 
-/** 이벤트 타입 (backend: EventType.java) */
-export type EventType = 'SLEEP' | 'SMARTPHONE' | 'AWAY' | 'DISTRACTED' | 'NORMAL';
+/** AI 모델 → 프론트 WebSocket 상태 (backend: StatusType 기반 AI 판별 상태) */
+export type AiStatusType = 'WORKING' | 'MEETING' | 'AWAY' | 'FOCUS';
 
 /** ──────────── 인증 관련 DTO ──────────── */
 
@@ -80,27 +80,12 @@ export interface MemberResponse {
   balance: number; // virtualBalance (가상 머니)
 }
 
-/** ──────────── 모니터링 관련 DTO ──────────── */
-
-/** AI 모듈 → 서버 이벤트 리포트 (backend: MonitoringDto.EventReportRequest) */
-export interface EventReportRequest {
-  employeeId: number;
-  eventType: EventType;
-  confidence?: number;
-  detectedAt?: string;
-  source?: string;
-}
-
-/** 웹소켓 알림 (backend: MonitoringDto.DashboardAlertResponse) */
+/** 웹소켓 알림 (backend: StatusService WebSocket broadcast) */
 export interface DashboardAlertResponse {
-  eventId: number;
-  employeeId: number;
-  employeeName: string;
-  eventType: EventType;
-  eventTime: string;
-  confidence?: number;
-  detectedAt?: string;
-  source?: string;
+  memberId: number;
+  username: string;
+  statusType: StatusType;
+  updatedAt: string;
 }
 
 /** ──────────── 프론트엔드 내부 타입 ──────────── */
@@ -118,7 +103,7 @@ export interface WorkEvent {
   id: number;
   memberId: number;
   memberName: string;
-  eventType: EventType;
+  statusType: StatusType;
   description: string;
   timestamp: string;
   resolved: boolean;
@@ -126,11 +111,11 @@ export interface WorkEvent {
   source?: string;
 }
 
-/** 모니터링 상태 (프론트엔드 내부 - mock 기반, 추후 WebSocket 연동) */
+/** 모니터링 상태 (프론트엔드 내부 - WebSocket 연동) */
 export interface MonitoringStatus {
   memberId: number;
   memberName: string;
-  currentStatus: EventType;
+  currentStatus: StatusType;
   lastChecked: string;
   isOnline: boolean;
   confidence: number; // AI 판별 신뢰도 (0~100)
@@ -165,11 +150,8 @@ export interface WSStopMsg {
 
 export interface WSResultMsg {
   type: 'result';
-  state: EventType;
+  state: AiStatusType;
   confidence: number;
-  ear?: number;
-  pitch?: number;
-  yaw?: number;
   fps: number;
 }
 
@@ -184,7 +166,7 @@ export interface WSErrorMsg {
 
 /** ──────────── v2.0 출퇴근 및 상태 관리 DTO ──────────── */
 
-export type StatusType = 'WORKING' | 'MEETING' | 'BREAK' | 'FOCUS' | 'OFFLINE';
+export type StatusType = 'WORKING' | 'MEETING' | 'AWAY' | 'FOCUS' | 'OFFLINE';
 
 export interface ClockInResponse {
   workLogId: number;
@@ -222,4 +204,78 @@ export interface TeamStatusBroadcast {
   username: string;
   statusType: StatusType;
   changedAt: string;
+}
+
+/** ──────────── 미팅룸 관련 DTO ──────────── */
+export interface MeetingParticipantResponse {
+  participantId: number;
+  memberId: number;
+  username: string;
+  requestStatus: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  invited: boolean;
+}
+
+export interface MeetingRoomResponse {
+  roomId: number;
+  title: string;
+  hostId: number;
+  hostUsername: string;
+  active: boolean;
+  participantCount: number;
+  createdAt: string;
+}
+
+export interface MeetingRoomDetailResponse {
+  roomId: number;
+  title: string;
+  hostId: number;
+  hostUsername: string;
+  active: boolean;
+  participants: MeetingParticipantResponse[];
+  createdAt: string;
+}
+
+export interface JoinRequestResponse {
+  participantId: number;
+  roomId: number;
+  memberId: number;
+  username: string;
+  requestStatus: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+}
+
+/** ──────────── 알림 관련 DTO ──────────── */
+export type NotificationType = 'GENERAL' | 'IMPORTANT';
+
+export interface NotificationResponse {
+  notificationId: number;
+  senderId: number;
+  senderUsername: string;
+  receiverId: number;
+  receiverUsername: string;
+  message: string;
+  notificationType: NotificationType;
+  read: boolean;
+  createdAt: string;
+  readAt: string | null;
+}
+
+export interface UnreadCountResponse {
+  unreadCount: number;
+}
+
+/** ──────────── 데일리 스탠드업 관련 DTO ──────────── */
+export interface StandupResponse {
+  standupId: number;
+  memberId: number;
+  username: string;
+  standupDate: string;
+  goal: string;
+  result: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TeamStandupResponse {
+  standupDate: string;
+  standups: StandupResponse[];
 }

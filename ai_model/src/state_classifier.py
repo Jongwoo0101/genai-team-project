@@ -14,6 +14,7 @@ class DetectionResult:
     pose_detected: bool
     eyes_closed: bool = False
     looking_away: bool = False
+    multiple_faces: bool = False
     phone_detected: bool = False
     phone_confidence: float = 0.0
     face_confidence: float = 0.0
@@ -34,41 +35,44 @@ class StateClassifier:
         self,
         report_cooldown_seconds: float = 30.0,
         phone_threshold: float = 0.6,
-        sleep_seconds: float = 2.0,
-        smartphone_seconds: float = 1.0,
-        away_seconds: float = 10.0,
-        distracted_seconds: float = 5.0,
+        away_seconds: float = 5.0,
+        meeting_seconds: float = 5.0,
+        working_seconds: float = 2.0,
     ) -> None:
         self.report_cooldown_seconds = report_cooldown_seconds
         self.phone_threshold = phone_threshold
         self.thresholds: Dict[EventType, float] = {
-            "SLEEP": sleep_seconds,
-            "SMARTPHONE": smartphone_seconds,
             "AWAY": away_seconds,
-            "DISTRACTED": distracted_seconds,
-            "NORMAL": 0.0,
+            "MEETING": meeting_seconds,
+            "WORKING": working_seconds,
+            "FOCUS": 10.0,
         }
-        self._candidate_status: EventType = "NORMAL"
+        self._candidate_status: EventType = "WORKING"
         self._candidate_since: Optional[float] = None
-        self._confirmed_status: EventType = "NORMAL"
+        self._confirmed_status: EventType = "WORKING"
         self._last_reported_at: Dict[EventType, float] = {}
 
     def update(self, detection: DetectionResult, now: float) -> ClassificationResult:
         raw_status = self._classify_raw(detection)
-        confidence = self._confidence_for(raw_status, detection)
-
+        
         if raw_status != self._candidate_status:
             self._candidate_status = raw_status
             self._candidate_since = now
+
+        # 만약 raw_status가 WORKING이고 10초 이상 유지되었다면 FOCUS로 상태 업그레이드
+        if raw_status == "WORKING" and self._candidate_status == "WORKING":
+            since = self._candidate_since if self._candidate_since is not None else now
+            if now - since >= 10.0:
+                raw_status = "FOCUS"
+
+        confidence = self._confidence_for(raw_status, detection)
 
         since = self._candidate_since if self._candidate_since is not None else now
         threshold = self.thresholds[raw_status]
         stable_for = now - since
         should_report = False
 
-        if raw_status == "NORMAL":
-            self._confirmed_status = "NORMAL"
-        elif stable_for >= threshold and self._confirmed_status != raw_status:
+        if stable_for >= threshold and self._confirmed_status != raw_status:
             self._confirmed_status = raw_status
             should_report = self._can_report(raw_status, now)
             if should_report:
@@ -85,25 +89,28 @@ class StateClassifier:
         )
 
     def _classify_raw(self, detection: DetectionResult) -> EventType:
+        if detection.multiple_faces:
+            return "MEETING"
         if detection.phone_detected and detection.phone_confidence >= self.phone_threshold:
-            return "SMARTPHONE"
+            return "AWAY"
         if not detection.face_detected and not detection.pose_detected:
             return "AWAY"
         if detection.eyes_closed:
-            return "SLEEP"
+            return "AWAY"
         if detection.face_detected and detection.looking_away:
-            return "DISTRACTED"
-        return "NORMAL"
+            return "AWAY"
+        return "WORKING"
 
     def _confidence_for(self, status: EventType, detection: DetectionResult) -> int:
-        if status == "SMARTPHONE":
-            return self._as_percent(detection.phone_confidence)
+        if status == "MEETING":
+            return max(self._as_percent(detection.face_confidence), 85)
         if status == "AWAY":
-            return 90
-        if status == "SLEEP":
-            return 85
-        if status == "DISTRACTED":
+            if detection.phone_detected:
+                return self._as_percent(detection.phone_confidence)
+            if not detection.face_detected and not detection.pose_detected:
+                return 90
             return 80
+        # WORKING or FOCUS
         return max(self._as_percent(detection.face_confidence), self._as_percent(detection.pose_confidence), 75)
 
     def _can_report(self, status: EventType, now: float) -> bool:

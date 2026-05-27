@@ -1,5 +1,5 @@
 import type { WorkEvent } from '../lib/types';
-import { eventTypeLabels, eventTypeColors } from '../lib/mockData';
+import { statusTypeLabels, statusTypeColors } from '../lib/mockData';
 
 interface EventLogTableProps {
   events: WorkEvent[];
@@ -18,7 +18,7 @@ export default function EventLogTable({ events, isLoading, onResolveEvent }: Eve
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-base font-bold text-white">모니터링 이벤트 로그</h2>
-          <p className="text-xs text-slate-600 mt-0.5">AI가 감지한 이상 행동 이벤트</p>
+          <p className="text-xs text-slate-600 mt-0.5">AI가 감지한 상태 변경 이벤트</p>
         </div>
         <span className="text-xs font-mono text-slate-600 bg-slate-800/50 px-3 py-1 rounded-lg border border-white/5">{events.length} events</span>
       </div>
@@ -37,7 +37,7 @@ export default function EventLogTable({ events, isLoading, onResolveEvent }: Eve
             </thead>
             <tbody className="divide-y divide-white/[0.03]">
               {events.slice(0, 12).map((evt) => {
-                const c = eventTypeColors[evt.eventType];
+                const c = statusTypeColors[evt.statusType] ?? statusTypeColors['WORKING'];
                 return (
                   <tr key={evt.id} className="group hover:bg-white/[0.02] transition-colors">
                     <td className="py-3 px-2 text-[11px] text-slate-600 font-mono whitespace-nowrap">{fmt(evt.timestamp)}</td>
@@ -45,7 +45,7 @@ export default function EventLogTable({ events, isLoading, onResolveEvent }: Eve
                     <td className="py-3 px-2">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${c.bg} ${c.text}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${c.dot} flex-shrink-0`} />
-                        {eventTypeLabels[evt.eventType]}
+                        {statusTypeLabels[evt.statusType] ?? evt.statusType}
                       </span>
                     </td>
                     <td className="py-3 px-2 text-[11px] text-slate-500 font-mono whitespace-nowrap">

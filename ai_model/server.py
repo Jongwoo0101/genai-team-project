@@ -82,6 +82,7 @@ class MonitoringServer:
                             pose_detected=pose.pose_detected,
                             eyes_closed=face.eyes_closed,
                             looking_away=face.looking_away,
+                            multiple_faces=face.multiple_faces,
                             phone_detected=phone_detected,
                             phone_confidence=phone_confidence,
                             face_confidence=face.confidence,
@@ -98,7 +99,7 @@ class MonitoringServer:
                         "fps": 0, # Not used in frontend currently
                     }))
 
-                    # Report to backend if status changed and it's not NORMAL
+                    # 상태가 변경되었을 때 백엔드로 PUT /api/status/ai 전송 (WORKING / FOCUS / AWAY)
                     if result.should_report:
                         payload = EventPayload(
                             employee_id=employee_id,

@@ -1,5 +1,6 @@
 package com.worksight.api.entity;
 
+import com.worksight.api.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;

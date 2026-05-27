@@ -3,7 +3,10 @@ import type {
   SignUpRequest, LoginRequest, LoginResponse, ReissueRequest, MemberResponse,
   CreateTeamResponse, JoinTeamRequest, JoinTeamResponse,
   MyTeamResponse, TeamMemberResponse, ClockInResponse, ClockOutResponse,
-  StatusUpdateResponse, TeamMemberStatusResponse, StatusType
+  StatusUpdateResponse, TeamMemberStatusResponse, StatusType,
+  MeetingRoomResponse, MeetingRoomDetailResponse, JoinRequestResponse,
+  NotificationResponse, UnreadCountResponse, NotificationType,
+  StandupResponse, TeamStandupResponse
 } from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -162,144 +165,152 @@ async function requestWithAuth<T>(url: string, method: string, body?: unknown): 
 
 /** ──────────── v2.0 출퇴근 및 상태 관리 API ──────────── */
 
-/** 출근 API (실패 시 Fallback 지원) */
+/** 출근 API */
 export async function clockIn(): Promise<ClockInResponse> {
-  try {
-    return await requestWithAuth<ClockInResponse>('/work/clock-in', 'POST', {});
-  } catch (err: any) {
-    if (err.message && (err.message.includes('404') || err.message.includes('Failed to fetch'))) {
-      console.warn(`[FALLBACK] POST /api/work/clock-in 실패: ${err.message}. 로컬 Mock 출근 처리.`);
-      const userInfo = JSON.parse(sessionStorage.getItem(STORAGE_KEYS.USER_INFO) || '{}');
-      const userId = userInfo.id || 1;
-      const username = userInfo.username || 'tester01';
-      
-      const mockBroadcast = {
-        memberId: userId,
-        username: username,
-        statusType: 'WORKING' as StatusType,
-        changedAt: new Date().toISOString()
-      };
-      localStorage.setItem(`mock_status_broadcast_${userId}_${Date.now()}`, JSON.stringify(mockBroadcast));
-
-      return {
-        workLogId: Date.now(),
-        memberId: userId,
-        username: username,
-        workDate: new Date().toISOString().split('T')[0],
-        clockInTime: new Date().toISOString(),
-      };
-    }
-    throw err;
-  }
+  return requestWithAuth<ClockInResponse>('/work/clock-in', 'POST', {});
 }
 
-/** 퇴근 API (실패 시 Fallback 지원) */
+/** 퇴근 API */
 export async function clockOut(): Promise<ClockOutResponse> {
-  try {
-    return await requestWithAuth<ClockOutResponse>('/work/clock-out', 'POST', {});
-  } catch (err: any) {
-    if (err.message && (err.message.includes('404') || err.message.includes('Failed to fetch'))) {
-      console.warn(`[FALLBACK] POST /api/work/clock-out 실패: ${err.message}. 로컬 Mock 퇴근 처리.`);
-      const userInfo = JSON.parse(sessionStorage.getItem(STORAGE_KEYS.USER_INFO) || '{}');
-      const userId = userInfo.id || 1;
-      const username = userInfo.username || 'tester01';
-      
-      const mockBroadcast = {
-        memberId: userId,
-        username: username,
-        statusType: 'OFFLINE' as StatusType,
-        changedAt: new Date().toISOString()
-      };
-      localStorage.setItem(`mock_status_broadcast_${userId}_${Date.now()}`, JSON.stringify(mockBroadcast));
-
-      return {
-        workLogId: Date.now(),
-        memberId: userId,
-        username: username,
-        workDate: new Date().toISOString().split('T')[0],
-        clockInTime: new Date(Date.now() - 8 * 3600 * 1000).toISOString(),
-        clockOutTime: new Date().toISOString(),
-      };
-    }
-    throw err;
-  }
+  return requestWithAuth<ClockOutResponse>('/work/clock-out', 'POST', {});
 }
 
-/** AI 상태 판별 업데이트 API (실패 시 Fallback 지원) */
+/** AI 상태 판별 업데이트 API */
 export async function updateAiStatus(statusType: StatusType): Promise<StatusUpdateResponse> {
-  try {
-    return await requestWithAuth<StatusUpdateResponse>('/status/ai', 'PUT', { statusType });
-  } catch (err: any) {
-    if (err.message && (err.message.includes('404') || err.message.includes('Failed to fetch'))) {
-      console.warn(`[FALLBACK] PUT /api/status/ai 실패: ${err.message}. 로컬 Mock 상태로 대체합니다. 상태: ${statusType}`);
-      
-      const userInfo = JSON.parse(sessionStorage.getItem(STORAGE_KEYS.USER_INFO) || '{}');
-      const userId = userInfo.id || 1;
-      const username = userInfo.username || 'tester01';
-      
-      const mockBroadcast = {
-        memberId: userId,
-        username: username,
-        statusType: statusType,
-        changedAt: new Date().toISOString()
-      };
-      localStorage.setItem(`mock_status_broadcast_${userId}_${Date.now()}`, JSON.stringify(mockBroadcast));
-      
-      return {
-        memberId: userId,
-        username: username,
-        statusType,
-        updatedAt: new Date().toISOString(),
-      };
-    }
-    throw err;
-  }
+  return requestWithAuth<StatusUpdateResponse>('/status/ai', 'PUT', { statusType });
 }
 
-/** 사용자 수동 상태 설정 API (실패 시 Fallback 지원) */
+/** 사용자 수동 상태 설정 API */
 export async function updateManualStatus(statusType: StatusType): Promise<StatusUpdateResponse> {
-  try {
-    return await requestWithAuth<StatusUpdateResponse>('/status/manual', 'PUT', { statusType });
-  } catch (err: any) {
-    if (err.message && (err.message.includes('404') || err.message.includes('Failed to fetch'))) {
-      console.warn(`[FALLBACK] PUT /api/status/manual 실패: ${err.message}. 로컬 Mock 상태로 대체합니다. 상태: ${statusType}`);
-      
-      const userInfo = JSON.parse(sessionStorage.getItem(STORAGE_KEYS.USER_INFO) || '{}');
-      const userId = userInfo.id || 1;
-      const username = userInfo.username || 'tester01';
-      
-      const mockBroadcast = {
-        memberId: userId,
-        username: username,
-        statusType: statusType,
-        changedAt: new Date().toISOString()
-      };
-      localStorage.setItem(`mock_status_broadcast_${userId}_${Date.now()}`, JSON.stringify(mockBroadcast));
-      
-      return {
-        memberId: userId,
-        username: username,
-        statusType,
-        updatedAt: new Date().toISOString(),
-      };
-    }
-    throw err;
-  }
+  return requestWithAuth<StatusUpdateResponse>('/status/manual', 'PUT', { statusType });
 }
 
-/** 매니저용 팀원 전체 실시간 상태 조회 API (실패 시 Fallback 지원) */
+/** 매니저용 팀원 전체 실시간 상태 조회 API */
 export async function getTeamMemberStatuses(managerId: number): Promise<TeamMemberStatusResponse[]> {
-  try {
-    const res = await fetchWithAuth(`/status/team/${managerId}`);
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`);
-    }
-    return res.json();
-  } catch (err: any) {
-    if (err.message && (err.message.includes('404') || err.message.includes('Failed to fetch'))) {
-      console.warn(`[FALLBACK] GET /api/status/team/${managerId} 실패: ${err.message}. 빈 배열 반환 후 로컬 매핑.`);
-      return [];
-    }
-    throw err;
+  const res = await fetchWithAuth(`/status/team/${managerId}`);
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
   }
+  return res.json();
+}
+
+/** ──────────── 미팅룸 API ──────────── */
+
+/** 미팅룸 생성 */
+export async function createMeeting(title: string): Promise<MeetingRoomResponse> {
+  return requestWithAuth<MeetingRoomResponse>('/meetings', 'POST', { title });
+}
+
+/** 진행 중인 미팅룸 목록 조회 */
+export async function getMeetings(): Promise<MeetingRoomResponse[]> {
+  const res = await fetchWithAuth('/meetings');
+  if (!res.ok) throw new Error('미팅룸 목록을 불러오지 못했습니다.');
+  return res.json();
+}
+
+/** 미팅룸 상세 조회 */
+export async function getMeetingDetail(roomId: number): Promise<MeetingRoomDetailResponse> {
+  const res = await fetchWithAuth(`/meetings/${roomId}`);
+  if (!res.ok) throw new Error('미팅룸 상세 정보를 불러오지 못했습니다.');
+  return res.json();
+}
+
+/** 참가 요청 (사용자 → 주최자) */
+export async function requestJoinMeeting(roomId: number): Promise<JoinRequestResponse> {
+  return requestWithAuth<JoinRequestResponse>(`/meetings/${roomId}/join-request`, 'POST', {});
+}
+
+/** 주최자 초대 */
+export async function inviteToMeeting(roomId: number, memberId: number): Promise<JoinRequestResponse> {
+  return requestWithAuth<JoinRequestResponse>(`/meetings/${roomId}/invite`, 'POST', { memberId });
+}
+
+/** 참가 요청 수락/거절 (주최자) */
+export async function respondToJoinRequest(roomId: number, participantId: number, accept: boolean): Promise<JoinRequestResponse> {
+  return requestWithAuth<JoinRequestResponse>(`/meetings/${roomId}/requests/${participantId}`, 'PUT', { accept });
+}
+
+/** 초대 수락/거절 (초대받은 사용자) */
+export async function respondToInvitation(roomId: number, accept: boolean): Promise<JoinRequestResponse> {
+  return requestWithAuth<JoinRequestResponse>(`/meetings/${roomId}/invite-response`, 'PUT', { accept });
+}
+
+/** 미팅룸 종료 (주최자) */
+export async function endMeeting(roomId: number): Promise<void> {
+  return requestWithAuth<void>(`/meetings/${roomId}`, 'DELETE');
+}
+
+/** 회의 나가기 (참가자) */
+export async function leaveMeeting(roomId: number): Promise<void> {
+  return requestWithAuth<void>(`/meetings/${roomId}/leave`, 'DELETE');
+}
+
+/** ──────────── 알림 API ──────────── */
+
+/** 알림 발송 (매니저 전용) */
+export async function sendNotification(receiverId: number, message: string, notificationType: NotificationType): Promise<NotificationResponse> {
+  return requestWithAuth<NotificationResponse>('/notifications', 'POST', { receiverId, message, notificationType });
+}
+
+/** 내 알림 전체 조회 */
+export async function getNotifications(): Promise<NotificationResponse[]> {
+  const res = await fetchWithAuth('/notifications');
+  if (!res.ok) throw new Error('알림 목록을 불러오지 못했습니다.');
+  return res.json();
+}
+
+/** 읽지 않은 알림 조회 */
+export async function getUnreadNotifications(): Promise<NotificationResponse[]> {
+  const res = await fetchWithAuth('/notifications/unread');
+  if (!res.ok) throw new Error('읽지 않은 알림 목록을 불러오지 못했습니다.');
+  return res.json();
+}
+
+/** 읽지 않은 알림 수 조회 */
+export async function getUnreadNotificationsCount(): Promise<UnreadCountResponse> {
+  const res = await fetchWithAuth('/notifications/unread/count');
+  if (!res.ok) throw new Error('읽지 않은 알림 수를 불러오지 못했습니다.');
+  return res.json();
+}
+
+/** 알림 단건 읽음 처리 */
+export async function readNotification(notificationId: number): Promise<NotificationResponse> {
+  return requestWithAuth<NotificationResponse>(`/notifications/${notificationId}/read`, 'PATCH', {});
+}
+
+/** 알림 전체 읽음 처리 */
+export async function readAllNotifications(): Promise<void> {
+  return requestWithAuth<void>('/notifications/read-all', 'PATCH', {});
+}
+
+/** ──────────── 데일리 스탠드업 API ──────────── */
+
+/** 오늘의 목표 작성 */
+export async function createStandupGoal(goal: string): Promise<StandupResponse> {
+  return requestWithAuth<StandupResponse>('/standup/goal', 'POST', { goal });
+}
+
+/** 오늘의 결과 작성 */
+export async function createStandupResult(result: string): Promise<StandupResponse> {
+  return requestWithAuth<StandupResponse>('/standup/result', 'POST', { result });
+}
+
+/** 내 오늘 스탠드업 조회 */
+export async function getMyTodayStandup(): Promise<StandupResponse> {
+  const res = await fetchWithAuth('/standup/my');
+  if (!res.ok) {
+    if (res.status === 409) {
+      throw new Error('NO_STANDUP');
+    }
+    throw new Error('오늘 스탠드업 정보를 불러오지 못했습니다.');
+  }
+  return res.json();
+}
+
+/** 팀 전체 스탠드업 조회 */
+export async function getTeamStandups(date?: string): Promise<TeamStandupResponse> {
+  const url = date ? `/standup/team?date=${date}` : '/standup/team';
+  const res = await fetchWithAuth(url);
+  if (!res.ok) throw new Error('팀 스탠드업 목록을 불러오지 못했습니다.');
+  return res.json();
 }

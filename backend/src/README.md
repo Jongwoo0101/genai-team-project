@@ -1,4 +1,4 @@
-# WorkSight API 명세서
+# WorkSight API 명세서 v3.0
 
 ## 1. 기본 정보
 
@@ -25,14 +25,14 @@ Authorization: Bearer {token}
 }
 ```
 
-| HTTP  | code                 | 설명                       |
-| ----- | -------------------- | ------------------------ |
-| `400` | `INVALID_REQUEST`    | 잘못된 요청 (만료 코드 등)         |
-| `401` | `UNAUTHORIZED`       | 인증 토큰 없음                 |
-| `403` | `ACCESS_DENIED`      | 권한 없음                    |
-| `404` | `NOT_FOUND`          | 리소스 없음                   |
-| `409` | `DUPLICATE_USERNAME` | 아이디 중복                   |
-| `409` | `INVALID_STATE`      | 유효하지 않은 상태 (미소속, 중복출근 등) |
+| HTTP  | code                 | 설명                            |
+| ----- | -------------------- | ----------------------------- |
+| `400` | `INVALID_REQUEST`    | 잘못된 요청 (만료 코드 등)              |
+| `401` | `UNAUTHORIZED`       | 인증 토큰 없음                      |
+| `403` | `ACCESS_DENIED`      | 권한 없음                         |
+| `404` | `NOT_FOUND`          | 리소스 없음                        |
+| `409` | `DUPLICATE_USERNAME` | 아이디 중복                        |
+| `409` | `INVALID_STATE`      | 유효하지 않은 상태 (미소속, 중복출근, 조건 불충족 등) |
 
 ---
 
@@ -294,10 +294,10 @@ POST /api/work/clock-in
 
 #### 예외 상황
 
-| 상황     | HTTP  | 메시지                |
-| ------ | ----- | ------------------ |
-| 미인증    | `401` | "인증이 필요합니다."       |
-| 중복 출근  | `409` | "이미 오늘 출근하셨습니다."   |
+| 상황    | HTTP  | 메시지              |
+| ----- | ----- | ---------------- |
+| 미인증   | `401` | "인증이 필요합니다."     |
+| 중복 출근 | `409` | "이미 오늘 출근하셨습니다." |
 
 #### 설명
 
@@ -352,13 +352,13 @@ POST /api/work/clock-out
 PUT /api/status/ai
 ```
 
-> 프론트엔드 AI 캠 분석 결과를 서버로 전송 (저장 없이 상태 판별만 사용)
+> 프론트엔드 AI 캠 분석 결과를 서버로 전송 (영상 저장 없이 상태 판별만 사용)
 
 #### Request
 
 ```json
 {
-  "statusType": "WORKING | MEETING | BREAK"
+  "statusType": "WORKING | AWAY | FOCUS"
 }
 ```
 
@@ -368,23 +368,25 @@ PUT /api/status/ai
 {
   "memberId": 1,
   "username": "tester01",
-  "statusType": "MEETING",
+  "statusType": "AWAY",
   "updatedAt": "2026-05-20T10:30:00"
 }
 ```
 
 #### 예외 상황
 
-| 상황             | HTTP  | 메시지                         |
-| -------------- | ----- | --------------------------- |
-| 미인증            | `401` | "인증이 필요합니다."                |
-| FOCUS 설정 시도    | `400` | "AI는 FOCUS 상태를 설정할 수 없습니다." |
-| OFFLINE 설정 시도  | `400` | "AI는 OFFLINE 상태를 설정할 수 없습니다." |
+| 상황            | HTTP  | 메시지                          |
+| ------------- | ----- | ---------------------------- |
+| 미인증           | `401` | "인증이 필요합니다."                 |
+| MEETING 설정 시도 | `400` | "MEETING 상태는 미팅룸 입장 시 자동으로 변경됩니다." |
+| OFFLINE 설정 시도 | `400` | "OFFLINE 상태는 퇴근 시 자동으로 변경됩니다." |
 
 #### 설명
 
-* AI가 판별한 상태(`WORKING` / `MEETING` / `BREAK`)만 허용
-* `FOCUS`는 사용자 수동 설정 전용, `OFFLINE`은 퇴근 자동 전용이므로 AI 경로 불가
+* AI가 판별 가능한 상태: `WORKING` / `AWAY` / `FOCUS`
+* `AWAY`: 키보드·마우스 5분 무입력 + 캠으로 자리비움 판별
+* `FOCUS`: 시선 80% 이상 모니터 고정 + 상체 기울기 10분 유지
+* `MEETING`은 미팅룸 입장 시 자동, `OFFLINE`은 퇴근 시 자동이므로 AI 경로 불가
 * 상태 변경 시 팀 전체에 WebSocket 브로드캐스트
 
 ---
@@ -462,97 +464,701 @@ GET /api/status/team/{managerId}
 
 ---
 
-## 7. 웹소켓 API
+## 7. 미팅룸 API
 
-### 7.1 연결 엔드포인트
+> 모든 미팅룸 API는 JWT 인증 필요
+
+### 7.1 미팅룸 생성
 
 ```
-/ws
+POST /api/meetings
 ```
 
-> (구 `/ws-monitoring` 에서 변경)
-
-### 7.2 구독 경로
-
-| 경로                          | 설명                     |
-| --------------------------- | ---------------------- |
-| `/topic/team/{managerId}`   | 팀 출퇴근·상태 변경 실시간 브로드캐스트 |
-| `/topic/members/{memberId}` | 특정 직원 대상 알림 (팀 연결 등)   |
-
-### 7.3 수신 데이터
-
-#### `/topic/team/{managerId}` — 출퇴근 / 상태 변경
+#### Request
 
 ```json
 {
-  "memberId": 1,
-  "username": "tester01",
-  "statusType": "WORKING",
-  "changedAt": "2026-05-20T09:00:00"
+  "title": "스프린트 회고 회의"
 }
 ```
 
-| statusType | 발생 시점         |
-| ---------- | ------------- |
-| `WORKING`  | 출근 클릭 시       |
-| `OFFLINE`  | 퇴근 클릭 시       |
-| `MEETING`  | AI 판별 결과 전송 시 |
-| `BREAK`    | AI 판별 결과 전송 시 |
-| `FOCUS`    | 사용자 수동 설정 시   |
-
-#### `/topic/members/{memberId}` — 팀 연결 완료
+#### Response `200 OK`
 
 ```json
 {
-  "type": "TEAM_LINKED",
-  "managerId": 2
+  "roomId": 1,
+  "title": "스프린트 회고 회의",
+  "hostId": 2,
+  "hostUsername": "manager01",
+  "active": true,
+  "participantCount": 1,
+  "createdAt": "2026-05-20T10:00:00"
+}
+```
+
+#### 예외 상황
+
+| 상황              | HTTP  | 메시지                  |
+| --------------- | ----- | -------------------- |
+| 미인증             | `401` | "인증이 필요합니다."         |
+| 진행 중인 회의방 이미 존재 | `409` | "이미 진행 중인 회의방이 있습니다." |
+
+#### 설명
+
+* 생성 시 주최자 상태 → `MEETING` 자동 변경
+* 팀 전체에 `ROOM_CREATED` WebSocket 브로드캐스트
+
+---
+
+### 7.2 진행 중인 미팅룸 목록 조회
+
+```
+GET /api/meetings
+```
+
+#### Response `200 OK`
+
+```json
+[
+  {
+    "roomId": 1,
+    "title": "스프린트 회고 회의",
+    "hostId": 2,
+    "hostUsername": "manager01",
+    "active": true,
+    "participantCount": 3,
+    "createdAt": "2026-05-20T10:00:00"
+  }
+]
+```
+
+---
+
+### 7.3 미팅룸 상세 조회
+
+```
+GET /api/meetings/{roomId}
+```
+
+#### Response `200 OK`
+
+```json
+{
+  "roomId": 1,
+  "title": "스프린트 회고 회의",
+  "hostId": 2,
+  "hostUsername": "manager01",
+  "active": true,
+  "participants": [
+    {
+      "memberId": 2,
+      "username": "manager01",
+      "requestStatus": "ACCEPTED",
+      "invited": false
+    }
+  ],
+  "createdAt": "2026-05-20T10:00:00"
+}
+```
+
+#### 예외 상황
+
+| 상황        | HTTP  | 메시지             |
+| --------- | ----- | --------------- |
+| 존재하지 않는 방 | `404` | "존재하지 않는 미팅룸입니다." |
+
+---
+
+### 7.4 참가 요청 (사용자 → 주최자)
+
+```
+POST /api/meetings/{roomId}/join-request
+```
+
+#### Response `200 OK`
+
+```json
+{
+  "participantId": 5,
+  "roomId": 1,
+  "memberId": 1,
+  "username": "tester01",
+  "requestStatus": "PENDING"
+}
+```
+
+#### 예외 상황
+
+| 상황          | HTTP  | 메시지                        |
+| ----------- | ----- | -------------------------- |
+| 미인증         | `401` | "인증이 필요합니다."               |
+| 이미 요청/참여 중  | `409` | "이미 참가 요청하셨거나 회의에 참여 중입니다." |
+| 종료된 미팅룸     | `409` | "이미 종료된 미팅룸입니다."           |
+
+#### 설명
+
+* 주최자에게 `JOIN_REQUESTED` WebSocket 알림 전송 (`/topic/members/{hostId}`)
+
+---
+
+### 7.5 주최자 초대
+
+```
+POST /api/meetings/{roomId}/invite
+```
+
+#### Request
+
+```json
+{
+  "memberId": 1
+}
+```
+
+#### Response `200 OK`
+
+```json
+{
+  "participantId": 6,
+  "roomId": 1,
+  "memberId": 1,
+  "username": "tester01",
+  "requestStatus": "PENDING"
+}
+```
+
+#### 예외 상황
+
+| 상황         | HTTP  | 메시지                        |
+| ---------- | ----- | -------------------------- |
+| 미인증        | `401` | "인증이 필요합니다."               |
+| 주최자가 아닌 경우 | `400` | "주최자만 가능한 작업입니다."          |
+| 이미 초대/참여 중 | `409` | "이미 참가 요청하셨거나 회의에 참여 중입니다." |
+
+#### 설명
+
+* 초대 대상에게 `INVITED` WebSocket 알림 전송 (`/topic/members/{memberId}`)
+
+---
+
+### 7.6 참가 요청 수락/거절 (주최자)
+
+```
+PUT /api/meetings/{roomId}/requests/{participantId}
+```
+
+#### Request
+
+```json
+{
+  "accept": true
+}
+```
+
+#### Response `200 OK`
+
+```json
+{
+  "participantId": 5,
+  "roomId": 1,
+  "memberId": 1,
+  "username": "tester01",
+  "requestStatus": "ACCEPTED"
+}
+```
+
+#### 예외 상황
+
+| 상황         | HTTP  | 메시지               |
+| ---------- | ----- | ----------------- |
+| 미인증        | `401` | "인증이 필요합니다."      |
+| 주최자가 아닌 경우 | `400` | "주최자만 가능한 작업입니다." |
+
+#### 설명
+
+* 수락 시 해당 멤버 상태 → `MEETING` 자동 변경
+* 수락 시 `REQUEST_ACCEPTED`, 거절 시 `REQUEST_REJECTED` WebSocket 알림
+
+---
+
+### 7.7 초대 수락/거절 (초대받은 사용자)
+
+```
+PUT /api/meetings/{roomId}/invite-response
+```
+
+#### Request
+
+```json
+{
+  "accept": true
+}
+```
+
+#### Response `200 OK`
+
+참가 요청 응답과 동일한 구조 반환
+
+#### 예외 상황
+
+| 상황           | HTTP  | 메시지               |
+| ------------ | ----- | ----------------- |
+| 미인증          | `401` | "인증이 필요합니다."      |
+| 초대 정보 없음     | `404` | "초대 정보를 찾을 수 없습니다." |
+| 초대가 아닌 요청    | `400` | "초대받은 요청이 아닙니다."  |
+
+#### 설명
+
+* 수락 시 본인 상태 → `MEETING` 자동 변경
+* 수락 시 팀 전체에 `MEMBER_JOINED` 브로드캐스트
+
+---
+
+### 7.8 미팅룸 종료 (주최자)
+
+```
+DELETE /api/meetings/{roomId}
+```
+
+#### Response `200 OK`
+
+* 바디 없음
+
+#### 예외 상황
+
+| 상황         | HTTP  | 메시지               |
+| ---------- | ----- | ----------------- |
+| 미인증        | `401` | "인증이 필요합니다."      |
+| 주최자가 아닌 경우 | `400` | "주최자만 가능한 작업입니다." |
+
+#### 설명
+
+* 수락된 모든 참가자 상태 → `WORKING` 자동 복귀
+* 팀 전체에 `ROOM_ENDED` WebSocket 브로드캐스트
+
+---
+
+### 7.9 회의 나가기 (참가자)
+
+```
+DELETE /api/meetings/{roomId}/leave
+```
+
+#### Response `200 OK`
+
+* 바디 없음
+
+#### 예외 상황
+
+| 상황       | HTTP  | 메시지                  |
+| -------- | ----- | -------------------- |
+| 미인증      | `401` | "인증이 필요합니다."         |
+| 참가 정보 없음 | `404` | "회의 참가 정보를 찾을 수 없습니다." |
+
+#### 설명
+
+* 나간 참가자 상태 → `WORKING` 자동 복귀
+* 팀 전체에 `MEMBER_LEFT` WebSocket 브로드캐스트
+
+---
+
+## 8. 알림 API
+
+> 모든 알림 API는 JWT 인증 필요
+
+### 8.1 알림 발송
+
+```
+POST /api/notifications
+```
+
+> **MANAGER 권한 필요**
+
+#### Request
+
+```json
+{
+  "receiverId": 1,
+  "message": "즉시 보고 바랍니다.",
+  "notificationType": "IMPORTANT"
+}
+```
+
+#### Response `200 OK`
+
+```json
+{
+  "notificationId": 1,
+  "senderId": 2,
+  "senderUsername": "manager01",
+  "receiverId": 1,
+  "receiverUsername": "tester01",
+  "message": "즉시 보고 바랍니다.",
+  "notificationType": "IMPORTANT",
+  "read": false,
+  "createdAt": "2026-05-20T11:00:00",
+  "readAt": null
+}
+```
+
+#### 예외 상황
+
+| 상황                          | HTTP  | 메시지                                      |
+| --------------------------- | ----- | ---------------------------------------- |
+| 미인증                         | `401` | "인증이 필요합니다."                             |
+| EMPLOYEE가 호출                | `403` | "접근 권한이 없습니다."                           |
+| 수신자 없음                      | `404` | "존재하지 않는 수신자입니다."                        |
+| IMPORTANT — 수신자 상태 조건 불충족   | `409` | "중요 알림은 수신자가 [근무중] 또는 [회의중] 상태일 때만 발송할 수 있습니다." |
+
+#### 설명
+
+* `IMPORTANT` 알림: 수신자가 `WORKING` 또는 `MEETING` 상태일 때만 발송 가능
+* `GENERAL` 알림: 상태 무관 항상 발송
+* 발송 후 수신자에게 WebSocket 실시간 푸시 (`/topic/members/{receiverId}`)
+
+---
+
+### 8.2 내 알림 전체 조회
+
+```
+GET /api/notifications
+```
+
+#### Response `200 OK`
+
+```json
+[
+  {
+    "notificationId": 1,
+    "senderId": 2,
+    "senderUsername": "manager01",
+    "receiverId": 1,
+    "receiverUsername": "tester01",
+    "message": "즉시 보고 바랍니다.",
+    "notificationType": "IMPORTANT",
+    "read": false,
+    "createdAt": "2026-05-20T11:00:00",
+    "readAt": null
+  }
+]
+```
+
+---
+
+### 8.3 읽지 않은 알림 조회
+
+```
+GET /api/notifications/unread
+```
+
+#### Response `200 OK`
+
+알림 전체 조회 응답과 동일한 구조 반환 (읽지 않은 것만 필터링)
+
+---
+
+### 8.4 읽지 않은 알림 수 조회
+
+```
+GET /api/notifications/unread/count
+```
+
+> 프론트 뱃지 표시용
+
+#### Response `200 OK`
+
+```json
+{
+  "unreadCount": 3
 }
 ```
 
 ---
 
-## 8. Enum 정의
+### 8.5 알림 단건 읽음 처리
 
-### 8.1 Role
+```
+PATCH /api/notifications/{notificationId}/read
+```
+
+#### Response `200 OK`
+
+알림 응답과 동일한 구조 반환 (`read: true`, `readAt` 채워짐)
+
+#### 예외 상황
+
+| 상황        | HTTP  | 메시지                    |
+| --------- | ----- | ---------------------- |
+| 알림 없음     | `404` | "존재하지 않는 알림입니다."       |
+| 타인 알림 처리  | `400` | "본인의 알림만 읽음 처리할 수 있습니다." |
+
+---
+
+### 8.6 알림 전체 읽음 처리
+
+```
+PATCH /api/notifications/read-all
+```
+
+#### Response `200 OK`
+
+* 바디 없음
+
+---
+
+## 9. 데일리 스탠드업 API
+
+> 모든 스탠드업 API는 JWT 인증 필요
+
+### 9.1 오늘의 목표 작성
+
+```
+POST /api/standup/goal
+```
+
+> 하루 시작 시 작성 — 같은 날 재호출 시 덮어쓰기
+
+#### Request
+
+```json
+{
+  "goal": "기획서 검토 및 API 명세 작성 완료"
+}
+```
+
+#### Response `200 OK`
+
+```json
+{
+  "standupId": 1,
+  "memberId": 1,
+  "username": "tester01",
+  "standupDate": "2026-05-20",
+  "goal": "기획서 검토 및 API 명세 작성 완료",
+  "result": null,
+  "createdAt": "2026-05-20T09:05:00",
+  "updatedAt": "2026-05-20T09:05:00"
+}
+```
+
+#### 예외 상황
+
+| 상황  | HTTP  | 메시지          |
+| --- | ----- | ------------ |
+| 미인증 | `401` | "인증이 필요합니다." |
+
+#### 설명
+
+* 팀 전체에 `GOAL_UPDATED` WebSocket 브로드캐스트
+
+---
+
+### 9.2 오늘의 결과 작성
+
+```
+POST /api/standup/result
+```
+
+> 하루 끝 시 작성 — 목표가 먼저 작성되어 있어야 함
+
+#### Request
+
+```json
+{
+  "result": "API 명세 작성 완료, 백엔드 코드 리뷰 진행"
+}
+```
+
+#### Response `200 OK`
+
+목표 작성 응답과 동일한 구조 반환 (`result` 필드 채워짐)
+
+#### 예외 상황
+
+| 상황          | HTTP  | 메시지                  |
+| ----------- | ----- | -------------------- |
+| 미인증         | `401` | "인증이 필요합니다."         |
+| 목표 미작성 상태   | `409` | "오늘의 목표를 먼저 작성해주세요." |
+
+#### 설명
+
+* 팀 전체에 `RESULT_UPDATED` WebSocket 브로드캐스트
+
+---
+
+### 9.3 내 오늘 스탠드업 조회
+
+```
+GET /api/standup/my
+```
+
+#### Response `200 OK`
+
+목표 작성 응답과 동일한 구조 반환
+
+#### 예외 상황
+
+| 상황        | HTTP  | 메시지                  |
+| --------- | ----- | -------------------- |
+| 미인증       | `401` | "인증이 필요합니다."         |
+| 작성 내역 없음  | `409` | "오늘 작성된 스탠드업이 없습니다." |
+
+---
+
+### 9.4 팀 전체 스탠드업 조회
+
+```
+GET /api/standup/team?date=2026-05-20
+```
+
+> `date` 파라미터 없으면 오늘 날짜 기준
+
+#### Response `200 OK`
+
+```json
+{
+  "standupDate": "2026-05-20",
+  "standups": [
+    {
+      "standupId": 1,
+      "memberId": 1,
+      "username": "tester01",
+      "standupDate": "2026-05-20",
+      "goal": "기획서 검토 및 API 명세 작성 완료",
+      "result": "API 명세 작성 완료, 백엔드 코드 리뷰 진행",
+      "createdAt": "2026-05-20T09:05:00",
+      "updatedAt": "2026-05-20T18:00:00"
+    }
+  ]
+}
+```
+
+#### 예외 상황
+
+| 상황  | HTTP  | 메시지          |
+| --- | ----- | ------------ |
+| 미인증 | `401` | "인증이 필요합니다." |
+
+---
+
+## 10. 웹소켓 API
+
+### 10.1 연결 엔드포인트
+
+```
+/ws
+```
+
+### 10.2 구독 경로
+
+| 경로                          | 설명                              |
+| --------------------------- | ------------------------------- |
+| `/topic/team/{managerId}`   | 팀 출퇴근·상태·미팅룸·스탠드업 변경 실시간 브로드캐스트 |
+| `/topic/members/{memberId}` | 특정 멤버 개인 알림 (초대, 요청, 알림 등)      |
+
+### 10.3 수신 데이터
+
+#### `/topic/team/{managerId}` 이벤트 목록
+
+| type             | 발생 시점              | 주요 필드                              |
+| ---------------- | ------------------ | ---------------------------------- |
+| 상태 변경 (구조체)      | 출퇴근 / AI / 수동 설정 시 | `memberId, username, statusType, changedAt` |
+| `ROOM_CREATED`   | 미팅룸 생성 시           | `roomId, title, hostId`            |
+| `ROOM_ENDED`     | 미팅룸 종료 시           | `roomId, title, hostId`            |
+| `MEMBER_JOINED`  | 참가자 수락 후 입장 시      | `roomId, title, hostId`            |
+| `MEMBER_LEFT`    | 참가자 나가기 시          | `roomId, title, hostId`            |
+| `GOAL_UPDATED`   | 스탠드업 목표 작성 시       | `memberId, username, date`         |
+| `RESULT_UPDATED` | 스탠드업 결과 작성 시       | `memberId, username, date`         |
+
+#### `/topic/members/{memberId}` 이벤트 목록
+
+| type               | 발생 시점        | 주요 필드                          |
+| ------------------ | ------------ | ------------------------------ |
+| `TEAM_LINKED`      | 팀 참가 완료 시    | `managerId`                    |
+| `JOIN_REQUESTED`   | 누군가 참가 요청 시  | `roomId, memberId, username`   |
+| `INVITED`          | 주최자가 초대 시    | `roomId, title`                |
+| `REQUEST_ACCEPTED` | 참가 요청 수락 시   | `roomId, title`                |
+| `REQUEST_REJECTED` | 참가 요청 거절 시   | `roomId, title`                |
+| 알림 (구조체)           | 알림 발송 시      | `NotificationResponse` 전체 구조   |
+
+---
+
+## 11. Enum 정의
+
+### 11.1 Role
 
 | 값          | 설명  |
 | ---------- | --- |
 | `MANAGER`  | 관리자 |
 | `EMPLOYEE` | 직원  |
 
-### 8.2 StatusType
+### 11.2 StatusType
 
-| 값         | 설명         | 설정 주체      |
-| --------- | ---------- | ---------- |
-| `WORKING` | 근무 중       | AI 판별 / 출근 |
-| `MEETING` | 회의 중       | AI 판별      |
-| `BREAK`   | 휴식 중       | AI 판별      |
-| `FOCUS`   | 집중 (방해 금지) | 사용자 수동     |
-| `OFFLINE` | 오프라인       | 퇴근 자동      |
+| 값         | 설명         | 설정 주체              |
+| --------- | ---------- | ------------------ |
+| `WORKING` | 근무 중       | 출근 자동 / AI 판별      |
+| `MEETING` | 회의 중       | 미팅룸 입장 시 자동        |
+| `AWAY`    | 휴식/자리비움    | AI 판별 (5분 무입력 + 캠) |
+| `FOCUS`   | 집중 (방해 금지) | AI 자동 판별 / 사용자 수동  |
+| `OFFLINE` | 오프라인       | 퇴근 자동              |
+
+### 11.3 MeetingRequestStatus
+
+| 값          | 설명       |
+| ---------- | -------- |
+| `PENDING`  | 요청/초대 대기 |
+| `ACCEPTED` | 수락됨      |
+| `REJECTED` | 거절됨      |
+
+### 11.4 NotificationType
+
+| 값           | 설명                               |
+| ----------- | -------------------------------- |
+| `GENERAL`   | 일반 알림 (상태 무관)                    |
+| `IMPORTANT` | 중요 알림 (수신자 WORKING/MEETING 상태 필요) |
 
 ---
 
-## 9. 보안 및 설정
+## 12. 보안 및 설정
 
-### 9.1 Security
+### 12.1 Security
 
-| 경로                              | 인증 필요        |
-| ------------------------------- | ------------ |
-| `POST /api/members/signup`      | ❌            |
-| `POST /api/members/login`       | ❌            |
-| `POST /api/members/reissue`     | ❌            |
-| `POST /api/members/invite-code` | ✅ (MANAGER)  |
-| `POST /api/members/join-team`   | ✅ (EMPLOYEE) |
-| `GET /api/teams/my-team`        | ✅ (EMPLOYEE) |
-| `GET /api/teams/{id}/members`   | ✅ (MANAGER)  |
-| `POST /api/work/clock-in`       | ✅            |
-| `POST /api/work/clock-out`      | ✅            |
-| `PUT /api/status/ai`            | ✅            |
-| `PUT /api/status/manual`        | ✅            |
-| `GET /api/status/team/{id}`     | ✅ (MANAGER)  |
-| 그 외 모든 요청                       | ✅            |
+| 경로                                           | 인증 필요        |
+| -------------------------------------------- | ------------ |
+| `POST /api/members/signup`                   | ❌            |
+| `POST /api/members/login`                    | ❌            |
+| `POST /api/members/reissue`                  | ❌            |
+| `POST /api/members/invite-code`              | ✅ (MANAGER)  |
+| `POST /api/members/join-team`                | ✅ (EMPLOYEE) |
+| `GET /api/teams/my-team`                     | ✅ (EMPLOYEE) |
+| `GET /api/teams/{id}/members`                | ✅ (MANAGER)  |
+| `POST /api/work/clock-in`                    | ✅            |
+| `POST /api/work/clock-out`                   | ✅            |
+| `PUT /api/status/ai`                         | ✅            |
+| `PUT /api/status/manual`                     | ✅            |
+| `GET /api/status/team/{id}`                  | ✅ (MANAGER)  |
+| `POST /api/meetings`                         | ✅            |
+| `GET /api/meetings`                          | ✅            |
+| `GET /api/meetings/{roomId}`                 | ✅            |
+| `POST /api/meetings/{roomId}/join-request`   | ✅            |
+| `POST /api/meetings/{roomId}/invite`         | ✅            |
+| `PUT /api/meetings/{roomId}/requests/{pid}`  | ✅            |
+| `PUT /api/meetings/{roomId}/invite-response` | ✅            |
+| `DELETE /api/meetings/{roomId}`              | ✅            |
+| `DELETE /api/meetings/{roomId}/leave`        | ✅            |
+| `POST /api/notifications`                    | ✅ (MANAGER)  |
+| `GET /api/notifications`                     | ✅            |
+| `GET /api/notifications/unread`              | ✅            |
+| `GET /api/notifications/unread/count`        | ✅            |
+| `PATCH /api/notifications/{id}/read`         | ✅            |
+| `PATCH /api/notifications/read-all`          | ✅            |
+| `POST /api/standup/goal`                     | ✅            |
+| `POST /api/standup/result`                   | ✅            |
+| `GET /api/standup/my`                        | ✅            |
+| `GET /api/standup/team`                      | ✅            |
+| 그 외 모든 요청                                   | ✅            |
 
-### 9.2 CORS
+### 12.2 CORS
 
 | 항목              | 값                                      |
 | --------------- | -------------------------------------- |
@@ -563,7 +1169,7 @@ GET /api/status/team/{managerId}
 
 ---
 
-## 10. 전체 흐름
+## 13. 전체 흐름
 
 ```
 # 인증 흐름
@@ -573,7 +1179,7 @@ GET /api/status/team/{managerId}
 # 초대 코드 흐름
 MANAGER  → POST /api/members/invite-code → 코드 발급 (5분 만료, 일회성)
 EMPLOYEE → POST /api/members/join-team   → 코드 입력 → 팀 매핑
-서버      → WebSocket(/topic/members/{employeeId}) → TEAM_LINKED 이벤트
+서버      → WebSocket(/topic/members/{employeeId}) → TEAM_LINKED
 
 # 출퇴근 흐름
 EMPLOYEE → POST /api/work/clock-in  → WorkLog 생성, MemberStatus=WORKING
@@ -581,23 +1187,38 @@ EMPLOYEE → POST /api/work/clock-in  → WorkLog 생성, MemberStatus=WORKING
 EMPLOYEE → POST /api/work/clock-out → WorkLog 업데이트, MemberStatus=OFFLINE
 서버      → WebSocket(/topic/team/{managerId}) → OFFLINE 브로드캐스트
 
-# AI 상태 판별 흐름 (캠 저장 없이 상태 판별만)
-프론트 AI → PUT /api/status/ai  → MemberStatus 업데이트 (WORKING/MEETING/BREAK)
+# AI 상태 판별 흐름
+프론트 AI → PUT /api/status/ai (WORKING / AWAY / FOCUS)
 서버       → WebSocket(/topic/team/{managerId}) → 상태 브로드캐스트
 
 # 수동 집중 설정 흐름
 EMPLOYEE → PUT /api/status/manual → MemberStatus=FOCUS
 서버      → WebSocket(/topic/team/{managerId}) → FOCUS 브로드캐스트
 
-# 팀 상태 조회 흐름
-MANAGER → GET /api/status/team/{managerId} → 팀원 전체 현재 상태 조회
+# 미팅룸 흐름
+주최자    → POST /api/meetings              → 방 생성, 상태=MEETING
+참가자    → POST /api/meetings/{id}/join-request → 주최자에게 JOIN_REQUESTED
+주최자    → PUT  /api/meetings/{id}/requests/{pid} (accept:true) → 참가자 상태=MEETING
+         또는
+주최자    → POST /api/meetings/{id}/invite  → 대상자에게 INVITED
+대상자    → PUT  /api/meetings/{id}/invite-response (accept:true) → 상태=MEETING
+주최자    → DELETE /api/meetings/{id}       → 전원 상태=WORKING 복귀
+
+# 알림 흐름
+MANAGER → POST /api/notifications (IMPORTANT) → 수신자 WORKING/MEETING 상태 검증
+서버      → WebSocket(/topic/members/{receiverId}) → 실시간 푸시
+
+# 데일리 스탠드업 흐름
+EMPLOYEE → POST /api/standup/goal   → 목표 작성
+EMPLOYEE → POST /api/standup/result → 결과 작성
+팀원      → GET  /api/standup/team  → 팀 전체 스탠드업 조회
 ```
 
 ---
 
-## 11. 제거된 API (v1.0 → v2.0)
+## 14. 제거된 API (v1.0 → v3.0)
 
-| 제거된 API                     | 이유                                    |
-| ----------------------------- | ------------------------------------- |
-| `POST /api/monitoring/event`  | AI 캠 방향 변경 — 저장 대신 상태 판별로 대체          |
-| `/topic/alerts`               | 출퇴근·상태 브로드캐스트(`/topic/team/`) 로 대체    |
+| 제거된 API                    | 이유                                 |
+| --------------------------- | ---------------------------------- |
+| `POST /api/monitoring/event` | AI 캠 방향 변경 — 저장 대신 상태 판별로 대체       |
+| `/topic/alerts`              | 출퇴근·상태 브로드캐스트(`/topic/team/`) 로 대체 |

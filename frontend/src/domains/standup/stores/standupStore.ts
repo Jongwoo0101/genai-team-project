@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { STORAGE_KEYS } from '../../../lib/constants';
+import * as api from '../../../lib/api';
+import { formatDateTimeKo, toEpochMs, toIsoString } from '../../../lib/datetime';
+import type { WsEnvelope } from '../../../lib/wsEvent';
 
 export interface Standup {
   id: string;
@@ -9,46 +12,40 @@ export interface Standup {
   dateStr: string;
   todayGoal: string;
   todayResult: string;
-  timestamp: string;
+  timestampIso: string;
+  timestampDisplay: string;
+  epochMs: number;
 }
 
 interface StandupState {
   standups: Standup[];
-  addStandup: (employeeId: number, employeeName: string, todayGoal: string, todayResult: string) => void;
+  addStandup: (employeeId: number, employeeName: string, todayGoal: string, todayResult: string) => Promise<void>;
   getStandupsByDate: (dateStr: string) => Standup[];
   getStandupsByEmployee: (employeeId: number) => Standup[];
+  loadTeamStandups: (dateStr?: string) => Promise<void>;
+  loadMyTodayStandup: () => Promise<void>;
   clearAll: () => void;
+  handleWebsocketEvent: (envelope: WsEnvelope) => Promise<void>;
 }
 
 export const useStandupStore = create<StandupState>()(
   persist(
     (set, get) => ({
       standups: [],
-      addStandup: (employeeId, employeeName, todayGoal, todayResult) => {
-        const now = new Date();
-        const dateStr = now.toISOString().split('T')[0];
-        const timestamp = now.toLocaleString('ko-KR');
-        const id = `${employeeId}-${Date.now()}-STANDUP`;
-
-        const newStandup: Standup = {
-          id,
-          employeeId,
-          employeeName,
-          dateStr,
-          todayGoal,
-          todayResult,
-          timestamp,
-        };
-
-        // 동일한 날짜에 동일 직원이 이미 올린 스탠드업이 있다면 덮어쓰기하거나, 누적합니다. 여기서는 덮어쓰는 구조로 개선합니다.
-        set((state) => {
-          const filtered = state.standups.filter(
-            (s) => !(s.employeeId === employeeId && s.dateStr === dateStr)
-          );
-          return {
-            standups: [newStandup, ...filtered],
-          };
-        });
+      addStandup: async (_employeeId, _employeeName, todayGoal, todayResult) => {
+        try {
+          // 목표 등록
+          await api.createStandupGoal(todayGoal);
+          // 결과가 비어있지 않다면 결과도 등록
+          if (todayResult) {
+            await api.createStandupResult(todayResult);
+          }
+          // 등록 완료 후 다시 내 스탠드업 불러오기
+          await get().loadMyTodayStandup();
+        } catch (err) {
+          console.error('스탠드업 등록 실패:', err);
+          throw err;
+        }
       },
       getStandupsByDate: (dateStr) => {
         return get().standups.filter((s) => s.dateStr === dateStr);
@@ -56,8 +53,60 @@ export const useStandupStore = create<StandupState>()(
       getStandupsByEmployee: (employeeId) => {
         return get().standups.filter((s) => s.employeeId === employeeId);
       },
+      loadTeamStandups: async (dateStr) => {
+        try {
+          const res = await api.getTeamStandups(dateStr);
+          const mapped: Standup[] = res.standups.map((s) => ({
+            id: String(s.standupId),
+            employeeId: s.memberId,
+            employeeName: s.username,
+            dateStr: s.standupDate,
+            todayGoal: s.goal,
+            todayResult: s.result || '',
+            timestampIso: toIsoString(s.createdAt),
+            timestampDisplay: formatDateTimeKo(toIsoString(s.createdAt)),
+            epochMs: toEpochMs(toIsoString(s.createdAt)),
+          }));
+          set({ standups: mapped });
+        } catch (err) {
+          console.error('팀 스탠드업 로드 실패:', err);
+        }
+      },
+      loadMyTodayStandup: async () => {
+        try {
+          const s = await api.getMyTodayStandup();
+          const mapped: Standup = {
+            id: String(s.standupId),
+            employeeId: s.memberId,
+            employeeName: s.username,
+            dateStr: s.standupDate,
+            todayGoal: s.goal,
+            todayResult: s.result || '',
+            timestampIso: toIsoString(s.createdAt),
+            timestampDisplay: formatDateTimeKo(toIsoString(s.createdAt)),
+            epochMs: toEpochMs(toIsoString(s.createdAt)),
+          };
+          set((state) => {
+            const filtered = state.standups.filter(
+              (item) => !(item.employeeId === mapped.employeeId && item.dateStr === mapped.dateStr)
+            );
+            return { standups: [mapped, ...filtered] };
+          });
+        } catch (err: unknown) {
+          if (err instanceof Error && err.message === 'NO_STANDUP') {
+            return;
+          }
+          console.error('내 오늘 스탠드업 로드 실패:', err);
+        }
+      },
       clearAll: () => {
         set({ standups: [] });
+      },
+      handleWebsocketEvent: async (envelope) => {
+        if (envelope.event === 'GOAL_UPDATED' || envelope.event === 'RESULT_UPDATED') {
+          const todayStr = new Date().toISOString().split('T')[0];
+          await get().loadTeamStandups(todayStr);
+        }
       },
     }),
     {

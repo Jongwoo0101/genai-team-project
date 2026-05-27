@@ -1,13 +1,16 @@
 package com.worksight.api.service;
 
 import com.worksight.api.dto.MemberDto.*;
+import com.worksight.api.dto.WsEnvelope;
 import com.worksight.api.entity.Member;
 import com.worksight.api.entity.RefreshToken;
 import com.worksight.api.exception.DuplicateUsernameException;
+import com.worksight.api.repository.InviteCodeRepository;
 import com.worksight.api.repository.MemberRepository;
 import com.worksight.api.security.JwtProvider;
 import com.worksight.api.security.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -16,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -27,10 +29,11 @@ public class MemberService {
     private final JwtProvider jwtProvider;
     private final RefreshTokenService refreshTokenService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final InviteCodeRepository inviteCodeRepository;
 
-    // 초대 코드 저장소
-    private final ConcurrentHashMap<String, InviteEntry> inviteStore = new ConcurrentHashMap<>();
-    private record InviteEntry(Long managerId, Instant expiresAt) {}
+    /** 설정 외부화 — application.yaml의 app.invite.expiration-seconds */
+    @Value("${app.invite.expiration-seconds:300}")
+    private long inviteExpirationSeconds;
 
     @Transactional
     public MemberResponse register(SignUpRequest request) {
@@ -54,21 +57,17 @@ public class MemberService {
     @Transactional
     public LoginResponse login(LoginRequest request) {
         Member member = memberRepository.findByUsername(request.username())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 아이디입니다. 아이디를 다시 확인해주세요."));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "존재하지 않는 아이디입니다. 아이디를 다시 확인해주세요."));
         if (!passwordEncoder.matches(request.password(), member.getPassword())) {
             throw new IllegalArgumentException("비밀번호가 올바르지 않습니다. 다시 확인해주세요.");
         }
         String accessToken = jwtProvider.generateAccessToken(member);
         String refreshToken = jwtProvider.generateRefreshToken(member);
         refreshTokenService.save(member.getId(), refreshToken);
-        return new LoginResponse(
-                accessToken,
-                refreshToken,
-                member.getId(),
-                member.getUsername(),
-                member.getRole(),
-                member.getVirtualBalance()
-        );
+        return new LoginResponse(accessToken, refreshToken,
+                member.getId(), member.getUsername(),
+                member.getRole(), member.getVirtualBalance());
     }
 
     @Transactional
@@ -83,57 +82,61 @@ public class MemberService {
         String newAccessToken = jwtProvider.generateAccessToken(member);
         String newRefreshToken = jwtProvider.generateRefreshToken(member);
         refreshTokenService.save(member.getId(), newRefreshToken);
-        return new LoginResponse(
-                newAccessToken,
-                newRefreshToken,
-                member.getId(),
-                member.getUsername(),
-                member.getRole(),
-                member.getVirtualBalance()
-        );
+        return new LoginResponse(newAccessToken, newRefreshToken,
+                member.getId(), member.getUsername(),
+                member.getRole(), member.getVirtualBalance());
     }
 
-    // MANAGER가 초대 코드 생성
+    @Transactional
     public InviteCodeResponse generateInviteCode(Member manager) {
         String code = "WS-" + randomSegment() + "-" + randomSegment();
-        Instant expiresAt = Instant.now().plusSeconds(300);
-        inviteStore.put(code, new InviteEntry(manager.getId(), expiresAt));
+        Instant expiresAt = Instant.now().plusSeconds(inviteExpirationSeconds);
+
+        com.worksight.api.entity.InviteCode inviteCode =
+                com.worksight.api.entity.InviteCode.builder()
+                        .code(code)
+                        .managerId(manager.getId())
+                        .expiresAt(expiresAt)
+                        .build();
+        inviteCodeRepository.save(inviteCode);
+
         return new InviteCodeResponse(code);
     }
 
-    // EMPLOYEE가 초대 코드로 팀 참가
+    /**
+     * EMPLOYEE 초대 코드로 팀 참가
+     * 다회용 사용을 위해 DB 코드 조회 후 시간만 검증하도록 수정
+     */
     @Transactional
     public void joinTeam(JoinTeamRequest request, Member employee) {
-        String code = request.inviteCode();
-        InviteEntry entry = inviteStore.get(code);
+        // 1. 조회 메서드 변경: findByCode
+        com.worksight.api.entity.InviteCode inviteCode =
+                inviteCodeRepository.findByCode(request.inviteCode())
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "유효하지 않거나 만료된 초대 코드입니다."));
 
-        if (entry == null) {
+        if (Instant.now().isAfter(inviteCode.getExpiresAt())) {
             throw new IllegalArgumentException("유효하지 않거나 만료된 초대 코드입니다.");
         }
-        if (Instant.now().isAfter(entry.expiresAt())) {
-            inviteStore.remove(code);
-            throw new IllegalArgumentException("유효하지 않거나 만료된 초대 코드입니다.");
-        }
 
-        //  @AuthenticationPrincipal로 받은 객체는 영속성 컨텍스트 밖이므로
-        //    DB에서 다시 조회해서 변경감지가 되도록 처리
         Member managedEmployee = memberRepository.findById(employee.getId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 직원입니다."));
 
-        managedEmployee.linkManager(entry.managerId());
-        inviteStore.remove(code);
+        managedEmployee.linkManager(inviteCode.getManagerId());
+
+        // 2. 일회성 처리 제거됨: inviteCode.markAsUsed();
 
         messagingTemplate.convertAndSend(
                 "/topic/members/" + managedEmployee.getId(),
-                Map.of("type", "TEAM_LINKED", "managerId", entry.managerId())
+                WsEnvelope.of(
+                        WsEnvelope.Event.TEAM_LINKED,
+                        Map.of("managerId", inviteCode.getManagerId())
+                )
         );
     }
 
     private String randomSegment() {
-        return UUID.randomUUID()
-                .toString()
-                .replace("-", "")
-                .substring(0, 4)
-                .toUpperCase();
+        return UUID.randomUUID().toString()
+                .replace("-", "").substring(0, 4).toUpperCase();
     }
 }

@@ -6,7 +6,7 @@ const SOCKET_URL = '/ws';
 
 interface SubscriptionDetail {
   stompSubscription: Stomp.Subscription | null;
-  callback: (payload: any) => void;
+  callback: (payload: unknown) => void;
 }
 
 class WebSocketService {
@@ -17,29 +17,7 @@ class WebSocketService {
   private onConnectStatusChangeCallback?: (isConnected: boolean) => void;
 
   constructor() {
-    // 로컬 Mock 멀티 윈도우/탭 동기화 지원 (Option B)
-    if (typeof window !== 'undefined') {
-      window.addEventListener('storage', (event) => {
-        if (event.key && event.key.startsWith('mock_status_broadcast_')) {
-          if (event.newValue) {
-            try {
-              const payload = JSON.parse(event.newValue);
-              console.log('[FALLBACK] 로컬 스토리지로부터 상태 업데이트 수신:', payload);
-              
-              // 등록된 구독자 중 토픽에 적합한 콜백들에 메시지 라우팅
-              this.subscriptions.forEach((sub, topic) => {
-                // 토픽 패턴 매칭 (예: /topic/team/{managerId} 또는 /topic/members/{memberId})
-                if (topic.includes('/topic/team/') || topic.includes('/topic/members/')) {
-                  sub.callback(payload);
-                }
-              });
-            } catch (e) {
-              console.error('Failed to parse mock broadcast:', e);
-            }
-          }
-        }
-      });
-    }
+    // 실소켓 환경으로 구동
   }
 
   connect(
@@ -121,7 +99,7 @@ class WebSocketService {
     }, 2000);
   }
 
-  subscribe(topic: string, callback: (payload: any) => void) {
+  subscribe(topic: string, callback: (payload: unknown) => void) {
     // 기존에 동일 토픽이 있다면 해제
     this.unsubscribe(topic);
 
@@ -138,7 +116,7 @@ class WebSocketService {
         }
       });
     } else {
-      console.warn(`[FALLBACK] 웹소켓이 연결되지 않았습니다. '${topic}' 로컬 Mock 구독으로 대기합니다.`);
+      console.warn(`웹소켓이 아직 연결되지 않았습니다. 연결 후 자동으로 구독됩니다: '${topic}'`);
     }
 
     this.subscriptions.set(topic, {

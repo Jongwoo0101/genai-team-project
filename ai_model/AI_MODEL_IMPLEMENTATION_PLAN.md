@@ -22,7 +22,7 @@ YOLO26 is licensed under AGPL-3.0 unless an enterprise license is used, so comme
 
 1. `src/main.py` opens the webcam through OpenCV.
 2. Face, pose, and object detectors analyze throttled frames.
-3. `StateClassifier` maps detector output to `NORMAL`, `SLEEP`, `SMARTPHONE`, `AWAY`, or `DISTRACTED`.
+3. `StateClassifier` maps detector output to `WORKING`, `MEETING`, or `BREAK`.
 4. A status is confirmed only after its configured duration threshold.
 5. `EventClient` sends abnormal confirmed events to the backend with confidence, detection time, and source.
 
@@ -33,7 +33,7 @@ Request:
 ```json
 {
   "employeeId": 1,
-  "eventType": "SLEEP",
+  "eventType": "BREAK",
   "confidence": 88,
   "detectedAt": "2026-05-13T10:00:00",
   "source": "ai_model"

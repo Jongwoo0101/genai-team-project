@@ -9,6 +9,7 @@ class FaceDetection:
     face_detected: bool
     eyes_closed: bool = False
     looking_away: bool = False
+    multiple_faces: bool = False
     confidence: float = 0.0
 
 
@@ -24,7 +25,7 @@ class FaceDetector:
         if self._face_mesh is None:
             self._face_mesh = mp.solutions.face_mesh.FaceMesh(
                 static_image_mode=False,
-                max_num_faces=1,
+                max_num_faces=3,
                 refine_landmarks=True,
                 min_detection_confidence=0.5,
                 min_tracking_confidence=0.5,
@@ -38,10 +39,12 @@ class FaceDetector:
         landmarks = result.multi_face_landmarks[0].landmark
         eyes_closed = self._eyes_closed(landmarks)
         looking_away = self._looking_away(landmarks)
+        multiple_faces = len(result.multi_face_landmarks) > 1
         return FaceDetection(
             face_detected=True,
             eyes_closed=eyes_closed,
             looking_away=looking_away,
+            multiple_faces=multiple_faces,
             confidence=0.9,
         )
 

@@ -1,6 +1,8 @@
 import type { CommuteLog, UserStateType } from '../stores/commuteStore';
 import type { Standup } from '../../standup/stores/standupStore';
 import { Clock, BookOpen, AlertCircle, CheckCircle } from 'lucide-react';
+import { STATUS_UI_SETTINGS } from '../constants/statusSettings';
+import { formatTimeKo } from '../../../lib/datetime';
 
 interface EmployeeSidebarProps {
   username: string;
@@ -11,14 +13,6 @@ interface EmployeeSidebarProps {
   teamName?: string;
   teamCode?: string;
 }
-
-const stateColors: Record<UserStateType, { text: string; bg: string; dot: string }> = {
-  '근무 중': { text: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20', dot: 'bg-emerald-400' },
-  '집중 근무': { text: 'text-violet-400', bg: 'bg-violet-500/10 border-violet-500/20', dot: 'bg-violet-400' },
-  '회의 중': { text: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', dot: 'bg-amber-400' },
-  '휴식 중': { text: 'text-sky-400', bg: 'bg-sky-500/10 border-sky-500/20', dot: 'bg-sky-400' },
-  '오프라인': { text: 'text-slate-400', bg: 'bg-slate-800 border-slate-700', dot: 'bg-slate-500' },
-};
 
 export default function EmployeeSidebar({
   username,
@@ -47,8 +41,8 @@ export default function EmployeeSidebar({
               <p className="text-slate-500 text-xs">팀원</p>
             </div>
           </div>
-          <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${stateColors[userState].bg} ${stateColors[userState].text}`}>
-            {userState}
+          <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${STATUS_UI_SETTINGS[userState].bgStyle} ${STATUS_UI_SETTINGS[userState].textStyle}`}>
+            {STATUS_UI_SETTINGS[userState].icon} {userState}
           </span>
         </div>
 
@@ -132,10 +126,10 @@ export default function EmployeeSidebar({
                 textColor = 'text-slate-400';
               } else if (log.type === 'STATE' && log.statusDetail) {
                 detailText = `상태 변경: ${log.statusDetail}`;
-                const colors = stateColors[log.statusDetail as UserStateType];
+                const colors = STATUS_UI_SETTINGS[log.statusDetail as UserStateType];
                 if (colors) {
-                  dotColor = colors.dot;
-                  textColor = colors.text;
+                  dotColor = colors.dotStyle;
+                  textColor = colors.textStyle;
                 }
               }
 
@@ -145,7 +139,7 @@ export default function EmployeeSidebar({
                     <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotColor}`} />
                     <span className={`text-xs font-bold ${textColor}`}>{detailText}</span>
                   </div>
-                  <span className="text-[9px] text-slate-600 font-mono">{log.timestamp.split(' ').slice(1).join(' ')}</span>
+                  <span className="text-[9px] text-slate-600 font-mono">{formatTimeKo(log.timestampIso)}</span>
                 </div>
               );
             })}
