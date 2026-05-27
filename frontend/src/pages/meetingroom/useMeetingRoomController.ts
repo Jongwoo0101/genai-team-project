@@ -33,6 +33,7 @@ export function useMeetingRoomController({
     enterRoom,
     loadRooms,
     syncMemberContext,
+    handleWebsocketEvent,
   } = useVideoCallStore();
 
   const [roomTitle, setRoomTitle] = useState('');
