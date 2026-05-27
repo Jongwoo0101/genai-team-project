@@ -33,7 +33,6 @@ export default function EmployeeView() {
   };
   const { user, token, isAuthenticated } = useAuthStore();
   const fetchMyTeam = useTeamStore((s) => s.fetchMyTeam);
-  const syncTeamContext = useTeamStore((s) => s.syncMemberContext);
   const teams = useTeamStore((s) => s.teams);
   const memberTeamMap = useTeamStore((s) => s.memberTeamMap);
   
@@ -57,7 +56,9 @@ export default function EmployeeView() {
     addDirectPingFromNotification,
     syncEmployeeContext
   } = useCommuteStore();
-  const { standups, addStandup, loadMyTodayStandup, syncMemberContext: syncStandupContext } = useStandupStore();
+  const standups = useStandupStore((s) => s.standups);
+  const addStandup = useStandupStore((s) => s.addStandup);
+  const loadMyTodayStandup = useStandupStore((s) => s.loadMyTodayStandup);
   const { handleWebsocketEvent: handleVideoCallWS } = useVideoCallStore();
 
   // 입력용 로컬 상태
@@ -72,19 +73,19 @@ export default function EmployeeView() {
 
   // 팀 정보 조회
   useEffect(() => {
-    if (user?.id) {
-      syncTeamContext(user.id);
+    if (user && user.id) {
+      useTeamStore.getState().syncMemberContext(user.id);
+      useStandupStore.getState().syncMemberContext(user.id);
       void fetchMyTeam();
     }
-  }, [fetchMyTeam, syncTeamContext, user?.id]);
+  }, [fetchMyTeam, user]);
 
   // 마운트 시 데이터 로드
   useEffect(() => {
-    if (user?.id) {
+    if (user && user.id) {
       syncEmployeeContext(user.id);
-      syncStandupContext(user.id);
     }
-  }, [user?.id, syncEmployeeContext, syncStandupContext]);
+  }, [user, syncEmployeeContext]);
 
   useEffect(() => {
     if (user) {
@@ -149,6 +150,7 @@ export default function EmployeeView() {
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playedPingsRef = useRef<Set<string>>(new Set());
+  const alarmAudioContextRef = useRef<AudioContext | null>(null);
 
   // 카메라 비디오 엘리먼트 소스 연결
   useEffect(() => {
@@ -215,9 +217,19 @@ export default function EmployeeView() {
   // 경보음 합성 재생 함수
   const playAlarm = () => {
     try {
-      const WebAudioContext = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      const WebAudioContext =
+        window.AudioContext ||
+        (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!WebAudioContext) return;
-      const ctx = new WebAudioContext();
+
+      if (!alarmAudioContextRef.current || alarmAudioContextRef.current.state === 'closed') {
+        alarmAudioContextRef.current = new WebAudioContext();
+      }
+      const ctx = alarmAudioContextRef.current;
+      if (!ctx) return;
+      if (ctx.state === 'suspended') {
+        void ctx.resume();
+      }
       const now = ctx.currentTime;
       
       const playBeep = (time: number, freq: number, duration: number) => {
@@ -261,6 +273,27 @@ export default function EmployeeView() {
       }
     }
   }, [directPings, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const activePingIds = new Set(
+      directPings.filter((p) => p.employeeId === user.id).map((p) => p.id)
+    );
+    playedPingsRef.current.forEach((id) => {
+      if (!activePingIds.has(id)) {
+        playedPingsRef.current.delete(id);
+      }
+    });
+  }, [directPings, user]);
+
+  useEffect(() => {
+    return () => {
+      if (alarmAudioContextRef.current && alarmAudioContextRef.current.state !== 'closed') {
+        void alarmAudioContextRef.current.close();
+      }
+      alarmAudioContextRef.current = null;
+    };
+  }, []);
 
   // 오늘 날짜 문자열
   const todayStr = new Date().toISOString().split('T')[0];
@@ -561,17 +594,24 @@ export default function EmployeeView() {
       </div>
 
       {/* 상사 직접 경보(DirectPing) 모달 */}
-      {directPings
-        .filter((p) => p.employeeId === user?.id && p.status === 'pending')
-        .map((ping) => (
-          <div key={ping.id} className="fixed inset-0 z-[110] bg-red-950/80 backdrop-blur-md flex items-center justify-center p-6">
+      {(() => {
+        const pendingPings = directPings.filter(
+          (p) => p.employeeId === user?.id && p.status === 'pending'
+        );
+        const ping = pendingPings[0];
+        if (!ping) return null;
+        return (
+          <div className="fixed inset-0 z-[110] bg-red-950/80 backdrop-blur-md flex items-center justify-center p-6">
             <div className="bg-slate-900 border-2 border-red-500 rounded-3xl p-8 max-w-md w-full shadow-2xl flex flex-col items-center text-center">
               <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-500 text-3xl font-extrabold mb-4 animate-ping">
                 ⚠️
               </div>
               <h3 className="text-xl font-black text-red-400 tracking-tight mb-2">상사 긴급 경고</h3>
-              <p className="text-sm text-slate-400 mb-6">
+              <p className="text-sm text-slate-400 mb-2">
                 <strong>{ping.fromName}</strong> 상사로부터 메시지가 전달되었습니다.
+              </p>
+              <p className="text-xs text-slate-500 mb-6">
+                {pendingPings.length > 1 ? `${pendingPings.length}건 중 1건 표시` : '1건 표시'}
               </p>
               <div className="w-full bg-slate-950/80 border border-red-500/20 rounded-2xl p-5 mb-8 text-left text-sm text-slate-100 font-medium leading-relaxed shadow-inner">
                 {ping.message}
@@ -584,7 +624,8 @@ export default function EmployeeView() {
               </button>
             </div>
           </div>
-        ))}
+        );
+      })()}
     </div>
   );
 }
