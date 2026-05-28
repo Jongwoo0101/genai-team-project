@@ -85,11 +85,12 @@ export const useMessageStore = create<MessageState>((set) => ({
 
   markMessagesAsRead: (roomId, readByMemberId) =>
     set((state) => {
-      // 1. 활성화된 방에서 내 메시지(상대방이 읽은 메시지)들을 read: true 처리
+      // 1. 활성화된 방의 메시지 read 상태 업데이트
       let updatedActiveRoom = state.activeRoom;
       if (state.activeRoom && Number(state.activeRoom.roomId) === Number(roomId)) {
         const updatedMessages = state.activeRoom.messages.map((m) => {
-          // 내가 보낸 메시지인데 상대방(readByMemberId)이 읽었다면 read 마크
+          // readByMemberId가 보낸 메시지가 아닌 것들을 read:true 처리
+          // (내가 읽으면 상대방 메시지가 read, 상대방이 읽으면 내 메시지가 read)
           if (Number(m.senderId) !== Number(readByMemberId) && !m.read) {
             return { ...m, read: true, readAt: new Date().toISOString() };
           }
@@ -101,7 +102,7 @@ export const useMessageStore = create<MessageState>((set) => ({
         };
       }
 
-      // 2. 방 목록에서 읽음 처리 업데이트
+      // 2. 방 목록에서 unreadCount 및 lastMessage read 상태 업데이트
       const updatedRooms = state.rooms.map((r) => {
         if (Number(r.roomId) === Number(roomId)) {
           const updatedLastMsg =
@@ -112,7 +113,7 @@ export const useMessageStore = create<MessageState>((set) => ({
           return {
             ...r,
             lastMessage: updatedLastMsg,
-            unreadCount: 0,
+            unreadCount: 0, // 읽음 처리 시 항상 0으로 초기화
           };
         }
         return r;
