@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
 
 /**
  * 1:1 채팅방 엔티티
- *
  * - 팀 내 두 멤버 사이에 채팅방은 단 하나만 존재 (중복 생성 방지)
  * - member1Id < member2Id 로 항상 정렬 저장 → unique 제약 활용
  */
