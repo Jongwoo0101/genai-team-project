@@ -38,6 +38,9 @@ export default function VideoCallModal({ onClose }: VideoCallModalProps) {
   const mySession = activeRoom?.participants.find((p) => p.id === user?.id);
   const team = (() => {
     if (!user?.id) return undefined;
+    if (user.role === 'MANAGER') {
+      return teams.find((t) => t.managerId === user.id);
+    }
     const teamId = memberTeamMap[user.id];
     if (!teamId) return undefined;
     return teams.find((t) => t.id === teamId);

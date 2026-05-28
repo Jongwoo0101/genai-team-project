@@ -300,7 +300,22 @@ export const useVideoCallStore = create<VideoCallState>()(
 
       inviteUser: async (roomId, inviteeId) => {
         try {
-          await api.inviteToMeeting(roomId, inviteeId);
+          const res = await api.inviteToMeeting(roomId, inviteeId);
+          const activeRoom = get().activeRoom;
+          if (activeRoom) {
+            const inv: Invitation = {
+              inviteId: res.participantId,
+              roomId,
+              roomTitle: activeRoom.title,
+              hostName: activeRoom.hostName,
+              inviteeId,
+              inviteeName: res.username,
+              status: 'pending',
+            };
+            set((state) => ({
+              invitations: [inv, ...state.invitations.filter((i) => i.inviteId !== inv.inviteId)],
+            }));
+          }
         } catch (err) {
           console.error('직원 초대 실패:', err);
           throw err;

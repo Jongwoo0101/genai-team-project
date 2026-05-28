@@ -59,6 +59,9 @@ export default function ManagerDashboard() {
     isVideoModalOpen,
     setIsVideoModalOpen,
     openJoinedRoom,
+    invitations,
+    handleAcceptInvitation,
+    declineInvitation,
   } = useMeetingRoomController({ user });
 
   const [copied, setCopied] = useState(false);
@@ -655,6 +658,41 @@ export default function ManagerDashboard() {
           </div>
         </div>
       )}
+
+      {invitations
+        .filter((i) => i.inviteeId === user?.id && i.status === 'pending')
+        .map((inv) => (
+          <div
+            key={inv.inviteId}
+            className="fixed bottom-6 right-6 z-50 bg-slate-900 border border-indigo-500/30 rounded-2xl p-5 shadow-2xl w-80 backdrop-blur-md animate-bounce"
+          >
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
+                <Video className="w-5 h-5" />
+              </div>
+              <div className="flex-1">
+                <h4 className="text-sm font-bold text-white">회의 초대 도착</h4>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  <strong>{inv.hostName}</strong>님이 <strong>{inv.roomTitle}</strong> 회의에 초대하셨습니다.
+                </p>
+                <div className="flex gap-2 mt-4 justify-end">
+                  <button
+                    onClick={() => declineInvitation(inv.roomId, inv.inviteId)}
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs font-bold transition duration-200 cursor-pointer"
+                  >
+                    거절
+                  </button>
+                  <button
+                    onClick={() => handleAcceptInvitation(inv.roomId, inv.inviteId)}
+                    className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition duration-200 cursor-pointer"
+                  >
+                    수락 및 입장
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
     </div>
   );
 }

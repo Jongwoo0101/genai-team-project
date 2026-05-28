@@ -39,13 +39,15 @@ public class TeamService {
 
 
      // GET /api/teams/{managerId}/members
-     // 관리자가 자신의 팀 소속 직원 목록 조회
+     // 팀 소속 직원 목록 조회 (관리자 및 해당 팀 소속 직원)
     @Transactional(readOnly = true)
-    public List<TeamMemberResponse> getTeamMembers(Long managerId, Member manager) {
+    public List<TeamMemberResponse> getTeamMembers(Long managerId, Member member) {
 
-        // 본인 팀만 조회 가능
-        if (!manager.getId().equals(managerId)) {
+        // 매니저인 경우 본인 팀인지 확인, 직원인 경우 본인이 속한 팀의 매니저인지 확인
+        if (member.getRole() == Role.MANAGER && !member.getId().equals(managerId)) {
             throw new IllegalArgumentException("본인 팀의 멤버만 조회할 수 있습니다.");
+        } else if (member.getRole() == Role.EMPLOYEE && !managerId.equals(member.getManagerId())) {
+            throw new IllegalArgumentException("본인 소속 팀의 멤버만 조회할 수 있습니다.");
         }
 
         return memberRepository.findAllByManagerId(managerId)

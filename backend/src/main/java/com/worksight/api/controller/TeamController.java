@@ -23,23 +23,21 @@ public class TeamController {
     // (현재 managerId 기반 구조에서는 별도 팀 생성 API 불필요)
 
     // GET /api/teams/my-team
-    //직원이 자신의 소속 팀(관리자 정보) 조회
+    // 직원이 자신의 소속 팀(관리자 정보) 조회
     @GetMapping("/my-team")
     @PreAuthorize("hasRole('EMPLOYEE')")
     public ResponseEntity<MyTeamResponse> getMyTeam(
-            @AuthenticationPrincipal Member employee
-    ) {
+            @AuthenticationPrincipal Member employee) {
         return ResponseEntity.ok(teamService.getMyTeam(employee));
     }
 
     // GET /api/teams/{managerId}/members
-    // 관리자가 자신의 팀 소속 직원 목록 조회
+    // 팀 소속 직원 목록 조회 (관리자 및 해당 팀 소속 직원)
     @GetMapping("/{managerId}/members")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasRole('MANAGER') or hasRole('EMPLOYEE')")
     public ResponseEntity<List<TeamMemberResponse>> getTeamMembers(
             @PathVariable Long managerId,
-            @AuthenticationPrincipal Member manager
-    ) {
-        return ResponseEntity.ok(teamService.getTeamMembers(managerId, manager));
+            @AuthenticationPrincipal Member member) {
+        return ResponseEntity.ok(teamService.getTeamMembers(managerId, member));
     }
 }
