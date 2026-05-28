@@ -139,6 +139,14 @@ class WebSocketService {
     }
   }
 
+  publish(topic: string, payload: unknown) {
+    if (this.connected && this.stompClient) {
+      this.stompClient.send(topic, {}, JSON.stringify(payload));
+    } else {
+      console.warn(`WebSocket이 연결되지 않아 메시지를 보낼 수 없습니다: '${topic}'`);
+    }
+  }
+
   disconnect() {
     if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
     
