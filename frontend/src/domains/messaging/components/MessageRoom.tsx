@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useMessageStore } from '../stores/useMessageStore';
 import { MessageHeader } from './MessageHeader';
 import { MessageList } from './MessageList';
@@ -10,51 +10,65 @@ export const MessageRoom: React.FC = () => {
   const {
     activeRoomId,
     activeRoom,
+    rooms,           // ← store에서 직접 구독 (getState() 대신)
     setActiveRoom,
     setBannerInfo,
   } = useMessageStore();
 
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  // rooms 변경(새 메시지 도착 등)으로 인한 중복 재로드 방지
+  const loadedForRoomId = useRef<number | null>(null);
 
-  // activeRoomId 가 활성화되거나 변경될 때 방 상세 내용 및 상대 상태 배너 로드
   useEffect(() => {
     if (!activeRoomId) {
       setActiveRoom(null);
       setBannerInfo(null);
+      setError(false);
+      loadedForRoomId.current = null;
       return;
     }
+
+    // rooms가 아직 로드되지 않았으면 대기
+    // (rooms가 setRooms로 업데이트되면 effect 재실행됨)
+    const currentRoom = rooms.find((r) => Number(r.roomId) === Number(activeRoomId));
+    if (!currentRoom) return;
+
+    // 이미 이 방의 상세를 로드했고 activeRoom이 있다면 재로드 불필요
+    // (새 메시지가 와서 rooms가 바뀌어도 재로드 방지)
+    if (loadedForRoomId.current === activeRoomId && activeRoom) return;
 
     const loadRoomDetail = async () => {
       try {
         setLoading(true);
-        
-        // 1. 대화방 목록 중 해당 방의 상대방 ID 식별
-        // activeRoom 스토어에 들어있는 상대방 ID를 기준으로 활용하거나,
-        // rooms 목록에서 activeRoomId에 해당하는 방을 검색
-        const currentRoom = useMessageStore.getState().rooms.find((r) => Number(r.roomId) === Number(activeRoomId));
-        if (!currentRoom) return;
+        setError(false);
 
         const otherMemberId = currentRoom.otherMemberId;
 
-        // 2. 방 입장 (메시지 히스토리 및 상대 정보 자동 생성/조회)
+        // 방 입장 (메시지 히스토리 및 상대 정보 조회)
         const detail = await enterRoom(otherMemberId);
         setActiveRoom(detail);
+        loadedForRoomId.current = activeRoomId;
 
-        // 3. 상태 표시 배너 로드
+        // 상태 표시 배너 로드
         const banner = await getStatusBanner(otherMemberId);
         setBannerInfo(banner);
 
-        // 4. 읽음 처리 API 호출
+        // 읽음 처리
         await markAsRead(activeRoomId);
       } catch (err) {
         console.error('채팅방 상세 정보를 가져오는 데 실패했습니다:', err);
+        setError(true);
       } finally {
         setLoading(false);
       }
     };
 
     loadRoomDetail();
-  }, [activeRoomId, setActiveRoom, setBannerInfo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRoomId, rooms]);
+
+  // ── 렌더 분기 ──────────────────────────────────────────────────
 
   if (!activeRoomId) {
     return (
@@ -65,12 +79,45 @@ export const MessageRoom: React.FC = () => {
     );
   }
 
-  if (loading || !activeRoom) {
+  // API 실패 상태
+  if (error) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center bg-slate-950 text-slate-500 gap-3">
+        <span className="text-2xl">⚠️</span>
+        <p className="text-sm">채팅방을 불러오는 데 실패했습니다.</p>
+        <button
+          onClick={() => {
+            setError(false);
+            loadedForRoomId.current = null;
+            setActiveRoom(null);
+          }}
+          className="text-xs text-indigo-400 hover:text-indigo-300 underline"
+        >
+          다시 시도
+        </button>
+      </div>
+    );
+  }
+
+  // 로딩 중 (API 호출 진행 중)
+  if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center bg-slate-950 text-slate-400">
         <div className="flex flex-col items-center gap-2">
           <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-xs">채팅방 대화 내역을 불러오는 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // rooms 로드 대기 중 (activeRoomId는 있지만 아직 rooms가 없는 순간)
+  if (!activeRoom) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-slate-950 text-slate-400">
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-6 h-6 border-2 border-slate-700 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-xs text-slate-600">잠시만 기다려 주세요...</p>
         </div>
       </div>
     );
