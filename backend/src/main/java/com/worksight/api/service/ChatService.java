@@ -246,7 +246,12 @@ public class ChatService {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
+                // 상대방(메시지 발신자)에게 내가 읽었다는 알림 발송
                 messagingTemplate.convertAndSend("/topic/members/" + notifyMemberId, envelope);
+                // 나 자신에게도 발송 → 내 미읽음 뱃지를 즉시 초기화
+                if (!readByMemberId.equals(notifyMemberId)) {
+                    messagingTemplate.convertAndSend("/topic/members/" + readByMemberId, envelope);
+                }
             }
         });
     }
