@@ -92,11 +92,9 @@ public class ChatService {
 
     /**
      * 메시지 전송
-     *
      * 알림 정책:
      *   - NORMAL  : 상대방이 MEETING 또는 AWAY 이면 WebSocket 메시지만 전달 (알림 미발송)
      *   - URGENT  : 상대방 상태 무관 강제 알림 (CHAT_URGENT_RECEIVED 이벤트)
-     *
      * 프론트 처리:
      *   - CHAT_MESSAGE_RECEIVED → 일반 메시지 수신 처리 (배너 표시 여부는 프론트 판단)
      *   - CHAT_URGENT_RECEIVED  → 상태 무관 강제 알림음/진동 처리

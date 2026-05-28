@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
 
 /**
  * 채팅 메시지 엔티티
- *
  * messageType:
  *   NORMAL  — 일반 메시지. 수신자가 MEETING/AWAY 상태이면 알림 미발송.
  *   URGENT  — 긴급 알림 메시지. 수신자 상태 무관하게 강제 알림 발송.
