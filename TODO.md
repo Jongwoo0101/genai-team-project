@@ -27,6 +27,9 @@
 - [x] Zustand Persist 스토어의 다중 사용자 로컬스토리지 격리 구현 (@fe-dev, @qa-tester, 2026-05-27)
 - [x] Zustand 스토어 격리 보완 작업 (로그아웃 정리 및 마이그레이션) (@fe-dev, @qa-tester, 2026-05-27)
 - [x] 회의실 페이지(/meetingroom) 내 웹소켓 구독 누락으로 인한 참가요청 수신 불가 버그 및 관리자(MANAGER)의 팀원 초대 목록 미노출 버그 해결 (@fe-dev, 2026-05-27)
+- [x] 회의실 페이지(/meetingroom) 내 상사의 긴급 알림(DirectPing) 및 실시간 채팅 알림(CHAT_URGENT_RECEIVED / NOTIFICATION_RECEIVED) 연동, UI 경보 오버레이와 경보 오디오 재생 로직 이식 완료 (@fe-dev, 2026-05-28)
+- [x] 신규 백엔드 1:1 실시간 채팅 API 및 웹소켓 메시징 스펙에 맞춰 frontend/src/domains/messaging 도메인 전면 리팩토링 및 연동 완료 (@fe-dev, 2026-05-28)
+- [x] 1:1 실시간 채팅 메시지 수신자 화면 실시간 동기화 버그 해결, 레이아웃 높이 붕괴 차단 및 웹소켓 라이프사이클 누수 해결 (@fe-dev, @qa-tester, 2026-05-28)
 
 
 ## 진행 중

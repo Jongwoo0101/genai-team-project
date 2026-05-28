@@ -1,25 +1,55 @@
-export type UserStatus = 'WORKING' | 'MEETING' | 'RESTING' | 'OFFLINE';
+export type UserStatus = 'WORKING' | 'MEETING' | 'AWAY' | 'FOCUS' | 'OFFLINE';
+export type ChatMessageType = 'NORMAL' | 'URGENT';
 
-export interface ChatUser {
-  id: string;
-  name: string;
-  avatarUrl?: string;
-  status: UserStatus;
+export interface ChatMessageResponse {
+  messageId: number;
+  roomId: number;
+  senderId: number;
+  senderUsername: string;
+  content: string;
+  messageType: ChatMessageType;
+  read: boolean;
+  createdAt: string;
+  readAt: string | null;
 }
 
-export interface Message {
-  messageId: string;
-  roomId: string;
-  senderId: string;
+export interface ChatRoomResponse {
+  roomId: number;
+  otherMemberId: number;
+  otherMemberUsername: string;
+  otherMemberStatus: UserStatus;
+  lastMessage: ChatMessageResponse | null;
+  unreadCount: number;
+}
+
+export interface ChatRoomDetailResponse {
+  roomId: number;
+  otherMemberId: number;
+  otherMemberUsername: string;
+  otherMemberStatus: UserStatus;
+  messages: ChatMessageResponse[];
+}
+
+export interface ReceiverStatusBannerResponse {
+  otherMemberId: number;
+  otherMemberUsername: string;
+  otherMemberStatus: UserStatus;
+  showBanner: boolean;
+  canSendUrgent: boolean;
+  bannerMessage: string | null;
+}
+
+export interface ChatMessagePayload {
+  roomId: number;
+  messageId: number;
+  senderId: number;
+  senderUsername: string;
   content: string;
-  isUrgent: boolean;
+  messageType: ChatMessageType;
   createdAt: string;
 }
 
-export interface ChatRoom {
-  roomId: string;
-  roomName: string;
-  type: 'TEAM' | 'DM';
-  members: ChatUser[];
-  unreadCount: number;
+export interface ChatReadPayload {
+  roomId: number;
+  readByMemberId: number;
 }

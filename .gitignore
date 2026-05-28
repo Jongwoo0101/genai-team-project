@@ -58,3 +58,5 @@ out/
 credentials.json
 client_secret*.json
 application_default_credentials.json
+
+src/logs/

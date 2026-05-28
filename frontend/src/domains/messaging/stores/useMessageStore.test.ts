@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { useMessageStore } from './useMessageStore';
-import type { ChatRoom, Message } from '../types';
+import type { ChatRoomResponse, ChatMessageResponse, ChatRoomDetailResponse } from '../types';
 
 describe('useMessageStore', () => {
   beforeEach(() => {
@@ -8,8 +8,8 @@ describe('useMessageStore', () => {
     useMessageStore.setState({
       rooms: [],
       activeRoomId: null,
-      messages: [],
-      receiverStatusMap: {},
+      activeRoom: null,
+      bannerInfo: null,
     });
   });
 
@@ -17,47 +17,74 @@ describe('useMessageStore', () => {
     const state = useMessageStore.getState();
     expect(state.rooms).toEqual([]);
     expect(state.activeRoomId).toBeNull();
-    expect(state.messages).toEqual([]);
-    expect(state.receiverStatusMap).toEqual({});
+    expect(state.activeRoom).toBeNull();
+    expect(state.bannerInfo).toBeNull();
   });
 
   it('should set rooms and activeRoomId', () => {
-    const testRooms: ChatRoom[] = [
+    const testRooms: ChatRoomResponse[] = [
       {
-        roomId: 'room-1',
-        roomName: 'Team 1 Channel',
-        type: 'TEAM',
-        members: [],
+        roomId: 1,
+        otherMemberId: 10,
+        otherMemberUsername: 'test_user',
+        otherMemberStatus: 'WORKING',
+        lastMessage: null,
         unreadCount: 0,
       },
     ];
 
     useMessageStore.getState().setRooms(testRooms);
-    useMessageStore.getState().setActiveRoomId('room-1');
+    useMessageStore.getState().setActiveRoomId(1);
 
     const state = useMessageStore.getState();
     expect(state.rooms).toEqual(testRooms);
-    expect(state.activeRoomId).toBe('room-1');
+    expect(state.activeRoomId).toBe(1);
   });
 
-  it('should add a message', () => {
-    const message: Message = {
-      messageId: 'msg-1',
-      roomId: 'room-1',
-      senderId: 'user-1',
-      content: 'Hello World',
-      isUrgent: false,
-      createdAt: '2026-05-28T18:00:00Z',
+  it('should add a message to active room', () => {
+    const activeRoom: ChatRoomDetailResponse = {
+      roomId: 1,
+      otherMemberId: 10,
+      otherMemberUsername: 'test_user',
+      otherMemberStatus: 'WORKING',
+      messages: [],
     };
 
+    const message: ChatMessageResponse = {
+      messageId: 100,
+      roomId: 1,
+      senderId: 2,
+      senderUsername: 'me',
+      content: 'Hello World',
+      messageType: 'NORMAL',
+      read: false,
+      createdAt: '2026-05-28T18:00:00Z',
+      readAt: null,
+    };
+
+    useMessageStore.setState({ activeRoomId: 1, activeRoom });
     useMessageStore.getState().addMessage(message);
+
     const state = useMessageStore.getState();
-    expect(state.messages).toContainEqual(message);
+    expect(state.activeRoom?.messages).toContainEqual(message);
   });
 
-  it('should update user status', () => {
-    useMessageStore.getState().updateUserStatus('user-1', 'MEETING');
+  it('should update member status', () => {
+    const testRooms: ChatRoomResponse[] = [
+      {
+        roomId: 1,
+        otherMemberId: 10,
+        otherMemberUsername: 'test_user',
+        otherMemberStatus: 'WORKING',
+        lastMessage: null,
+        unreadCount: 0,
+      },
+    ];
+
+    useMessageStore.setState({ rooms: testRooms });
+    useMessageStore.getState().updateMemberStatus(10, 'MEETING');
+    
     const state = useMessageStore.getState();
-    expect(state.receiverStatusMap['user-1']).toBe('MEETING');
+    expect(state.rooms[0].otherMemberStatus).toBe('MEETING');
   });
 });

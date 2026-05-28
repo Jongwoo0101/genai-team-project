@@ -1,4 +1,10 @@
-import type { ChatRoom, Message, UserStatus } from './types';
+import type {
+  ChatRoomResponse,
+  ChatRoomDetailResponse,
+  ChatMessageResponse,
+  ReceiverStatusBannerResponse,
+  ChatMessageType,
+} from './types';
 import { STORAGE_KEYS } from '../../lib/constants';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
@@ -29,24 +35,48 @@ async function requestWithAuth<T>(url: string, method: string = 'GET', body?: un
     throw new Error(errorMessage);
   }
 
-  if (res.status === 204) {
+  // 204 No Content 뿐만 아니라 Content-Length가 0이거나 본문이 빈 경우 안전하게 처리
+  const text = await res.text();
+  if (!text) {
     return undefined as T;
   }
 
-  return res.json();
+  try {
+    return JSON.parse(text) as T;
+  } catch (err) {
+    console.error('API 응답 파싱 실패:', text, err);
+    throw new Error('서버 응답을 처리할 수 없습니다.');
+  }
 }
 
-/** 팀에 소속된 채팅방 목록 조회 */
-export async function getRooms(teamId: string): Promise<ChatRoom[]> {
-  return requestWithAuth<ChatRoom[]>(`/v1/messages/rooms?teamId=${teamId}`);
+/** 내 채팅방 목록 조회 (최근 메시지 기준 최신순) */
+export async function getRooms(): Promise<ChatRoomResponse[]> {
+  return requestWithAuth<ChatRoomResponse[]>('/chat/rooms');
 }
 
-/** 채팅방 이전 메시지 조회 */
-export async function getRoomMessages(roomId: string, page: number = 0, size: number = 50): Promise<{ messages: Message[]; hasNext: boolean }> {
-  return requestWithAuth<{ messages: Message[]; hasNext: boolean }>(`/v1/messages/room/${roomId}?page=${page}&size=${size}`);
+/** 채팅방 입장 (없으면 자동 생성, 미읽음 일괄 읽음 처리) */
+export async function enterRoom(otherMemberId: number): Promise<ChatRoomDetailResponse> {
+  return requestWithAuth<ChatRoomDetailResponse>(`/chat/rooms/${otherMemberId}/enter`, 'POST');
 }
 
-/** 특정 유저의 현재 상태 조회 */
-export async function getUserStatus(userId: string): Promise<{ userId: string; currentStatus: UserStatus }> {
-  return requestWithAuth<{ userId: string; currentStatus: UserStatus }>(`/v1/users/${userId}/status`);
+/** 메시지 전송 */
+export async function sendMessage(
+  roomId: number,
+  content: string,
+  messageType: ChatMessageType = 'NORMAL'
+): Promise<ChatMessageResponse> {
+  return requestWithAuth<ChatMessageResponse>(`/chat/rooms/${roomId}/messages`, 'POST', {
+    content,
+    messageType,
+  });
+}
+
+/** 채팅창 상단 안내 배너 조회 */
+export async function getStatusBanner(otherMemberId: number): Promise<ReceiverStatusBannerResponse> {
+  return requestWithAuth<ReceiverStatusBannerResponse>(`/chat/rooms/${otherMemberId}/status-banner`);
+}
+
+/** 채팅방 읽음 처리 (채팅창 포커스 시 호출) */
+export async function markAsRead(roomId: number): Promise<void> {
+  return requestWithAuth<void>(`/chat/rooms/${roomId}/read`, 'POST');
 }

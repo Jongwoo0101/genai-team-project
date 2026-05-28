@@ -32,8 +32,8 @@ class WebSocketService {
       return;
     }
 
-    // 만약 이미 진행 중인 stompClient가 존재한다면 우선 해제 처리
-    if (this.stompClient) {
+    // 기존 stompClient가 존재하고 이미 연결된 상태라면 해제 처리
+    if (this.stompClient && this.connected) {
       this.disconnect();
     }
 
@@ -104,9 +104,9 @@ class WebSocketService {
     this.unsubscribe(topic);
 
     let stompSub: Stomp.Subscription | null = null;
-    if (this.connected && this.stompClient) {
-      stompSub = this.stompClient.subscribe(topic, (message) => {
-        if (message.body) {
+      if (this.connected && this.stompClient) {
+        stompSub = this.stompClient.subscribe(topic, (message) => {
+          if (message.body) {
           try {
             const data = JSON.parse(message.body);
             callback(data);
@@ -115,9 +115,9 @@ class WebSocketService {
           }
         }
       });
-    } else {
-      console.warn(`웹소켓이 아직 연결되지 않았습니다. 연결 후 자동으로 구독됩니다: '${topic}'`);
-    }
+      } else {
+        // 아직 연결되지 않았으므로 구독은 저장만 하고, 연결 시 자동으로 구독됩니다.
+      }
 
     this.subscriptions.set(topic, {
       stompSubscription: stompSub,
@@ -151,6 +151,12 @@ class WebSocketService {
     if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
     
     if (this.stompClient) {
+      // 연결이 아직 확립되지 않았을 경우 stompjs의 disconnect 호출이 InvalidStateError를 발생시킬 수 있음
+      if (!this.connected) {
+        // 현재 연결 상태가 아니면 client만 초기화하고 종료
+        this.stompClient = null;
+        return;
+      }
       const clientToDisconnect = this.stompClient;
       this.stompClient = null;
       this.connected = false;
