@@ -15,3 +15,106 @@ Error: read ECONNRESET
 8:06:55 PM [vite] ws proxy socket error:
 Error: read ECONNRESET
     at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+8:12:38 PM [vite] (client) hmr update /src/index.css, /src/domains/messaging/components/MessagePage.tsx
+8:13:19 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+8:13:19 PM [vite] Internal server error: Transform failed with 1 error:
+
+[31m[PARSE_ERROR] Error:[0m Identifier `AppRoutes` has already been declared
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/App.tsx:1:8 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m [38;5;249mi[0m[38;5;249mm[0m[38;5;249mp[0m[38;5;249mo[0m[38;5;249mr[0m[38;5;249mt[0m[38;5;249m [0mAppRoutes[38;5;249m [0m[38;5;249mf[0m[38;5;249mr[0m[38;5;249mo[0m[38;5;249mm[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249m.[0m[38;5;249m/[0m[38;5;249mA[0m[38;5;249mp[0m[38;5;249mp[0m[38;5;249mR[0m[38;5;249mo[0m[38;5;249mu[0m[38;5;249mt[0m[38;5;249me[0m[38;5;249ms[0m[38;5;249m'[0m[38;5;249m;[0m
+ [38;5;240m  │[0m        ────┬────  
+ [38;5;240m  │[0m            ╰────── `AppRoutes` has already been declared here
+ [38;5;240m  │[0m 
+ [38;5;246m3 │[0m [38;5;249mi[0m[38;5;249mm[0m[38;5;249mp[0m[38;5;249mo[0m[38;5;249mr[0m[38;5;249mt[0m[38;5;249m [0mAppRoutes[38;5;249m [0m[38;5;249mf[0m[38;5;249mr[0m[38;5;249mo[0m[38;5;249mm[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249m.[0m[38;5;249m/[0m[38;5;249mA[0m[38;5;249mp[0m[38;5;249mp[0m[38;5;249mR[0m[38;5;249mo[0m[38;5;249mu[0m[38;5;249mt[0m[38;5;249me[0m[38;5;249ms[0m[38;5;249m'[0m[38;5;249m;[0m
+ [38;5;240m  │[0m        ────┬────  
+ [38;5;240m  │[0m            ╰────── It can not be redeclared here
+[38;5;246m───╯[0m
+
+  Plugin: vite:oxc
+  File: /Users/woojin/Developer/genai-team-project/frontend/src/App.tsx
+      at transformWithOxc (file:///Users/woojin/Developer/genai-team-project/frontend/node_modules/vite/dist/node/chunks/node.js:3343:19)
+      at TransformPluginContext.transform (file:///Users/woojin/Developer/genai-team-project/frontend/node_modules/vite/dist/node/chunks/node.js:3411:26)
+      at EnvironmentPluginContainer.transform (file:///Users/woojin/Developer/genai-team-project/frontend/node_modules/vite/dist/node/chunks/node.js:30164:51)
+      at async loadAndTransform (file:///Users/woojin/Developer/genai-team-project/frontend/node_modules/vite/dist/node/chunks/node.js:24512:26)
+8:13:19 PM [vite] Internal server error: Transform failed with 1 error:
+
+[31m[PARSE_ERROR] Error:[0m Identifier `AppRoutes` has already been declared
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/App.tsx:1:8 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m [38;5;249mi[0m[38;5;249mm[0m[38;5;249mp[0m[38;5;249mo[0m[38;5;249mr[0m[38;5;249mt[0m[38;5;249m [0mAppRoutes[38;5;249m [0m[38;5;249mf[0m[38;5;249mr[0m[38;5;249mo[0m[38;5;249mm[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249m.[0m[38;5;249m/[0m[38;5;249mA[0m[38;5;249mp[0m[38;5;249mp[0m[38;5;249mR[0m[38;5;249mo[0m[38;5;249mu[0m[38;5;249mt[0m[38;5;249me[0m[38;5;249ms[0m[38;5;249m'[0m[38;5;249m;[0m
+ [38;5;240m  │[0m        ────┬────  
+ [38;5;240m  │[0m            ╰────── `AppRoutes` has already been declared here
+ [38;5;240m  │[0m 
+ [38;5;246m3 │[0m [38;5;249mi[0m[38;5;249mm[0m[38;5;249mp[0m[38;5;249mo[0m[38;5;249mr[0m[38;5;249mt[0m[38;5;249m [0mAppRoutes[38;5;249m [0m[38;5;249mf[0m[38;5;249mr[0m[38;5;249mo[0m[38;5;249mm[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249m.[0m[38;5;249m/[0m[38;5;249mA[0m[38;5;249mp[0m[38;5;249mp[0m[38;5;249mR[0m[38;5;249mo[0m[38;5;249mu[0m[38;5;249mt[0m[38;5;249me[0m[38;5;249ms[0m[38;5;249m'[0m[38;5;249m;[0m
+ [38;5;240m  │[0m        ────┬────  
+ [38;5;240m  │[0m            ╰────── It can not be redeclared here
+[38;5;246m───╯[0m
+
+  Plugin: vite:oxc
+  File: /Users/woojin/Developer/genai-team-project/frontend/src/App.tsx
+      at transformWithOxc (file:///Users/woojin/Developer/genai-team-project/frontend/node_modules/vite/dist/node/chunks/node.js:3343:19)
+      at TransformPluginContext.transform (file:///Users/woojin/Developer/genai-team-project/frontend/node_modules/vite/dist/node/chunks/node.js:3411:26)
+      at EnvironmentPluginContainer.transform (file:///Users/woojin/Developer/genai-team-project/frontend/node_modules/vite/dist/node/chunks/node.js:30164:51)
+      at async loadAndTransform (file:///Users/woojin/Developer/genai-team-project/frontend/node_modules/vite/dist/node/chunks/node.js:24512:26)
+8:13:19 PM [vite] Internal server error: Transform failed with 1 error:
+
+[31m[PARSE_ERROR] Error:[0m Identifier `AppRoutes` has already been declared
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/App.tsx:1:8 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m [38;5;249mi[0m[38;5;249mm[0m[38;5;249mp[0m[38;5;249mo[0m[38;5;249mr[0m[38;5;249mt[0m[38;5;249m [0mAppRoutes[38;5;249m [0m[38;5;249mf[0m[38;5;249mr[0m[38;5;249mo[0m[38;5;249mm[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249m.[0m[38;5;249m/[0m[38;5;249mA[0m[38;5;249mp[0m[38;5;249mp[0m[38;5;249mR[0m[38;5;249mo[0m[38;5;249mu[0m[38;5;249mt[0m[38;5;249me[0m[38;5;249ms[0m[38;5;249m'[0m[38;5;249m;[0m
+ [38;5;240m  │[0m        ────┬────  
+ [38;5;240m  │[0m            ╰────── `AppRoutes` has already been declared here
+ [38;5;240m  │[0m 
+ [38;5;246m3 │[0m [38;5;249mi[0m[38;5;249mm[0m[38;5;249mp[0m[38;5;249mo[0m[38;5;249mr[0m[38;5;249mt[0m[38;5;249m [0mAppRoutes[38;5;249m [0m[38;5;249mf[0m[38;5;249mr[0m[38;5;249mo[0m[38;5;249mm[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249m.[0m[38;5;249m/[0m[38;5;249mA[0m[38;5;249mp[0m[38;5;249mp[0m[38;5;249mR[0m[38;5;249mo[0m[38;5;249mu[0m[38;5;249mt[0m[38;5;249me[0m[38;5;249ms[0m[38;5;249m'[0m[38;5;249m;[0m
+ [38;5;240m  │[0m        ────┬────  
+ [38;5;240m  │[0m            ╰────── It can not be redeclared here
+[38;5;246m───╯[0m
+
+  Plugin: vite:oxc
+  File: /Users/woojin/Developer/genai-team-project/frontend/src/App.tsx
+      at transformWithOxc (file:///Users/woojin/Developer/genai-team-project/frontend/node_modules/vite/dist/node/chunks/node.js:3343:19)
+      at TransformPluginContext.transform (file:///Users/woojin/Developer/genai-team-project/frontend/node_modules/vite/dist/node/chunks/node.js:3411:26)
+      at EnvironmentPluginContainer.transform (file:///Users/woojin/Developer/genai-team-project/frontend/node_modules/vite/dist/node/chunks/node.js:30164:51)
+      at async loadAndTransform (file:///Users/woojin/Developer/genai-team-project/frontend/node_modules/vite/dist/node/chunks/node.js:24512:26)
+8:13:19 PM [vite] Internal server error: Transform failed with 1 error:
+
+[31m[PARSE_ERROR] Error:[0m Identifier `AppRoutes` has already been declared
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/App.tsx:1:8 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m [38;5;249mi[0m[38;5;249mm[0m[38;5;249mp[0m[38;5;249mo[0m[38;5;249mr[0m[38;5;249mt[0m[38;5;249m [0mAppRoutes[38;5;249m [0m[38;5;249mf[0m[38;5;249mr[0m[38;5;249mo[0m[38;5;249mm[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249m.[0m[38;5;249m/[0m[38;5;249mA[0m[38;5;249mp[0m[38;5;249mp[0m[38;5;249mR[0m[38;5;249mo[0m[38;5;249mu[0m[38;5;249mt[0m[38;5;249me[0m[38;5;249ms[0m[38;5;249m'[0m[38;5;249m;[0m
+ [38;5;240m  │[0m        ────┬────  
+ [38;5;240m  │[0m            ╰────── `AppRoutes` has already been declared here
+ [38;5;240m  │[0m 
+ [38;5;246m3 │[0m [38;5;249mi[0m[38;5;249mm[0m[38;5;249mp[0m[38;5;249mo[0m[38;5;249mr[0m[38;5;249mt[0m[38;5;249m [0mAppRoutes[38;5;249m [0m[38;5;249mf[0m[38;5;249mr[0m[38;5;249mo[0m[38;5;249mm[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249m.[0m[38;5;249m/[0m[38;5;249mA[0m[38;5;249mp[0m[38;5;249mp[0m[38;5;249mR[0m[38;5;249mo[0m[38;5;249mu[0m[38;5;249mt[0m[38;5;249me[0m[38;5;249ms[0m[38;5;249m'[0m[38;5;249m;[0m
+ [38;5;240m  │[0m        ────┬────  
+ [38;5;240m  │[0m            ╰────── It can not be redeclared here
+[38;5;246m───╯[0m
+
+  Plugin: vite:oxc
+  File: /Users/woojin/Developer/genai-team-project/frontend/src/App.tsx
+      at transformWithOxc (file:///Users/woojin/Developer/genai-team-project/frontend/node_modules/vite/dist/node/chunks/node.js:3343:19)
+      at TransformPluginContext.transform (file:///Users/woojin/Developer/genai-team-project/frontend/node_modules/vite/dist/node/chunks/node.js:3411:26)
+      at EnvironmentPluginContainer.transform (file:///Users/woojin/Developer/genai-team-project/frontend/node_modules/vite/dist/node/chunks/node.js:30164:51)
+      at async loadAndTransform (file:///Users/woojin/Developer/genai-team-project/frontend/node_modules/vite/dist/node/chunks/node.js:24512:26)
+8:13:19 PM [vite] Internal server error: Transform failed with 1 error:
+
+[31m[PARSE_ERROR] Error:[0m Identifier `AppRoutes` has already been declared
+   [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/App.tsx:1:8 [38;5;246m][0m
+   [38;5;246m│[0m
+ [38;5;246m1 │[0m [38;5;249mi[0m[38;5;249mm[0m[38;5;249mp[0m[38;5;249mo[0m[38;5;249mr[0m[38;5;249mt[0m[38;5;249m [0mAppRoutes[38;5;249m [0m[38;5;249mf[0m[38;5;249mr[0m[38;5;249mo[0m[38;5;249mm[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249m.[0m[38;5;249m/[0m[38;5;249mA[0m[38;5;249mp[0m[38;5;249mp[0m[38;5;249mR[0m[38;5;249mo[0m[38;5;249mu[0m[38;5;249mt[0m[38;5;249me[0m[38;5;249ms[0m[38;5;249m'[0m[38;5;249m;[0m
+ [38;5;240m  │[0m        ────┬────  
+ [38;5;240m  │[0m            ╰────── `AppRoutes` has already been declared here
+ [38;5;240m  │[0m 
+ [38;5;246m3 │[0m [38;5;249mi[0m[38;5;249mm[0m[38;5;249mp[0m[38;5;249mo[0m[38;5;249mr[0m[38;5;249mt[0m[38;5;249m [0mAppRoutes[38;5;249m [0m[38;5;249mf[0m[38;5;249mr[0m[38;5;249mo[0m[38;5;249mm[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249m.[0m[38;5;249m/[0m[38;5;249mA[0m[38;5;249mp[0m[38;5;249mp[0m[38;5;249mR[0m[38;5;249mo[0m[38;5;249mu[0m[38;5;249mt[0m[38;5;249me[0m[38;5;249ms[0m[38;5;249m'[0m[38;5;249m;[0m
+ [38;5;240m  │[0m        ────┬────  
+ [38;5;240m  │[0m            ╰────── It can not be redeclared here
+[38;5;246m───╯[0m
+
+  Plugin: vite:oxc
+  File: /Users/woojin/Developer/genai-team-project/frontend/src/App.tsx
+      at transformWithOxc (file:///Users/woojin/Developer/genai-team-project/frontend/node_modules/vite/dist/node/chunks/node.js:3343:19)
+      at TransformPluginContext.transform (file:///Users/woojin/Developer/genai-team-project/frontend/node_modules/vite/dist/node/chunks/node.js:3411:26)
+      at EnvironmentPluginContainer.transform (file:///Users/woojin/Developer/genai-team-project/frontend/node_modules/vite/dist/node/chunks/node.js:30164:51)
+      at async loadAndTransform (file:///Users/woojin/Developer/genai-team-project/frontend/node_modules/vite/dist/node/chunks/node.js:24512:26)
+8:13:30 PM [vite] (client) hmr update /src/App.tsx, /src/index.css

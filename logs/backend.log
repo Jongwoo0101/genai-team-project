@@ -16466,3 +16466,818 @@ Caused by: org.springframework.security.authorization.AuthorizationDeniedExcepti
         mr1_0.createdAt desc
 2026-05-28T20:10:35.700+09:00 TRACE 31519 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [4]
 2026-05-28T20:10:35.700+09:00 TRACE 31519 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (2:BIGINT) <- [4]
+2026-05-28T20:11:29.182+09:00 DEBUG 31519 --- [nio-8080-exec-5] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.182+09:00 TRACE 31519 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [5]
+2026-05-28T20:11:29.183+09:00 DEBUG 31519 --- [nio-8080-exec-5] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.183+09:00 TRACE 31519 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [4]
+2026-05-28T20:11:29.183+09:00 DEBUG 31519 --- [nio-8080-exec-9] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.183+09:00 TRACE 31519 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [5]
+2026-05-28T20:11:29.184+09:00 DEBUG 31519 --- [nio-8080-exec-9] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.184+09:00 TRACE 31519 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [4]
+2026-05-28T20:11:29.190+09:00 DEBUG 31519 --- [nio-8080-exec-7] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.190+09:00 TRACE 31519 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [5]
+2026-05-28T20:11:29.191+09:00 DEBUG 31519 --- [nio-8080-exec-7] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.managerId=?
+2026-05-28T20:11:29.191+09:00 TRACE 31519 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [4]
+2026-05-28T20:11:29.192+09:00 DEBUG 31519 --- [nio-8080-exec-8] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.192+09:00 TRACE 31519 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [5]
+2026-05-28T20:11:29.192+09:00 DEBUG 31519 --- [nio-8080-exec-8] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.managerId=?
+2026-05-28T20:11:29.193+09:00 TRACE 31519 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [4]
+2026-05-28T20:11:29.199+09:00 DEBUG 31519 --- [nio-8080-exec-3] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.199+09:00 TRACE 31519 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [5]
+2026-05-28T20:11:29.199+09:00 DEBUG 31519 --- [nio-8080-exec-3] org.hibernate.SQL                        : 
+    select
+        cr1_0.id,
+        cr1_0.createdAt,
+        cr1_0.member1_id,
+        cr1_0.member2_id 
+    from
+        chat_room cr1_0 
+    where
+        cr1_0.member1_id=? 
+        or cr1_0.member2_id=?
+2026-05-28T20:11:29.200+09:00 TRACE 31519 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [5]
+2026-05-28T20:11:29.200+09:00 TRACE 31519 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (2:BIGINT) <- [5]
+2026-05-28T20:11:29.200+09:00 DEBUG 31519 --- [nio-8080-exec-3] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.200+09:00 TRACE 31519 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [4]
+2026-05-28T20:11:29.200+09:00 DEBUG 31519 --- [nio-8080-exec-3] org.hibernate.SQL                        : 
+    select
+        ms1_0.id,
+        ms1_0.member_id,
+        ms1_0.statusType,
+        ms1_0.updatedAt 
+    from
+        MemberStatus ms1_0 
+    where
+        ms1_0.member_id=?
+2026-05-28T20:11:29.200+09:00 TRACE 31519 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [4]
+2026-05-28T20:11:29.201+09:00 DEBUG 31519 --- [nio-8080-exec-5] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.201+09:00 TRACE 31519 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [5]
+2026-05-28T20:11:29.201+09:00 DEBUG 31519 --- [nio-8080-exec-3] org.hibernate.SQL                        : 
+    select
+        cm1_0.id,
+        cm1_0.chat_room_id,
+        cm1_0.content,
+        cm1_0.createdAt,
+        cm1_0.messageType,
+        cm1_0.read,
+        cm1_0.readAt,
+        cm1_0.sender_id 
+    from
+        chat_message cm1_0 
+    where
+        cm1_0.chat_room_id=? 
+    order by
+        cm1_0.createdAt desc 
+    fetch
+        first ? rows only
+2026-05-28T20:11:29.201+09:00 TRACE 31519 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [2]
+2026-05-28T20:11:29.201+09:00 TRACE 31519 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (2:INTEGER) <- [1]
+2026-05-28T20:11:29.201+09:00 DEBUG 31519 --- [nio-8080-exec-5] org.hibernate.SQL                        : 
+    select
+        cr1_0.id,
+        cr1_0.createdAt,
+        cr1_0.member1_id,
+        cr1_0.member2_id 
+    from
+        chat_room cr1_0 
+    where
+        cr1_0.member1_id=? 
+        or cr1_0.member2_id=?
+2026-05-28T20:11:29.201+09:00 TRACE 31519 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [5]
+2026-05-28T20:11:29.201+09:00 TRACE 31519 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (2:BIGINT) <- [5]
+2026-05-28T20:11:29.201+09:00 DEBUG 31519 --- [nio-8080-exec-5] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.201+09:00 TRACE 31519 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [4]
+2026-05-28T20:11:29.201+09:00 DEBUG 31519 --- [nio-8080-exec-3] org.hibernate.SQL                        : 
+    select
+        count(cm1_0.id) 
+    from
+        chat_message cm1_0 
+    where
+        cm1_0.chat_room_id=? 
+        and cm1_0.sender_id<>? 
+        and cm1_0.read=false
+2026-05-28T20:11:29.201+09:00 TRACE 31519 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [2]
+2026-05-28T20:11:29.201+09:00 TRACE 31519 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (2:BIGINT) <- [5]
+2026-05-28T20:11:29.201+09:00 DEBUG 31519 --- [nio-8080-exec-5] org.hibernate.SQL                        : 
+    select
+        ms1_0.id,
+        ms1_0.member_id,
+        ms1_0.statusType,
+        ms1_0.updatedAt 
+    from
+        MemberStatus ms1_0 
+    where
+        ms1_0.member_id=?
+2026-05-28T20:11:29.201+09:00 TRACE 31519 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [4]
+2026-05-28T20:11:29.201+09:00 DEBUG 31519 --- [nio-8080-exec-3] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.201+09:00 TRACE 31519 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.202+09:00 DEBUG 31519 --- [nio-8080-exec-5] org.hibernate.SQL                        : 
+    select
+        cm1_0.id,
+        cm1_0.chat_room_id,
+        cm1_0.content,
+        cm1_0.createdAt,
+        cm1_0.messageType,
+        cm1_0.read,
+        cm1_0.readAt,
+        cm1_0.sender_id 
+    from
+        chat_message cm1_0 
+    where
+        cm1_0.chat_room_id=? 
+    order by
+        cm1_0.createdAt desc 
+    fetch
+        first ? rows only
+2026-05-28T20:11:29.202+09:00 DEBUG 31519 --- [nio-8080-exec-3] org.hibernate.SQL                        : 
+    select
+        ms1_0.id,
+        ms1_0.member_id,
+        ms1_0.statusType,
+        ms1_0.updatedAt 
+    from
+        MemberStatus ms1_0 
+    where
+        ms1_0.member_id=?
+2026-05-28T20:11:29.202+09:00 TRACE 31519 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.202+09:00 TRACE 31519 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [2]
+2026-05-28T20:11:29.202+09:00 TRACE 31519 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (2:INTEGER) <- [1]
+2026-05-28T20:11:29.202+09:00 DEBUG 31519 --- [nio-8080-exec-3] org.hibernate.SQL                        : 
+    select
+        cm1_0.id,
+        cm1_0.chat_room_id,
+        cm1_0.content,
+        cm1_0.createdAt,
+        cm1_0.messageType,
+        cm1_0.read,
+        cm1_0.readAt,
+        cm1_0.sender_id 
+    from
+        chat_message cm1_0 
+    where
+        cm1_0.chat_room_id=? 
+    order by
+        cm1_0.createdAt desc 
+    fetch
+        first ? rows only
+2026-05-28T20:11:29.202+09:00 TRACE 31519 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.202+09:00 TRACE 31519 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (2:INTEGER) <- [1]
+2026-05-28T20:11:29.202+09:00 DEBUG 31519 --- [nio-8080-exec-5] org.hibernate.SQL                        : 
+    select
+        count(cm1_0.id) 
+    from
+        chat_message cm1_0 
+    where
+        cm1_0.chat_room_id=? 
+        and cm1_0.sender_id<>? 
+        and cm1_0.read=false
+2026-05-28T20:11:29.202+09:00 TRACE 31519 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [2]
+2026-05-28T20:11:29.202+09:00 TRACE 31519 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (2:BIGINT) <- [5]
+2026-05-28T20:11:29.202+09:00 DEBUG 31519 --- [nio-8080-exec-3] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.202+09:00 TRACE 31519 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [5]
+2026-05-28T20:11:29.202+09:00 DEBUG 31519 --- [nio-8080-exec-5] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.202+09:00 TRACE 31519 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.202+09:00 DEBUG 31519 --- [nio-8080-exec-3] org.hibernate.SQL                        : 
+    select
+        count(cm1_0.id) 
+    from
+        chat_message cm1_0 
+    where
+        cm1_0.chat_room_id=? 
+        and cm1_0.sender_id<>? 
+        and cm1_0.read=false
+2026-05-28T20:11:29.202+09:00 TRACE 31519 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.202+09:00 TRACE 31519 --- [nio-8080-exec-3] org.hibernate.orm.jdbc.bind              : binding parameter (2:BIGINT) <- [5]
+2026-05-28T20:11:29.203+09:00 DEBUG 31519 --- [nio-8080-exec-5] org.hibernate.SQL                        : 
+    select
+        ms1_0.id,
+        ms1_0.member_id,
+        ms1_0.statusType,
+        ms1_0.updatedAt 
+    from
+        MemberStatus ms1_0 
+    where
+        ms1_0.member_id=?
+2026-05-28T20:11:29.203+09:00 TRACE 31519 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.203+09:00 DEBUG 31519 --- [nio-8080-exec-5] org.hibernate.SQL                        : 
+    select
+        cm1_0.id,
+        cm1_0.chat_room_id,
+        cm1_0.content,
+        cm1_0.createdAt,
+        cm1_0.messageType,
+        cm1_0.read,
+        cm1_0.readAt,
+        cm1_0.sender_id 
+    from
+        chat_message cm1_0 
+    where
+        cm1_0.chat_room_id=? 
+    order by
+        cm1_0.createdAt desc 
+    fetch
+        first ? rows only
+2026-05-28T20:11:29.203+09:00 TRACE 31519 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.203+09:00 TRACE 31519 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (2:INTEGER) <- [1]
+2026-05-28T20:11:29.203+09:00 DEBUG 31519 --- [nio-8080-exec-5] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.203+09:00 TRACE 31519 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [5]
+2026-05-28T20:11:29.203+09:00 DEBUG 31519 --- [nio-8080-exec-5] org.hibernate.SQL                        : 
+    select
+        count(cm1_0.id) 
+    from
+        chat_message cm1_0 
+    where
+        cm1_0.chat_room_id=? 
+        and cm1_0.sender_id<>? 
+        and cm1_0.read=false
+2026-05-28T20:11:29.203+09:00 TRACE 31519 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.203+09:00 TRACE 31519 --- [nio-8080-exec-5] org.hibernate.orm.jdbc.bind              : binding parameter (2:BIGINT) <- [5]
+2026-05-28T20:11:29.210+09:00 DEBUG 31519 --- [nio-8080-exec-7] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.210+09:00 TRACE 31519 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [5]
+2026-05-28T20:11:29.210+09:00 DEBUG 31519 --- [nio-8080-exec-7] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.210+09:00 TRACE 31519 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.210+09:00 DEBUG 31519 --- [nio-8080-exec-7] org.hibernate.SQL                        : 
+    select
+        cr1_0.id,
+        cr1_0.createdAt,
+        cr1_0.member1_id,
+        cr1_0.member2_id 
+    from
+        chat_room cr1_0 
+    where
+        cr1_0.member1_id=? 
+        and cr1_0.member2_id=?
+2026-05-28T20:11:29.210+09:00 TRACE 31519 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.210+09:00 TRACE 31519 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (2:BIGINT) <- [5]
+2026-05-28T20:11:29.210+09:00 DEBUG 31519 --- [nio-8080-exec-8] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.210+09:00 TRACE 31519 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [5]
+2026-05-28T20:11:29.210+09:00 DEBUG 31519 --- [nio-8080-exec-8] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.210+09:00 TRACE 31519 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.211+09:00 DEBUG 31519 --- [nio-8080-exec-7] org.hibernate.SQL                        : 
+    update
+        chat_message cm1_0 
+    set
+        read=true,
+        readAt=localtimestamp 
+    where
+        cm1_0.chat_room_id=? 
+        and cm1_0.sender_id<>? 
+        and cm1_0.read=false
+2026-05-28T20:11:29.211+09:00 DEBUG 31519 --- [nio-8080-exec-8] org.hibernate.SQL                        : 
+    select
+        cr1_0.id,
+        cr1_0.createdAt,
+        cr1_0.member1_id,
+        cr1_0.member2_id 
+    from
+        chat_room cr1_0 
+    where
+        cr1_0.member1_id=? 
+        and cr1_0.member2_id=?
+2026-05-28T20:11:29.211+09:00 TRACE 31519 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.211+09:00 TRACE 31519 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.211+09:00 TRACE 31519 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (2:BIGINT) <- [5]
+2026-05-28T20:11:29.211+09:00 TRACE 31519 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (2:BIGINT) <- [5]
+2026-05-28T20:11:29.211+09:00 DEBUG 31519 --- [nio-8080-exec-8] org.hibernate.SQL                        : 
+    update
+        chat_message cm1_0 
+    set
+        read=true,
+        readAt=localtimestamp 
+    where
+        cm1_0.chat_room_id=? 
+        and cm1_0.sender_id<>? 
+        and cm1_0.read=false
+2026-05-28T20:11:29.211+09:00 TRACE 31519 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.211+09:00 TRACE 31519 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (2:BIGINT) <- [5]
+2026-05-28T20:11:29.211+09:00 DEBUG 31519 --- [nio-8080-exec-7] org.hibernate.SQL                        : 
+    select
+        cm1_0.id,
+        cm1_0.chat_room_id,
+        cm1_0.content,
+        cm1_0.createdAt,
+        cm1_0.messageType,
+        cm1_0.read,
+        cm1_0.readAt,
+        cm1_0.sender_id 
+    from
+        chat_message cm1_0 
+    where
+        cm1_0.chat_room_id=? 
+    order by
+        cm1_0.createdAt desc 
+    fetch
+        first ? rows only
+2026-05-28T20:11:29.211+09:00 TRACE 31519 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.211+09:00 TRACE 31519 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (2:INTEGER) <- [50]
+2026-05-28T20:11:29.211+09:00 DEBUG 31519 --- [nio-8080-exec-8] org.hibernate.SQL                        : 
+    select
+        cm1_0.id,
+        cm1_0.chat_room_id,
+        cm1_0.content,
+        cm1_0.createdAt,
+        cm1_0.messageType,
+        cm1_0.read,
+        cm1_0.readAt,
+        cm1_0.sender_id 
+    from
+        chat_message cm1_0 
+    where
+        cm1_0.chat_room_id=? 
+    order by
+        cm1_0.createdAt desc 
+    fetch
+        first ? rows only
+2026-05-28T20:11:29.211+09:00 TRACE 31519 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.211+09:00 TRACE 31519 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (2:INTEGER) <- [50]
+2026-05-28T20:11:29.211+09:00 DEBUG 31519 --- [nio-8080-exec-7] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.212+09:00 TRACE 31519 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [5]
+2026-05-28T20:11:29.212+09:00 DEBUG 31519 --- [nio-8080-exec-8] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.212+09:00 TRACE 31519 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [5]
+2026-05-28T20:11:29.212+09:00 DEBUG 31519 --- [nio-8080-exec-7] org.hibernate.SQL                        : 
+    select
+        ms1_0.id,
+        ms1_0.member_id,
+        ms1_0.statusType,
+        ms1_0.updatedAt 
+    from
+        MemberStatus ms1_0 
+    where
+        ms1_0.member_id=?
+2026-05-28T20:11:29.212+09:00 TRACE 31519 --- [nio-8080-exec-7] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.212+09:00 DEBUG 31519 --- [nio-8080-exec-8] org.hibernate.SQL                        : 
+    select
+        ms1_0.id,
+        ms1_0.member_id,
+        ms1_0.statusType,
+        ms1_0.updatedAt 
+    from
+        MemberStatus ms1_0 
+    where
+        ms1_0.member_id=?
+2026-05-28T20:11:29.212+09:00 TRACE 31519 --- [nio-8080-exec-8] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.218+09:00 DEBUG 31519 --- [io-8080-exec-10] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.218+09:00 TRACE 31519 --- [io-8080-exec-10] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [5]
+2026-05-28T20:11:29.219+09:00 DEBUG 31519 --- [io-8080-exec-10] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.219+09:00 TRACE 31519 --- [io-8080-exec-10] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.219+09:00 DEBUG 31519 --- [io-8080-exec-10] org.hibernate.SQL                        : 
+    select
+        ms1_0.id,
+        ms1_0.member_id,
+        ms1_0.statusType,
+        ms1_0.updatedAt 
+    from
+        MemberStatus ms1_0 
+    where
+        ms1_0.member_id=?
+2026-05-28T20:11:29.219+09:00 TRACE 31519 --- [io-8080-exec-10] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.219+09:00 DEBUG 31519 --- [nio-8080-exec-1] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.219+09:00 TRACE 31519 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [5]
+2026-05-28T20:11:29.220+09:00 DEBUG 31519 --- [nio-8080-exec-1] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.220+09:00 TRACE 31519 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.220+09:00 DEBUG 31519 --- [nio-8080-exec-1] org.hibernate.SQL                        : 
+    select
+        ms1_0.id,
+        ms1_0.member_id,
+        ms1_0.statusType,
+        ms1_0.updatedAt 
+    from
+        MemberStatus ms1_0 
+    where
+        ms1_0.member_id=?
+2026-05-28T20:11:29.220+09:00 TRACE 31519 --- [nio-8080-exec-1] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.224+09:00 DEBUG 31519 --- [nio-8080-exec-6] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.224+09:00 TRACE 31519 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [5]
+2026-05-28T20:11:29.224+09:00 DEBUG 31519 --- [nio-8080-exec-6] org.hibernate.SQL                        : 
+    select
+        cr1_0.id,
+        cr1_0.createdAt,
+        cr1_0.member1_id,
+        cr1_0.member2_id 
+    from
+        chat_room cr1_0 
+    where
+        cr1_0.id=?
+2026-05-28T20:11:29.224+09:00 TRACE 31519 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.225+09:00 DEBUG 31519 --- [nio-8080-exec-6] org.hibernate.SQL                        : 
+    update
+        chat_message cm1_0 
+    set
+        read=true,
+        readAt=localtimestamp 
+    where
+        cm1_0.chat_room_id=? 
+        and cm1_0.sender_id<>? 
+        and cm1_0.read=false
+2026-05-28T20:11:29.225+09:00 TRACE 31519 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.225+09:00 TRACE 31519 --- [nio-8080-exec-6] org.hibernate.orm.jdbc.bind              : binding parameter (2:BIGINT) <- [5]
+2026-05-28T20:11:29.226+09:00 DEBUG 31519 --- [nio-8080-exec-9] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:11:29.226+09:00 TRACE 31519 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [5]
+2026-05-28T20:11:29.226+09:00 DEBUG 31519 --- [nio-8080-exec-9] org.hibernate.SQL                        : 
+    select
+        cr1_0.id,
+        cr1_0.createdAt,
+        cr1_0.member1_id,
+        cr1_0.member2_id 
+    from
+        chat_room cr1_0 
+    where
+        cr1_0.id=?
+2026-05-28T20:11:29.226+09:00 TRACE 31519 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.226+09:00 DEBUG 31519 --- [nio-8080-exec-9] org.hibernate.SQL                        : 
+    update
+        chat_message cm1_0 
+    set
+        read=true,
+        readAt=localtimestamp 
+    where
+        cm1_0.chat_room_id=? 
+        and cm1_0.sender_id<>? 
+        and cm1_0.read=false
+2026-05-28T20:11:29.226+09:00 TRACE 31519 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:11:29.226+09:00 TRACE 31519 --- [nio-8080-exec-9] org.hibernate.orm.jdbc.bind              : binding parameter (2:BIGINT) <- [5]
+2026-05-28T20:13:59.024+09:00 DEBUG 31519 --- [nio-8080-exec-4] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:13:59.024+09:00 TRACE 31519 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [5]
+2026-05-28T20:13:59.026+09:00 DEBUG 31519 --- [nio-8080-exec-4] org.hibernate.SQL                        : 
+    select
+        cr1_0.id,
+        cr1_0.createdAt,
+        cr1_0.member1_id,
+        cr1_0.member2_id 
+    from
+        chat_room cr1_0 
+    where
+        cr1_0.id=?
+2026-05-28T20:13:59.026+09:00 TRACE 31519 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:13:59.026+09:00 DEBUG 31519 --- [nio-8080-exec-4] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:13:59.026+09:00 TRACE 31519 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [5]
+2026-05-28T20:13:59.027+09:00 DEBUG 31519 --- [nio-8080-exec-4] org.hibernate.SQL                        : 
+    insert 
+    into
+        chat_message
+        (chat_room_id, content, createdAt, messageType, read, readAt, sender_id, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, default)
+2026-05-28T20:13:59.027+09:00 TRACE 31519 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:13:59.027+09:00 TRACE 31519 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (2:VARCHAR) <- [개새기]
+2026-05-28T20:13:59.027+09:00 TRACE 31519 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (3:TIMESTAMP) <- [2026-05-28T20:13:59.026844]
+2026-05-28T20:13:59.027+09:00 TRACE 31519 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (4:ENUM) <- [NORMAL]
+2026-05-28T20:13:59.027+09:00 TRACE 31519 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (5:BOOLEAN) <- [false]
+2026-05-28T20:13:59.027+09:00 TRACE 31519 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (6:TIMESTAMP) <- [null]
+2026-05-28T20:13:59.027+09:00 TRACE 31519 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (7:BIGINT) <- [5]
+2026-05-28T20:13:59.028+09:00 DEBUG 31519 --- [nio-8080-exec-4] org.hibernate.SQL                        : 
+    select
+        m1_0.id,
+        m1_0.managerId,
+        m1_0.password,
+        m1_0.role,
+        m1_0.username,
+        m1_0.virtualBalance 
+    from
+        Member m1_0 
+    where
+        m1_0.id=?
+2026-05-28T20:13:59.028+09:00 TRACE 31519 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:13:59.029+09:00 DEBUG 31519 --- [nio-8080-exec-4] org.hibernate.SQL                        : 
+    select
+        ms1_0.id,
+        ms1_0.member_id,
+        ms1_0.statusType,
+        ms1_0.updatedAt 
+    from
+        MemberStatus ms1_0 
+    where
+        ms1_0.member_id=?
+2026-05-28T20:13:59.029+09:00 TRACE 31519 --- [nio-8080-exec-4] org.hibernate.orm.jdbc.bind              : binding parameter (1:BIGINT) <- [3]
+2026-05-28T20:13:59.030+09:00  INFO 31519 --- [nio-8080-exec-4] com.worksight.api.service.ChatService    : Chat message sent: roomId=3, senderId=5, type=NORMAL, receiverStatus=WORKING
+2026-05-28T20:13:59.031+09:00  INFO 31519 --- [nio-8080-exec-4] com.worksight.api.service.ChatService    : Chat pushed: event=CHAT_MESSAGE_RECEIVED, receiverId=3, receiverStatus=WORKING

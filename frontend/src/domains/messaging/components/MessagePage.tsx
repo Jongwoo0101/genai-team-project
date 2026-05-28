@@ -65,7 +65,7 @@ export const MessagePage: React.FC = () => {
   }
 
   return (
-    <div className="flex-1 flex h-full overflow-hidden bg-slate-950">
+    <div className="flex-1 flex h-[calc(100vh-6rem)] overflow-hidden bg-slate-950">
       <MessageSidebar />
       <MessageRoom />
     </div>
