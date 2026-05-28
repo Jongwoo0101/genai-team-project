@@ -28,7 +28,12 @@ export const useMessageStore = create<MessageState>((set) => ({
   activeRoom: null,
   bannerInfo: null,
 
-  setRooms: (rooms) => set({ rooms }),
+  setRooms: (rooms) =>
+    set((state) => ({
+      rooms: rooms.map((r) =>
+        Number(r.roomId) === Number(state.activeRoomId) ? { ...r, unreadCount: 0 } : r
+      ),
+    })),
   setActiveRoomId: (activeRoomId) =>
     set((state) => {
       // 액티브 룸 ID 변경 시, 해당 방의 unreadCount를 0으로 리셋해줌

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useMessageStore } from '../stores/useMessageStore';
+import { useAuthStore } from '../../auth/stores/authStore';
 import { MessageHeader } from './MessageHeader';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
@@ -13,7 +14,9 @@ export const MessageRoom: React.FC = () => {
     rooms,           // ← store에서 직접 구독 (getState() 대신)
     setActiveRoom,
     setBannerInfo,
+    markMessagesAsRead,
   } = useMessageStore();
+  const { user } = useAuthStore();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -54,8 +57,13 @@ export const MessageRoom: React.FC = () => {
         const banner = await getStatusBanner(otherMemberId);
         setBannerInfo(banner);
 
-        // 읽음 처리
+        // 읽음 처리 (API)
         await markAsRead(activeRoomId);
+        
+        // 로컬 상태 즉시 갱신 (낙관적 업데이트)
+        if (user?.id) {
+          markMessagesAsRead(activeRoomId, user.id);
+        }
       } catch (err) {
         console.error('채팅방 상세 정보를 가져오는 데 실패했습니다:', err);
         setError(true);
@@ -65,8 +73,7 @@ export const MessageRoom: React.FC = () => {
     };
 
     loadRoomDetail();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeRoomId, rooms]);
+  }, [activeRoomId, rooms, activeRoom, setActiveRoom, setBannerInfo, markMessagesAsRead, user]);
 
   // ── 렌더 분기 ──────────────────────────────────────────────────
 

@@ -553,9 +553,17 @@ export default function ManagerDashboard() {
                   </span>
                   실시간 상태 변경 로그
                 </h3>
-                <span className="text-[10px] text-cyan-400 font-bold bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
-                  수신 {alerts.length}개
-                </span>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setAlerts([])}
+                    className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors px-2 py-0.5 rounded bg-white/5 border border-white/5"
+                  >
+                    내역 삭제
+                  </button>
+                  <span className="text-[10px] text-cyan-400 font-bold bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
+                    수신 {alerts.length}개
+                  </span>
+                </div>
               </div>
               
               <div className="flex-1 overflow-y-auto max-h-[250px] space-y-2.5 pr-1">
