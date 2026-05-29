@@ -142,14 +142,14 @@ export default function EmployeeView() {
     return teams.find((t) => t.id === teamId);
   })();
 
-  // 실시간 웹소켓 구독 (매니저 토픽 및 개인 알림)
+  // 실시간 웹소켓 구독 (팀 토픽 및 개인 알림)
   useEffect(() => {
-    if (!user || commuteStatus !== 'WORK' || !team?.managerId) return;
+    if (!user || commuteStatus !== 'WORK' || !team?.id) return;
 
     webSocketService.connect((connected) => {
       if (connected) {
-        // 1. 팀 토픽 구독
-        const teamTopic = WEBSOCKET_TOPICS.TEAM(team.managerId);
+        // 1. 팀 토픽 구독 (team.id 사용)
+        const teamTopic = WEBSOCKET_TOPICS.TEAM(team.id);
         webSocketService.subscribe(teamTopic, (msg) => {
           const envelope = parseWsEnvelope(msg);
           if (!envelope) return;
@@ -173,13 +173,13 @@ export default function EmployeeView() {
     });
 
     return () => {
-      if (team?.managerId) {
-        webSocketService.unsubscribe(WEBSOCKET_TOPICS.TEAM(team.managerId));
+      if (team?.id) {
+        webSocketService.unsubscribe(WEBSOCKET_TOPICS.TEAM(team.id));
       }
       webSocketService.unsubscribe(WEBSOCKET_TOPICS.MEMBER(user.id));
       webSocketService.disconnect();
     };
-  }, [user, commuteStatus, team?.managerId, handleVideoCallWS, addDirectPingFromNotification]);
+  }, [user, commuteStatus, team?.id, handleVideoCallWS, addDirectPingFromNotification]);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playedPingsRef = useRef<Set<string>>(new Set());

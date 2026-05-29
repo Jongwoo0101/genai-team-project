@@ -3,6 +3,8 @@ import { STORAGE_KEYS } from '../../../lib/constants';
 import type { AuthUser, Role } from '../../../lib/types';
 import * as api from '../../../lib/api';
 import { clearTeamStorage } from '../../team/stores/teamStore';
+import { clearCommuteStorage } from '../../commute/stores/commuteStore';
+import { clearVideoCallStorage } from '../../video-call/stores/videoCallStore';
 
 interface AuthState {
   user: AuthUser | null;
@@ -59,6 +61,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   login: async (username: string, password: string) => {
     try {
+      clearTeamStorage();
+      clearCommuteStorage();
+      clearVideoCallStorage();
+      sessionStorage.clear();
+
       const res = await api.login({ username, password });
 
       // 백엔드 응답 필드(token) 반영
@@ -90,6 +97,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signUp: async (username: string, password: string, role: Role) => {
     try {
       clearTeamStorage();
+      clearCommuteStorage();
+      clearVideoCallStorage();
+      sessionStorage.clear();
+
       // 1. 회원가입 요청
       await api.signUp({ username, password, role });
       
@@ -116,6 +127,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     // 팀 데이터: localStorage + Zustand 메모리 상태 모두 초기화
     clearTeamStorage();
+    clearCommuteStorage();
+    clearVideoCallStorage();
     sessionStorage.clear();
     set({ user: null, token: null, isAuthenticated: false });
   },

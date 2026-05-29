@@ -14,9 +14,18 @@ export default function TeamList() {
   useEffect(() => {
     if (user?.id) {
       syncMemberContext(user.id);
-      void fetchTeamMembers(user.id);
+      // 매니저가 소유한 모든 팀의 멤버를 각각 서버에서 조회해서 동기화
+      const managerTeams = getTeamsByManager(user.id);
+      managerTeams.forEach((t) => {
+        // t.id가 백엔드 ID와 호환되지 않는 로컬 UUID일 경우 예외 처리를 위해 finite 체크를 시도하거나, 
+        // 그냥 전송하되, 백엔드로부터 발급된 teamId가 숫자이므로 변환하여 호출합니다.
+        const numericId = Number(t.id);
+        if (Number.isFinite(numericId)) {
+          void fetchTeamMembers(numericId);
+        }
+      });
     }
-  }, [user?.id, fetchTeamMembers, syncMemberContext]);
+  }, [user?.id, fetchTeamMembers, syncMemberContext, getTeamsByManager]);
 
   if (!isAuthenticated || user?.role !== 'MANAGER') {
     return <Navigate to="/login" replace />;

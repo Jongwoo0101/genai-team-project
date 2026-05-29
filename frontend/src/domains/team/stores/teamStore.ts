@@ -38,7 +38,7 @@ interface TeamState {
   syncMemberContext: (memberId: number) => void;
 
   // 관리자 액션
-  createTeam: (name: string, description: string, managerId: number, managerName: string, teamCode?: string) => Team;
+  createTeam: (name: string, description: string, managerId: number, managerName: string, teamCode?: string, teamId?: string) => Team;
   deleteTeam: (teamId: string, managerId: number) => boolean;
   getTeamsByManager: (managerId: number) => Team[];
   getTeamById: (teamId: string) => Team | undefined;
@@ -56,7 +56,7 @@ interface TeamState {
 
   // 서버 데이터 동기화 액션
   fetchMyTeam: () => Promise<void>;
-  fetchTeamMembers: (managerId: number) => Promise<void>;
+  fetchTeamMembers: (teamId: number) => Promise<void>;
 }
 
 /** WS-XXXX-XXXX 형식의 팀 코드 생성 (백엔드와 일치) */
@@ -95,13 +95,13 @@ export const useTeamStore = create<TeamState>((set, get) => {
       saveTeamStorage(latest.teams, latest.memberTeamMap, memberId);
     },
 
-    createTeam: (name, description, managerId, managerName, providedTeamCode) => {
+    createTeam: (name, description, managerId, managerName, providedTeamCode, teamId) => {
       // 이제 백엔드에서는 초대 코드가 발급되면 자동으로 매니저와 연결되므로, 
       // 로컬 스토리지에는 팀 이름/설명 등 UI 표시용 정보만 저장합니다.
       const teamCode = providedTeamCode || generateTeamCode();
 
       const newTeam: Team = {
-        id: crypto.randomUUID(),
+        id: teamId || crypto.randomUUID(),
         name,
         description,
         teamCode,
@@ -233,11 +233,11 @@ export const useTeamStore = create<TeamState>((set, get) => {
       try {
         const res = await api.getMyTeam();
         if (res && res.managerId) {
-          const existingTeam = get().teams.find(t => t.managerId === res.managerId);
-          const teamId = existingTeam?.id || `team-${res.managerId}`;
+          const teamId = String(res.teamId);
+          const existingTeam = get().teams.find(t => t.id === teamId);
           const fallbackTeam: Team = existingTeam || {
             id: teamId,
-            name: `${res.managerUsername}님의 팀`,
+            name: res.teamName,
             description: '서버에서 불러온 팀입니다.',
             teamCode: '',
             managerId: res.managerId,
@@ -258,18 +258,27 @@ export const useTeamStore = create<TeamState>((set, get) => {
           set({ ownerMemberId, teams: updatedTeams, memberTeamMap: updatedMap });
           saveTeamStorage(updatedTeams, updatedMap, ownerMemberId);
           // 팀 멤버 목록도 함께 가져와서 동기화
-          await get().fetchTeamMembers(res.managerId);
+          await get().fetchTeamMembers(res.teamId);
         }
       } catch (err) {
         if (err instanceof Error && err.message === 'NOT_JOINED') {
           console.log('아직 소속된 팀이 없습니다.');
+          const { user } = useAuthStore.getState();
+          if (user?.id) {
+            const updatedMap = { ...get().memberTeamMap };
+            delete updatedMap[user.id];
+            
+            const ownerMemberId = get().ownerMemberId;
+            set({ memberTeamMap: updatedMap });
+            saveTeamStorage(get().teams, updatedMap, ownerMemberId);
+          }
         }
       }
     },
 
-    fetchTeamMembers: async (managerId) => {
+    fetchTeamMembers: async (teamId) => {
       try {
-        const members = await api.getTeamMembers(managerId);
+        const members = await api.getTeamMembers(teamId);
 
         const teamMembers: TeamMember[] = members.map(m => ({
           id: m.id,
@@ -277,14 +286,15 @@ export const useTeamStore = create<TeamState>((set, get) => {
           joinedAt: new Date().toISOString()
         }));
 
-        const existingTeam = get().teams.find(t => t.managerId === managerId);
+        const teamIdStr = String(teamId);
+        const existingTeam = get().teams.find(t => t.id === teamIdStr);
 
         if (existingTeam) {
           const updatedTeams = get().teams.map(t =>
-            (t.managerId === managerId) ? { ...t, members: teamMembers } : t
+            (t.id === teamIdStr) ? { ...t, members: teamMembers } : t
           );
-          const ownerMemberId = get().ownerMemberId ?? managerId;
-          set({ ownerMemberId, teams: updatedTeams });
+          const ownerMemberId = get().ownerMemberId;
+          set({ teams: updatedTeams });
           saveTeamStorage(updatedTeams, get().memberTeamMap, ownerMemberId);
         }
       } catch (err) {

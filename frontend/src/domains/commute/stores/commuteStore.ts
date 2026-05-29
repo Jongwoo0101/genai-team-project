@@ -98,6 +98,24 @@ export const createEmployeeScopedCommuteState = (
   };
 };
 
+export function clearCommuteStorage() {
+  const currentOwnerId = useCommuteStore.getState().ownerEmployeeId;
+  if (currentOwnerId) {
+    localStorage.removeItem(`${STORAGE_KEYS.COMMUTE_STATE}:${currentOwnerId}`);
+  }
+  useCommuteStore.setState({
+    ownerEmployeeId: null,
+    commuteStatus: 'NONE',
+    userState: '오프라인',
+    checkInTime: null,
+    checkOutTime: null,
+    logs: [],
+    isCameraActive: false,
+    cameraStream: null,
+    directPings: [],
+  });
+}
+
 export const useCommuteStore = create<CommuteState>()(
   persist(
     (set, get) => ({

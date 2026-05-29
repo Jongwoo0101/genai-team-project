@@ -72,20 +72,20 @@ export default function ManagerDashboard() {
   // team is now reactively derived from Zustand selector above
 
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && teamId) {
       syncTeamContext(user.id);
       syncStandupContext(user.id);
-      void fetchTeamMembers(user.id);
+      void fetchTeamMembers(Number(teamId));
       void loadTeamStandups(standupFilterDate);
     }
-  }, [fetchTeamMembers, user?.id, loadTeamStandups, standupFilterDate, syncTeamContext, syncStandupContext]);
+  }, [fetchTeamMembers, user?.id, teamId, loadTeamStandups, standupFilterDate, syncTeamContext, syncStandupContext]);
 
   // 실시간 상태 데이터 조회 및 실시간 웹소켓 구독
   useEffect(() => {
     if (!user || !teamId) return;
 
     // 1. 초기 실시간 상태 데이터 로드
-    api.getTeamMemberStatuses(user.id)
+    api.getTeamMemberStatuses(Number(teamId))
       .then((statuses) => {
         const statusMap: Record<number, StatusType> = {};
         statuses.forEach((s) => {
@@ -102,8 +102,8 @@ export default function ManagerDashboard() {
       setIsWsConnected(connected);
     });
 
-    // 3. 토픽 구독 (/topic/team/{managerId})
-    const topic = WEBSOCKET_TOPICS.TEAM(user.id);
+    // 3. 토픽 구독 (/topic/team/{teamId})
+    const topic = WEBSOCKET_TOPICS.TEAM(teamId);
     webSocketService.subscribe(topic, (payload) => {
       const envelope = parseWsEnvelope(payload);
       if (!envelope) return;

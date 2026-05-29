@@ -41,20 +41,10 @@ export function loadTeamStorage(ownerMemberId?: number): { ownerMemberId: number
     const scopedTeamsRaw = localStorage.getItem(teamKey);
     const scopedMapRaw = localStorage.getItem(memberMapKey);
 
-    if (scopedTeamsRaw || scopedMapRaw || resolvedOwnerId !== activeOwnerId) {
-      return {
-        ownerMemberId: resolvedOwnerId,
-        teams: scopedTeamsRaw ? JSON.parse(scopedTeamsRaw) : [],
-        memberTeamMap: scopedMapRaw ? JSON.parse(scopedMapRaw) : {},
-      };
-    }
-
-    const legacyTeamsRaw = localStorage.getItem(TEAM_STORAGE_KEY);
-    const legacyMapRaw = localStorage.getItem(MEMBER_MAP_STORAGE_KEY);
     return {
       ownerMemberId: resolvedOwnerId,
-      teams: legacyTeamsRaw ? JSON.parse(legacyTeamsRaw) : [],
-      memberTeamMap: legacyMapRaw ? JSON.parse(legacyMapRaw) : {},
+      teams: scopedTeamsRaw ? JSON.parse(scopedTeamsRaw) : [],
+      memberTeamMap: scopedMapRaw ? JSON.parse(scopedMapRaw) : {},
     };
   } catch {
     return { ownerMemberId: null, teams: [], memberTeamMap: {} };

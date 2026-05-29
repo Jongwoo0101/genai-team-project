@@ -68,12 +68,12 @@ export function useMeetingRoomController({
   }, [user, syncTeamContext, fetchMyTeam, fetchTeamMembers]);
 
   useEffect(() => {
-    if (!user || !managerId) return;
+    if (!user || !team?.id) return;
 
     webSocketService.connect((connected) => {
       if (connected) {
         // 1. 팀 토픽 구독
-        const teamTopic = WEBSOCKET_TOPICS.TEAM(managerId);
+        const teamTopic = WEBSOCKET_TOPICS.TEAM(team.id);
         webSocketService.subscribe(teamTopic, (msg) => {
           const envelope = parseWsEnvelope(msg);
           if (!envelope) return;
@@ -125,11 +125,13 @@ export function useMeetingRoomController({
     });
 
     return () => {
-      webSocketService.unsubscribe(WEBSOCKET_TOPICS.TEAM(managerId));
+      if (team?.id) {
+        webSocketService.unsubscribe(WEBSOCKET_TOPICS.TEAM(team.id));
+      }
       webSocketService.unsubscribe(WEBSOCKET_TOPICS.MEMBER(user.id));
       webSocketService.disconnect();
     };
-  }, [user, managerId, handleWebsocketEvent]);
+  }, [user, team?.id, handleWebsocketEvent]);
 
   useEffect(() => {
     if (user) {

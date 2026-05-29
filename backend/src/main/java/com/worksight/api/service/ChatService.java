@@ -306,11 +306,13 @@ public class ChatService {
     }
 
     private void validateSameTeam(Member me, Member other) {
-        // 기존: me.getManagerId() 기반 비교
-        // 변경: 양쪽 모두 팀이 세팅되어 있고, 같은 Team 객체(ID)를 바라보는지 체크
+        Member managedMe = memberRepository.findById(me.getId())
+                .orElseThrow(() -> new java.util.NoSuchElementException("사용자를 찾을 수 없습니다."));
+        Member managedOther = memberRepository.findById(other.getId())
+                .orElseThrow(() -> new java.util.NoSuchElementException("사용자를 찾을 수 없습니다."));
 
-        Team myTeam = me.getTeam();
-        Team otherTeam = other.getTeam();
+        Team myTeam = managedMe.getTeam();
+        Team otherTeam = managedOther.getTeam();
 
         // 1. 관리자-직원 관계이거나
         // 2. 같은 팀에 소속되어 있어야 함
@@ -321,10 +323,10 @@ public class ChatService {
         } else if (myTeam != null) {
             // 내가 팀이 있는데 상대방이 내 팀의 매니저인 경우 (상대방은 Team 엔티티가 null일 수 있으나 매니저 역할인 경우)
             // 혹은 내가 매니저고 상대방이 내 팀 소속인 경우
-            isSameTeam = myTeam.getManager().getId().equals(other.getId()) ||
-                    (otherTeam != null && otherTeam.getManager().getId().equals(me.getId()));
+            isSameTeam = myTeam.getManager().getId().equals(managedOther.getId()) ||
+                    (otherTeam != null && otherTeam.getManager().getId().equals(managedMe.getId()));
         } else if (otherTeam != null) {
-            isSameTeam = otherTeam.getManager().getId().equals(me.getId());
+            isSameTeam = otherTeam.getManager().getId().equals(managedMe.getId());
         }
 
         if (!isSameTeam) {

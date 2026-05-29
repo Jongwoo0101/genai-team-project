@@ -91,13 +91,16 @@ public class MemberService {
     }
 
     @Transactional
-    public InviteCodeResponse generateInviteCode(Member manager) {
+    public InviteCodeResponse generateInviteCode(Member manager, CreateTeamRequest request) {
+        String customName = (request != null && request.teamName() != null && !request.teamName().trim().isEmpty())
+                ? request.teamName().trim()
+                : manager.getUsername() + " 님의 팀";
+
         // 1. 관리자의 팀을 찾거나, 없다면 새로 하나 생성해 줍니다.
-        // (프론트에서 별도로 팀 생성 API를 쏘지 않는 구조라면 이 방어 로직이 유용해)
         Team team = teamRepository.findFirstByManagerIdOrderByIdDesc(manager.getId())
                 .orElseGet(() -> {
                     Team newTeam = Team.builder()
-                            .teamName(manager.getUsername() + " 님의 팀")
+                            .teamName(customName)
                             .manager(manager)
                             .build();
                     return teamRepository.save(newTeam);
@@ -115,7 +118,7 @@ public class MemberService {
                         .build();
         inviteCodeRepository.save(inviteCode);
 
-        return new InviteCodeResponse(code);
+        return new InviteCodeResponse(code, team.getId());
     }
 
     @Transactional

@@ -38,6 +38,7 @@ export interface CreateTeamRequest {
 /** 팀 생성 및 초대 코드 생성 응답 (서버 → 관리자) */
 export interface CreateTeamResponse {
   inviteCode: string;
+  teamId?: number;
 }
 
 /** 팀 참여 요청 (직원 → 서버) */
@@ -50,6 +51,8 @@ export type JoinTeamResponse = void;
 
 /** 내 팀 정보 응답 (backend: TeamDto.MyTeamResponse) */
 export interface MyTeamResponse {
+  teamId: number;
+  teamName: string;
   managerId: number;
   managerUsername: string;
 }

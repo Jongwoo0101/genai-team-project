@@ -12,15 +12,13 @@ export const useMessageWebSocket = () => {
   const { teams, memberTeamMap } = useTeamStore();
 
   const myId = user?.id;
-  const managerId = (() => {
+  const teamId = (() => {
     if (!user) return undefined;
     if (user.role === 'MANAGER') {
-      return user.id;
+      const myTeam = teams.find((t) => t.managerId === user.id);
+      return myTeam?.id;
     }
-    const teamId = memberTeamMap[user.id];
-    if (!teamId) return undefined;
-    const team = teams.find((t) => t.id === teamId);
-    return team?.managerId;
+    return myId ? memberTeamMap[myId] : undefined;
   })();
 
   useEffect(() => {
@@ -30,7 +28,7 @@ export const useMessageWebSocket = () => {
     webSocketService.connect();
 
     const memberTopic = `/topic/members/${myId}`;
-    const teamTopic = managerId ? `/topic/team/${managerId}` : '';
+    const teamTopic = teamId ? `/topic/team/${teamId}` : '';
 
     // 2. 개인 토픽 구독 등록 (연결 완료 시 자동으로 실제 구독이 수행됨)
     webSocketService.subscribe(memberTopic, (msg) => {

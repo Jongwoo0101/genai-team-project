@@ -33,21 +33,7 @@ export const userScopedStorage: StateStorage = {
   getItem: (name: string): string | null => {
     const userId = getActiveUserId();
     const key = getScopedKey(name, userId);
-    const value = localStorage.getItem(key);
-    if (value !== null) {
-      return value;
-    }
-
-    // 마이그레이션 로직: 새 scoped key 데이터가 없고, 레거시 키 데이터는 존재하는 경우 이전
-    if (userId !== null) {
-      const legacyValue = localStorage.getItem(name);
-      if (legacyValue !== null) {
-        localStorage.setItem(key, legacyValue);
-        localStorage.removeItem(name);
-        return legacyValue;
-      }
-    }
-    return null;
+    return localStorage.getItem(key);
   },
   setItem: (name: string, value: string): void => {
     const userId = getActiveUserId();
