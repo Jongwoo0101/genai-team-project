@@ -19,11 +19,16 @@ public class InviteCode {
     @Column(nullable = false, unique = true)
     private String code;
 
-    @Column(nullable = false)
-    private Long managerId;
+    // 기존 managerId를 제거하고, 어떤 팀으로 초대하는 코드인지 Team 연관관계 추가
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id", nullable = false)
+    private Team team;
 
     @Column(nullable = false)
     private Instant expiresAt;
 
-    // used 필드 및 markAsUsed() 메서드 제거됨
+    // 만료 여부 확인 편의 메서드 (Instant 기준)
+    public boolean isExpired() {
+        return Instant.now().isAfter(this.expiresAt);
+    }
 }

@@ -4,9 +4,11 @@ import com.worksight.api.dto.MemberDto.*;
 import com.worksight.api.dto.WsEnvelope;
 import com.worksight.api.entity.Member;
 import com.worksight.api.entity.RefreshToken;
+import com.worksight.api.entity.Team;
 import com.worksight.api.exception.DuplicateUsernameException;
 import com.worksight.api.repository.InviteCodeRepository;
 import com.worksight.api.repository.MemberRepository;
+import com.worksight.api.repository.TeamRepository;
 import com.worksight.api.security.JwtProvider;
 import com.worksight.api.security.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ import java.util.UUID;
 public class MemberService {
 
     private final MemberRepository memberRepository;
+    private final TeamRepository teamRepository; // 추가됨: 팀 조회를 위해 필요
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
     private final RefreshTokenService refreshTokenService;
@@ -32,7 +35,6 @@ public class MemberService {
     private final InviteCodeRepository inviteCodeRepository;
     private final ChatService chatService;
 
-    /** 설정 외부화 — application.yaml의 app.invite.expiration-seconds */
     @Value("${app.invite.expiration-seconds:300}")
     private long inviteExpirationSeconds;
 
@@ -90,13 +92,25 @@ public class MemberService {
 
     @Transactional
     public InviteCodeResponse generateInviteCode(Member manager) {
+        // 1. 관리자의 팀을 찾거나, 없다면 새로 하나 생성해 줍니다.
+        // (프론트에서 별도로 팀 생성 API를 쏘지 않는 구조라면 이 방어 로직이 유용해)
+        Team team = teamRepository.findFirstByManagerIdOrderByIdDesc(manager.getId())
+                .orElseGet(() -> {
+                    Team newTeam = Team.builder()
+                            .teamName(manager.getUsername() + " 님의 팀")
+                            .manager(manager)
+                            .build();
+                    return teamRepository.save(newTeam);
+                });
+
         String code = "WS-" + randomSegment() + "-" + randomSegment();
         Instant expiresAt = Instant.now().plusSeconds(inviteExpirationSeconds);
 
+        // 2. 초대 코드 생성 시 managerId가 아닌 team 객체를 매핑
         com.worksight.api.entity.InviteCode inviteCode =
                 com.worksight.api.entity.InviteCode.builder()
                         .code(code)
-                        .managerId(manager.getId())
+                        .team(team)
                         .expiresAt(expiresAt)
                         .build();
         inviteCodeRepository.save(inviteCode);
@@ -104,37 +118,42 @@ public class MemberService {
         return new InviteCodeResponse(code);
     }
 
-    /**
-     * EMPLOYEE 초대 코드로 팀 참가
-     * 다회용 사용을 위해 DB 코드 조회 후 시간만 검증하도록 수정
-     */
     @Transactional
     public void joinTeam(JoinTeamRequest request, Member employee) {
-        // 1. 조회 메서드 변경: findByCode
+        // 1. 코드 조회
         com.worksight.api.entity.InviteCode inviteCode =
                 inviteCodeRepository.findByCode(request.inviteCode())
                         .orElseThrow(() -> new IllegalArgumentException(
                                 "유효하지 않거나 만료된 초대 코드입니다."));
 
-        if (Instant.now().isAfter(inviteCode.getExpiresAt())) {
+        // 2. 만료 시간 검증 (우리가 엔티티에 만들어둔 편의 메서드 isExpired() 활용)
+        if (inviteCode.isExpired()) {
             throw new IllegalArgumentException("유효하지 않거나 만료된 초대 코드입니다.");
         }
 
         Member managedEmployee = memberRepository.findById(employee.getId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 직원입니다."));
 
-        managedEmployee.linkManager(inviteCode.getManagerId());
+        // 3. 초대 코드에 매핑된 '팀' 정보를 가져옴
+        Team targetTeam = inviteCode.getTeam();
 
-        // 팀 채팅방에 새로운 팀원 참여 처리
-        chatService.addParticipantToTeamRoom(inviteCode.getManagerId(), managedEmployee);
+        // 4. 직원 엔티티를 해당 팀에 조인 (기존의 linkManager 대체)
+        managedEmployee.joinTeam(targetTeam);
 
-        // 2. 일회성 처리 제거됨: inviteCode.markAsUsed();
+        // 5. 팀 채팅방에 새로운 팀원 참여 처리
+        // 주의: ChatService가 기존에 managerId를 파라미터로 받았다면, 이제 team.getId()를 받도록 의미가 변경됨!
+        chatService.addParticipantToTeamRoom(targetTeam.getId(), managedEmployee);
 
+        // 6. 웹소켓으로 프론트에 성공 알림
         messagingTemplate.convertAndSend(
                 "/topic/members/" + managedEmployee.getId(),
                 WsEnvelope.of(
                         WsEnvelope.Event.TEAM_LINKED,
-                        Map.of("managerId", inviteCode.getManagerId())
+                        Map.of(
+                                "teamId", targetTeam.getId(),
+                                "teamName", targetTeam.getTeamName(),
+                                "managerId", targetTeam.getManager().getId()
+                        )
                 )
         );
     }
