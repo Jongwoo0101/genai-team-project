@@ -25,9 +25,12 @@ describe('useMessageStore', () => {
     const testRooms: ChatRoomResponse[] = [
       {
         roomId: 1,
+        roomType: 'DIRECT',
         otherMemberId: 10,
         otherMemberUsername: 'test_user',
         otherMemberStatus: 'WORKING',
+        roomName: null,
+        participantCount: 0,
         lastMessage: null,
         unreadCount: 0,
       },
@@ -53,6 +56,7 @@ describe('useMessageStore', () => {
     const message: ChatMessageResponse = {
       messageId: 100,
       roomId: 1,
+      roomType: 'DIRECT',
       senderId: 2,
       senderUsername: 'me',
       content: 'Hello World',
@@ -69,13 +73,16 @@ describe('useMessageStore', () => {
     expect(state.activeRoom?.messages).toContainEqual(message);
   });
 
-  it('should update member status', () => {
+  it('should update member status in direct chat room', () => {
     const testRooms: ChatRoomResponse[] = [
       {
         roomId: 1,
+        roomType: 'DIRECT',
         otherMemberId: 10,
         otherMemberUsername: 'test_user',
         otherMemberStatus: 'WORKING',
+        roomName: null,
+        participantCount: 0,
         lastMessage: null,
         unreadCount: 0,
       },
@@ -87,4 +94,50 @@ describe('useMessageStore', () => {
     const state = useMessageStore.getState();
     expect(state.rooms[0].otherMemberStatus).toBe('MEETING');
   });
+
+  it('should add a team chat member to active room participants list', () => {
+    const activeRoom: ChatRoomDetailResponse = {
+      roomId: 2,
+      roomName: 'team_chat',
+      managerId: 1,
+      participants: [
+        { memberId: 10, username: 'test_user', status: 'WORKING' }
+      ],
+      messages: [],
+    };
+
+    useMessageStore.setState({ activeRoomId: 2, activeRoom });
+    useMessageStore.getState().addTeamChatMember({
+      memberId: 11,
+      username: 'new_user',
+      status: 'FOCUS'
+    });
+
+    const state = useMessageStore.getState();
+    expect(state.activeRoom?.participants?.length).toBe(2);
+    expect(state.activeRoom?.participants).toContainEqual({
+      memberId: 11,
+      username: 'new_user',
+      status: 'FOCUS'
+    });
+  });
+
+  it('should update member status in team chat participants list', () => {
+    const activeRoom: ChatRoomDetailResponse = {
+      roomId: 2,
+      roomName: 'team_chat',
+      managerId: 1,
+      participants: [
+        { memberId: 10, username: 'test_user', status: 'WORKING' }
+      ],
+      messages: [],
+    };
+
+    useMessageStore.setState({ activeRoomId: 2, activeRoom });
+    useMessageStore.getState().updateMemberStatus(10, 'AWAY');
+
+    const state = useMessageStore.getState();
+    expect(state.activeRoom?.participants?.[0].status).toBe('AWAY');
+  });
 });
+

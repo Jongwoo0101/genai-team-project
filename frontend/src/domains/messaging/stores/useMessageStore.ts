@@ -5,6 +5,7 @@ import type {
   ChatMessageResponse,
   UserStatus,
   ReceiverStatusBannerResponse,
+  TeamParticipant,
 } from '../types';
 
 interface MessageState {
@@ -20,6 +21,7 @@ interface MessageState {
   addMessage: (message: ChatMessageResponse) => void;
   markMessagesAsRead: (roomId: number, readByMemberId: number) => void;
   updateMemberStatus: (memberId: number, status: UserStatus) => void;
+  addTeamChatMember: (member: TeamParticipant) => void;
 }
 
 export const useMessageStore = create<MessageState>((set) => ({
@@ -36,14 +38,12 @@ export const useMessageStore = create<MessageState>((set) => ({
     })),
   setActiveRoomId: (activeRoomId) =>
     set((state) => {
-      // 액티브 룸 ID 변경 시, 해당 방의 unreadCount를 0으로 리셋해줌
       const updatedRooms = state.rooms.map((r) =>
         Number(r.roomId) === Number(activeRoomId) ? { ...r, unreadCount: 0 } : r
       );
       return {
         activeRoomId,
         rooms: updatedRooms,
-        // 활성화된 방이 변경되면 즉시 상세 데이터 및 배너는 null로 비움 (이전 방 데이터 꼬임 방지)
         activeRoom: null,
         bannerInfo: null,
       };
@@ -55,10 +55,8 @@ export const useMessageStore = create<MessageState>((set) => ({
     set((state) => {
       const isCurrentActiveRoom = Number(state.activeRoomId) === Number(message.roomId);
 
-      // 1. 활성화된 방의 메시지 목록 업데이트
       let updatedActiveRoom = state.activeRoom;
       if (isCurrentActiveRoom && state.activeRoom) {
-        // 중복 방지
         const exists = state.activeRoom.messages.some(
           (m) => Number(m.messageId) === Number(message.messageId)
         );
@@ -70,7 +68,6 @@ export const useMessageStore = create<MessageState>((set) => ({
         }
       }
 
-      // 2. 방 목록(rooms)의 lastMessage 및 unreadCount 갱신
       const updatedRooms = state.rooms.map((r) => {
         if (Number(r.roomId) === Number(message.roomId)) {
           return {
@@ -90,12 +87,9 @@ export const useMessageStore = create<MessageState>((set) => ({
 
   markMessagesAsRead: (roomId, readByMemberId) =>
     set((state) => {
-      // 1. 활성화된 방의 메시지 read 상태 업데이트
       let updatedActiveRoom = state.activeRoom;
       if (state.activeRoom && Number(state.activeRoom.roomId) === Number(roomId)) {
         const updatedMessages = state.activeRoom.messages.map((m) => {
-          // readByMemberId가 보낸 메시지가 아닌 것들을 read:true 처리
-          // (내가 읽으면 상대방 메시지가 read, 상대방이 읽으면 내 메시지가 read)
           if (Number(m.senderId) !== Number(readByMemberId) && !m.read) {
             return { ...m, read: true, readAt: new Date().toISOString() };
           }
@@ -107,7 +101,6 @@ export const useMessageStore = create<MessageState>((set) => ({
         };
       }
 
-      // 2. 방 목록에서 unreadCount 및 lastMessage read 상태 업데이트
       const updatedRooms = state.rooms.map((r) => {
         if (Number(r.roomId) === Number(roomId)) {
           const updatedLastMsg =
@@ -118,7 +111,7 @@ export const useMessageStore = create<MessageState>((set) => ({
           return {
             ...r,
             lastMessage: updatedLastMsg,
-            unreadCount: 0, // 읽음 처리 시 항상 0으로 초기화
+            unreadCount: 0,
           };
         }
         return r;
@@ -132,21 +125,28 @@ export const useMessageStore = create<MessageState>((set) => ({
 
   updateMemberStatus: (memberId, status) =>
     set((state) => {
-      // 1. 방 목록에서 해당 멤버의 상태 갱신
       const updatedRooms = state.rooms.map((r) =>
         Number(r.otherMemberId) === Number(memberId) ? { ...r, otherMemberStatus: status } : r
       );
 
-      // 2. 활성화된 방의 상대방 상태 갱신
       let updatedActiveRoom = state.activeRoom;
-      if (state.activeRoom && Number(state.activeRoom.otherMemberId) === Number(memberId)) {
-        updatedActiveRoom = {
-          ...state.activeRoom,
-          otherMemberStatus: status,
-        };
+      if (state.activeRoom) {
+        const isDirectPartner = Number(state.activeRoom.otherMemberId) === Number(memberId);
+        const hasParticipants = !!state.activeRoom.participants;
+
+        if (isDirectPartner || hasParticipants) {
+          updatedActiveRoom = {
+            ...state.activeRoom,
+            otherMemberStatus: isDirectPartner ? status : state.activeRoom.otherMemberStatus,
+            participants: state.activeRoom.participants
+              ? state.activeRoom.participants.map((p) =>
+                  Number(p.memberId) === Number(memberId) ? { ...p, status } : p
+                )
+              : undefined,
+          };
+        }
       }
 
-      // 3. 배너 정보 갱신
       let updatedBannerInfo = state.bannerInfo;
       if (state.bannerInfo && Number(state.bannerInfo.otherMemberId) === Number(memberId)) {
         const showBanner = status === 'MEETING' || status === 'AWAY';
@@ -167,4 +167,19 @@ export const useMessageStore = create<MessageState>((set) => ({
         bannerInfo: updatedBannerInfo,
       };
     }),
+
+  addTeamChatMember: (member) =>
+    set((state) => {
+      if (!state.activeRoom) return {};
+      const participants = state.activeRoom.participants || [];
+      const exists = participants.some((p) => Number(p.memberId) === Number(member.memberId));
+      if (exists) return {};
+      return {
+        activeRoom: {
+          ...state.activeRoom,
+          participants: [...participants, member],
+        },
+      };
+    }),
 }));
+

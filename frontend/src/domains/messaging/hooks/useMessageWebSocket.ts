@@ -7,7 +7,7 @@ import { parseWsEnvelope } from '../../../lib/wsEvent';
 import type { ChatMessageResponse, UserStatus } from '../types';
 
 export const useMessageWebSocket = () => {
-  const { addMessage, markMessagesAsRead, updateMemberStatus } = useMessageStore();
+  const { addMessage, markMessagesAsRead, updateMemberStatus, addTeamChatMember } = useMessageStore();
   const { user } = useAuthStore();
   const { teams, memberTeamMap } = useTeamStore();
 
@@ -44,6 +44,7 @@ export const useMessageWebSocket = () => {
           const message: ChatMessageResponse = {
             messageId: messagePayload.messageId,
             roomId: messagePayload.roomId,
+            roomType: messagePayload.roomType || 'DIRECT',
             senderId: messagePayload.senderId,
             senderUsername: messagePayload.senderUsername,
             content: messagePayload.content,
@@ -76,9 +77,40 @@ export const useMessageWebSocket = () => {
         const envelope = parseWsEnvelope(msg);
         if (!envelope) return;
 
-        if (envelope.event === 'STATUS_CHANGED') {
-          const teamStatusPayload = envelope.data as any;
-          updateMemberStatus(teamStatusPayload.memberId, teamStatusPayload.statusType as UserStatus);
+        switch (envelope.event) {
+          case 'STATUS_CHANGED': {
+            const teamStatusPayload = envelope.data as any;
+            updateMemberStatus(teamStatusPayload.memberId, teamStatusPayload.statusType as UserStatus);
+            break;
+          }
+          case 'TEAM_CHAT_MESSAGE': {
+            const messagePayload = envelope.data as any;
+            const message: ChatMessageResponse = {
+              messageId: messagePayload.messageId,
+              roomId: messagePayload.roomId,
+              roomType: messagePayload.roomType || 'TEAM',
+              senderId: messagePayload.senderId,
+              senderUsername: messagePayload.senderUsername,
+              content: messagePayload.content,
+              messageType: messagePayload.messageType || 'NORMAL',
+              read: false,
+              createdAt: messagePayload.createdAt,
+              readAt: null,
+            };
+            addMessage(message);
+            break;
+          }
+          case 'TEAM_CHAT_MEMBER_JOINED': {
+            const memberPayload = envelope.data as any;
+            addTeamChatMember({
+              memberId: memberPayload.memberId,
+              username: memberPayload.username,
+              status: memberPayload.status as UserStatus,
+            });
+            break;
+          }
+          default:
+            break;
         }
       });
     }
@@ -90,5 +122,5 @@ export const useMessageWebSocket = () => {
         webSocketService.unsubscribe(teamTopic);
       }
     };
-  }, [myId, managerId, addMessage, markMessagesAsRead, updateMemberStatus]);
+  }, [myId, managerId, addMessage, markMessagesAsRead, updateMemberStatus, addTeamChatMember]);
 };

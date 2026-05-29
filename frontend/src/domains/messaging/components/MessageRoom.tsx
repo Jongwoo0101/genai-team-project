@@ -5,13 +5,13 @@ import { MessageHeader } from './MessageHeader';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
 import { StatusAlertBanner } from './StatusAlertBanner';
-import { enterRoom, getStatusBanner, markAsRead } from '../api';
+import { enterDirectRoom, enterTeamRoom, getStatusBanner, markDirectAsRead, markTeamAsRead } from '../api';
 
 export const MessageRoom: React.FC = () => {
   const {
     activeRoomId,
     activeRoom,
-    rooms,           // ← store에서 직접 구독 (getState() 대신)
+    rooms,
     setActiveRoom,
     setBannerInfo,
     markMessagesAsRead,
@@ -20,7 +20,6 @@ export const MessageRoom: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
-  // rooms 변경(새 메시지 도착 등)으로 인한 중복 재로드 방지
   const loadedForRoomId = useRef<number | null>(null);
 
   useEffect(() => {
@@ -32,13 +31,9 @@ export const MessageRoom: React.FC = () => {
       return;
     }
 
-    // rooms가 아직 로드되지 않았으면 대기
-    // (rooms가 setRooms로 업데이트되면 effect 재실행됨)
     const currentRoom = rooms.find((r) => Number(r.roomId) === Number(activeRoomId));
     if (!currentRoom) return;
 
-    // 이미 이 방의 상세를 로드했고 activeRoom이 있다면 재로드 불필요
-    // (새 메시지가 와서 rooms가 바뀌어도 재로드 방지)
     if (loadedForRoomId.current === activeRoomId && activeRoom) return;
 
     const loadRoomDetail = async () => {
@@ -46,21 +41,27 @@ export const MessageRoom: React.FC = () => {
         setLoading(true);
         setError(false);
 
-        const otherMemberId = currentRoom.otherMemberId;
+        const roomType = currentRoom.roomType;
 
-        // 방 입장 (메시지 히스토리 및 상대 정보 조회)
-        const detail = await enterRoom(otherMemberId);
-        setActiveRoom(detail);
+        if (roomType === 'DIRECT') {
+          const otherMemberId = currentRoom.otherMemberId!;
+          const detail = await enterDirectRoom(otherMemberId);
+          setActiveRoom(detail);
+
+          const banner = await getStatusBanner(otherMemberId);
+          setBannerInfo(banner);
+
+          await markDirectAsRead(activeRoomId);
+        } else if (roomType === 'TEAM') {
+          const detail = await enterTeamRoom(activeRoomId);
+          setActiveRoom(detail);
+          setBannerInfo(null);
+
+          await markTeamAsRead(activeRoomId);
+        }
+
         loadedForRoomId.current = activeRoomId;
 
-        // 상태 표시 배너 로드
-        const banner = await getStatusBanner(otherMemberId);
-        setBannerInfo(banner);
-
-        // 읽음 처리 (API)
-        await markAsRead(activeRoomId);
-        
-        // 로컬 상태 즉시 갱신 (낙관적 업데이트)
         if (user?.id) {
           markMessagesAsRead(activeRoomId, user.id);
         }
@@ -75,8 +76,6 @@ export const MessageRoom: React.FC = () => {
     loadRoomDetail();
   }, [activeRoomId, rooms, activeRoom, setActiveRoom, setBannerInfo, markMessagesAsRead, user]);
 
-  // ── 렌더 분기 ──────────────────────────────────────────────────
-
   if (!activeRoomId) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-slate-950 text-slate-500 gap-2">
@@ -86,7 +85,6 @@ export const MessageRoom: React.FC = () => {
     );
   }
 
-  // API 실패 상태
   if (error) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-slate-950 text-slate-500 gap-3">
@@ -106,7 +104,6 @@ export const MessageRoom: React.FC = () => {
     );
   }
 
-  // 로딩 중 (API 호출 진행 중)
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center bg-slate-950 text-slate-400">
@@ -118,7 +115,6 @@ export const MessageRoom: React.FC = () => {
     );
   }
 
-  // rooms 로드 대기 중 (activeRoomId는 있지만 아직 rooms가 없는 순간)
   if (!activeRoom) {
     return (
       <div className="flex-1 flex items-center justify-center bg-slate-950 text-slate-400">
@@ -130,10 +126,12 @@ export const MessageRoom: React.FC = () => {
     );
   }
 
+  const isTeam = !!(activeRoom.roomName || activeRoom.participants);
+
   return (
     <div className="flex-1 flex flex-col h-full min-h-0 bg-slate-950">
       <MessageHeader room={activeRoom} />
-      <StatusAlertBanner />
+      {!isTeam && <StatusAlertBanner />}
       <div className="flex-1 min-h-0 flex flex-col relative overflow-hidden w-full">
         <MessageList />
       </div>
@@ -141,3 +139,4 @@ export const MessageRoom: React.FC = () => {
     </div>
   );
 };
+

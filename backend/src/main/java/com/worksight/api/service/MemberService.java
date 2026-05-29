@@ -30,6 +30,7 @@ public class MemberService {
     private final RefreshTokenService refreshTokenService;
     private final SimpMessagingTemplate messagingTemplate;
     private final InviteCodeRepository inviteCodeRepository;
+    private final ChatService chatService;
 
     /** 설정 외부화 — application.yaml의 app.invite.expiration-seconds */
     @Value("${app.invite.expiration-seconds:300}")
@@ -123,6 +124,9 @@ public class MemberService {
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 직원입니다."));
 
         managedEmployee.linkManager(inviteCode.getManagerId());
+
+        // 팀 채팅방에 새로운 팀원 참여 처리
+        chatService.addParticipantToTeamRoom(inviteCode.getManagerId(), managedEmployee);
 
         // 2. 일회성 처리 제거됨: inviteCode.markAsUsed();
 

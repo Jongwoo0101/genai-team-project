@@ -61,7 +61,7 @@ public class ChatRoom {
     // ── 생성자 ────────────────────────────────────────
 
     /** 1:1 채팅방 생성 */
-    @Builder(builderMethodName = "directBuilder")
+    @Builder(builderMethodName = "directBuilder", builderClassName = "DirectBuilder")
     public ChatRoom(Long memberAId, Long memberBId) {
         this.roomType  = ChatRoomType.DIRECT;
         this.member1Id = Math.min(memberAId, memberBId);
@@ -69,7 +69,7 @@ public class ChatRoom {
     }
 
     /** 팀 채팅방 생성 */
-    @Builder(builderMethodName = "teamBuilder")
+    @Builder(builderMethodName = "teamBuilder", builderClassName = "TeamBuilder")
     public ChatRoom(Long managerId, String roomName) {
         this.roomType  = ChatRoomType.TEAM;
         this.managerId = managerId;

@@ -54,29 +54,50 @@ export async function getRooms(): Promise<ChatRoomResponse[]> {
   return requestWithAuth<ChatRoomResponse[]>('/chat/rooms');
 }
 
-/** 채팅방 입장 (없으면 자동 생성, 미읽음 일괄 읽음 처리) */
-export async function enterRoom(otherMemberId: number): Promise<ChatRoomDetailResponse> {
-  return requestWithAuth<ChatRoomDetailResponse>(`/chat/rooms/${otherMemberId}/enter`, 'POST');
+/** 1:1 채팅방 입장 (없으면 자동 생성, 미읽음 일괄 읽음 처리) */
+export async function enterDirectRoom(otherMemberId: number): Promise<ChatRoomDetailResponse> {
+  return requestWithAuth<ChatRoomDetailResponse>(`/chat/direct/${otherMemberId}/enter`, 'POST');
 }
 
-/** 메시지 전송 */
-export async function sendMessage(
+/** 팀 채팅방 입장 (미읽음 일괄 읽음 처리) */
+export async function enterTeamRoom(roomId: number): Promise<ChatRoomDetailResponse> {
+  return requestWithAuth<ChatRoomDetailResponse>(`/chat/team/${roomId}/enter`, 'POST');
+}
+
+/** 1:1 메시지 전송 */
+export async function sendDirectMessage(
   roomId: number,
   content: string,
   messageType: ChatMessageType = 'NORMAL'
 ): Promise<ChatMessageResponse> {
-  return requestWithAuth<ChatMessageResponse>(`/chat/rooms/${roomId}/messages`, 'POST', {
+  return requestWithAuth<ChatMessageResponse>(`/chat/rooms/${roomId}/direct/messages`, 'POST', {
     content,
     messageType,
   });
 }
 
-/** 채팅창 상단 안내 배너 조회 */
-export async function getStatusBanner(otherMemberId: number): Promise<ReceiverStatusBannerResponse> {
-  return requestWithAuth<ReceiverStatusBannerResponse>(`/chat/rooms/${otherMemberId}/status-banner`);
+/** 팀 메시지 전송 (NORMAL 타입만 가능) */
+export async function sendTeamMessage(
+  roomId: number,
+  content: string
+): Promise<ChatMessageResponse> {
+  return requestWithAuth<ChatMessageResponse>(`/chat/rooms/${roomId}/team/messages`, 'POST', {
+    content,
+    messageType: 'NORMAL',
+  });
 }
 
-/** 채팅방 읽음 처리 (채팅창 포커스 시 호출) */
-export async function markAsRead(roomId: number): Promise<void> {
-  return requestWithAuth<void>(`/chat/rooms/${roomId}/read`, 'POST');
+/** 1:1 채팅창 상단 안내 배너 조회 */
+export async function getStatusBanner(otherMemberId: number): Promise<ReceiverStatusBannerResponse> {
+  return requestWithAuth<ReceiverStatusBannerResponse>(`/chat/direct/${otherMemberId}/status-banner`);
+}
+
+/** 1:1 채팅방 읽음 처리 */
+export async function markDirectAsRead(roomId: number): Promise<void> {
+  return requestWithAuth<void>(`/chat/rooms/${roomId}/direct/read`, 'POST');
+}
+
+/** 팀 채팅방 읽음 처리 */
+export async function markTeamAsRead(roomId: number): Promise<void> {
+  return requestWithAuth<void>(`/chat/rooms/${roomId}/team/read`, 'POST');
 }

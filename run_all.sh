@@ -14,7 +14,7 @@ echo "------------------------------------------------------"
 # 1. Backend 시작
 echo "✅ [1/3] Starting Backend (Spring Boot)..."
 cd backend
-./gradlew bootRun > ../logs/backend.log 2>&1 &
+./gradlew clean bootRun > ../logs/backend.log 2>&1 &
 BACKEND_PID=$!
 cd ..
 
@@ -25,7 +25,11 @@ sleep 5
 # 2. AI Server 시작 (가상환경 활성화 포함)
 echo "✅ [2/3] Starting AI Server (Python)..."
 cd ai_model
+if [ ! -d ".venv" ]; then
+    python3 -m venv .venv
+fi
 source .venv/bin/activate
+pip install -r requirements.txt > ../logs/ai_install.log 2>&1
 python server.py > ../logs/ai_server.log 2>&1 &
 AI_PID=$!
 cd ..
@@ -33,6 +37,8 @@ cd ..
 # 3. Frontend 시작
 echo "✅ [3/3] Starting Frontend (React/Vite)..."
 cd frontend
+echo "📦 Installing Frontend Dependencies..."
+npm install > ../logs/frontend_install.log 2>&1
 npm run dev > ../logs/frontend.log 2>&1 &
 FRONTEND_PID=$!
 cd ..

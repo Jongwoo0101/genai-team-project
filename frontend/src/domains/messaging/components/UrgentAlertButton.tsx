@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useMessageStore } from '../stores/useMessageStore';
-import { sendMessage } from '../api';
+import { sendDirectMessage } from '../api';
 import { AlertTriangle } from 'lucide-react';
 
 interface Props {
@@ -17,7 +17,7 @@ export const UrgentAlertButton: React.FC<Props> = ({ receiverId }) => {
     try {
       setLoading(true);
       const content = "🚨 긴급 알림 메시지입니다. 즉시 확인해 주세요!";
-      const response = await sendMessage(activeRoomId, content, 'URGENT');
+      const response = await sendDirectMessage(activeRoomId, content, 'URGENT');
       
       // 내 메시지 화면에 추가
       addMessage(response);
@@ -41,3 +41,4 @@ export const UrgentAlertButton: React.FC<Props> = ({ receiverId }) => {
     </button>
   );
 };
+
