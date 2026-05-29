@@ -77,7 +77,4 @@ export function clearTeamStorage() {
   localStorage.removeItem(TEAM_OWNER_STORAGE_KEY);
   localStorage.removeItem(TEAM_STORAGE_KEY);
   localStorage.removeItem(MEMBER_MAP_STORAGE_KEY);
-  Object.keys(localStorage)
-    .filter((key) => key.startsWith(`${TEAM_STORAGE_KEY}:`) || key.startsWith(`${MEMBER_MAP_STORAGE_KEY}:`))
-    .forEach((key) => localStorage.removeItem(key));
 }
