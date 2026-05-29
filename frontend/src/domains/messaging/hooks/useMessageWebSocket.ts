@@ -41,10 +41,14 @@ export const useMessageWebSocket = () => {
         case 'CHAT_MESSAGE_RECEIVED':
         case 'CHAT_URGENT_RECEIVED': {
           const messagePayload = envelope.data as any;
+          const state = useMessageStore.getState();
+          const targetRoom = state.rooms.find((r) => Number(r.roomId) === Number(messagePayload.roomId));
+          const inferredRoomType = targetRoom ? targetRoom.roomType : 'DIRECT';
+
           const message: ChatMessageResponse = {
             messageId: messagePayload.messageId,
             roomId: messagePayload.roomId,
-            roomType: messagePayload.roomType || 'DIRECT',
+            roomType: inferredRoomType,
             senderId: messagePayload.senderId,
             senderUsername: messagePayload.senderUsername,
             content: messagePayload.content,
@@ -81,23 +85,6 @@ export const useMessageWebSocket = () => {
           case 'STATUS_CHANGED': {
             const teamStatusPayload = envelope.data as any;
             updateMemberStatus(teamStatusPayload.memberId, teamStatusPayload.statusType as UserStatus);
-            break;
-          }
-          case 'TEAM_CHAT_MESSAGE': {
-            const messagePayload = envelope.data as any;
-            const message: ChatMessageResponse = {
-              messageId: messagePayload.messageId,
-              roomId: messagePayload.roomId,
-              roomType: messagePayload.roomType || 'TEAM',
-              senderId: messagePayload.senderId,
-              senderUsername: messagePayload.senderUsername,
-              content: messagePayload.content,
-              messageType: messagePayload.messageType || 'NORMAL',
-              read: false,
-              createdAt: messagePayload.createdAt,
-              readAt: null,
-            };
-            addMessage(message);
             break;
           }
           case 'TEAM_CHAT_MEMBER_JOINED': {
