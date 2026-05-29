@@ -107,5 +107,5 @@ export const useMessageWebSocket = () => {
         webSocketService.unsubscribe(teamTopic);
       }
     };
-  }, [myId, managerId, addMessage, markMessagesAsRead, updateMemberStatus, addTeamChatMember]);
+  }, [myId, teamId, addMessage, markMessagesAsRead, updateMemberStatus, addTeamChatMember]);
 };
