@@ -18,10 +18,9 @@ public class ChatRoom {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private ChatRoomType roomType;  // DIRECT | TEAM
+    private ChatRoomType roomType;
 
     // ── DIRECT 전용 ──────────────────────────────────
-    // member1Id < member2Id 로 정렬 저장 (중복 방지)
     @Column(name = "member1_id")
     private Long member1Id;
 
@@ -29,7 +28,6 @@ public class ChatRoom {
     private Long member2Id;
 
     // ── TEAM 전용 ─────────────────────────────────────
-    // 팀 채팅방 소유자 (매니저)
     @Column(name = "manager_id")
     private Long managerId;
 
@@ -37,7 +35,7 @@ public class ChatRoom {
     private LocalDateTime createdAt;
 
     /** DIRECT 채팅방 생성 */
-    @Builder(builderMethodName = "directBuilder")
+    @Builder(builderMethodName = "directBuilder", builderClassName = "DirectBuilder")
     public ChatRoom(Long member1Id, Long member2Id) {
         this.roomType  = ChatRoomType.DIRECT;
         this.member1Id = Math.min(member1Id, member2Id);
@@ -45,7 +43,7 @@ public class ChatRoom {
     }
 
     /** TEAM 채팅방 생성 */
-    @Builder(builderMethodName = "teamBuilder")
+    @Builder(builderMethodName = "teamBuilder", builderClassName = "TeamBuilder")
     public ChatRoom(Long managerId, ChatRoomType roomType) {
         this.roomType  = ChatRoomType.TEAM;
         this.managerId = managerId;
