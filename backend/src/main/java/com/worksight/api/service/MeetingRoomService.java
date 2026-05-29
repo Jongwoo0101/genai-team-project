@@ -5,11 +5,14 @@ import com.worksight.api.dto.WsEnvelope;
 import com.worksight.api.entity.MeetingParticipant;
 import com.worksight.api.entity.MeetingRoom;
 import com.worksight.api.entity.Member;
+import com.worksight.api.entity.Team;
 import com.worksight.api.enums.MeetingRequestStatus;
+import com.worksight.api.enums.Role;
 import com.worksight.api.enums.StatusType;
 import com.worksight.api.repository.MeetingParticipantRepository;
 import com.worksight.api.repository.MeetingRoomRepository;
 import com.worksight.api.repository.MemberRepository;
+import com.worksight.api.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -30,6 +33,7 @@ public class MeetingRoomService {
     private final MeetingRoomRepository meetingRoomRepository;
     private final MeetingParticipantRepository participantRepository;
     private final MemberRepository memberRepository;
+    private final TeamRepository teamRepository; // 추가
     private final StatusService statusService;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -68,11 +72,9 @@ public class MeetingRoomService {
 
     @Transactional(readOnly = true)
     public List<MeetingRoomResponse> getActiveRooms(Member member) {
-        Long managerId = member.getManagerId() != null
-                ? member.getManagerId()
-                : member.getId();
+        Long teamId = resolveTeamId(member);
 
-        return meetingRoomRepository.findActiveRoomsByManagerId(managerId)
+        return meetingRoomRepository.findActiveRoomsByTeamId(teamId)
                 .stream()
                 .map(room -> toResponse(room,
                         participantRepository.countByMeetingRoomAndRequestStatus(
@@ -120,7 +122,6 @@ public class MeetingRoomService {
                 .build();
         participantRepository.save(participant);
 
-        // Notify host with participantId for approval/rejection
         notifyMemberAfterCommit(room.getHost(), WsEnvelope.Event.JOIN_REQUESTED,
                 Map.of("roomId", room.getId(),
                         "participantId", participant.getId(),
@@ -266,21 +267,35 @@ public class MeetingRoomService {
         }
     }
 
-    /** 팀 전체 브로드캐스트 (/topic/team/{managerId}) — WsEnvelope 표준 */
+    private Long resolveTeamId(Member member) {
+        Member managed = memberRepository.findById(member.getId())
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+        if (managed.getTeam() != null) {
+            return managed.getTeam().getId();
+        } else if (managed.getRole() == Role.MANAGER) {
+            return teamRepository.findFirstByManagerIdOrderByIdDesc(managed.getId())
+                    .map(Team::getId)
+                    .orElseThrow(() -> new IllegalStateException("운영 중인 팀이 없습니다."));
+        }
+        throw new IllegalStateException("소속된 팀이 없습니다.");
+    }
+
     private void broadcastTeamAfterCommit(Member member, String event, Object data) {
         WsEnvelope envelope = WsEnvelope.of(event, data);
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                Long managerId = member.getManagerId() != null
-                        ? member.getManagerId() : member.getId();
-                messagingTemplate.convertAndSend("/topic/team/" + managerId, envelope);
+                try {
+                    Long teamId = resolveTeamId(member);
+                    messagingTemplate.convertAndSend("/topic/team/" + teamId, envelope);
+                } catch (Exception e) {
+                    log.warn("Failed to broadcast team meeting event due to missing team context. memberId={}", member.getId());
+                }
             }
         });
     }
 
-    /** 특정 멤버 개인 알림 (/topic/members/{memberId}) — WsEnvelope 표준 */
     private void notifyMemberAfterCommit(Member member, String event, Object data) {
         WsEnvelope envelope = WsEnvelope.of(event, data);
 

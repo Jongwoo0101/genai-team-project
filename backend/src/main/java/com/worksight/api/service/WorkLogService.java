@@ -39,23 +39,25 @@ public class WorkLogService {
                     throw new IllegalStateException("이미 오늘 출근하셨습니다.");
                 });
 
+        Member managed = memberRepository.findById(member.getId()).orElseThrow();
+
         WorkLog workLog = WorkLog.builder()
-                .member(member)
+                .member(managed)
                 .workDate(today)
                 .clockInTime(LocalDateTime.now())
                 .build();
         workLogRepository.save(workLog);
 
-        updateMemberStatus(member, StatusType.WORKING);
+        updateMemberStatus(managed, StatusType.WORKING);
 
-        log.info("Clock-in: memberId={}, time={}", member.getId(), workLog.getClockInTime());
+        log.info("Clock-in: memberId={}, time={}", managed.getId(), workLog.getClockInTime());
 
-        broadcastAfterCommit(member, StatusType.WORKING);
+        broadcastAfterCommit(managed, StatusType.WORKING);
 
         return new ClockInResponse(
                 workLog.getId(),
-                member.getId(),
-                member.getUsername(),
+                managed.getId(),
+                managed.getUsername(),
                 workLog.getWorkDate(),
                 workLog.getClockInTime()
         );
@@ -65,7 +67,9 @@ public class WorkLogService {
     public ClockOutResponse clockOut(Member member) {
         LocalDate today = LocalDate.now();
 
-        WorkLog workLog = workLogRepository.findByMemberAndWorkDate(member, today)
+        Member managed = memberRepository.findById(member.getId()).orElseThrow();
+
+        WorkLog workLog = workLogRepository.findByMemberAndWorkDate(managed, today)
                 .orElseThrow(() -> new IllegalStateException("오늘 출근 기록이 없습니다."));
 
         if (workLog.isClockedOut()) {
@@ -73,16 +77,16 @@ public class WorkLogService {
         }
 
         workLog.clockOut(LocalDateTime.now());
-        updateMemberStatus(member, StatusType.OFFLINE);
+        updateMemberStatus(managed, StatusType.OFFLINE);
 
-        log.info("Clock-out: memberId={}, time={}", member.getId(), workLog.getClockOutTime());
+        log.info("Clock-out: memberId={}, time={}", managed.getId(), workLog.getClockOutTime());
 
-        broadcastAfterCommit(member, StatusType.OFFLINE);
+        broadcastAfterCommit(managed, StatusType.OFFLINE);
 
         return new ClockOutResponse(
                 workLog.getId(),
-                member.getId(),
-                member.getUsername(),
+                managed.getId(),
+                managed.getUsername(),
                 workLog.getWorkDate(),
                 workLog.getClockInTime(),
                 workLog.getClockOutTime()
@@ -92,12 +96,9 @@ public class WorkLogService {
     // ── 내부 헬퍼 ────────────────────────────────────────────────
 
     private void updateMemberStatus(Member member, StatusType statusType) {
-        Member managed = memberRepository.findById(member.getId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
-
-        MemberStatus status = memberStatusRepository.findByMember(managed)
+        MemberStatus status = memberStatusRepository.findByMember(member)
                 .orElseGet(() -> MemberStatus.builder()
-                        .member(managed)
+                        .member(member)
                         .statusType(statusType)
                         .build());
 
@@ -106,7 +107,6 @@ public class WorkLogService {
     }
 
     private void broadcastAfterCommit(Member member, StatusType statusType) {
-        // WsEnvelope 표준 구조로 발신
         WsEnvelope envelope = WsEnvelope.of(
                 WsEnvelope.Event.STATUS_CHANGED,
                 new TeamStatusPayload(member.getId(), member.getUsername(), statusType)
@@ -115,13 +115,11 @@ public class WorkLogService {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                String topic = member.getManagerId() != null
-                        ? "/topic/team/" + member.getManagerId()
-                        : "/topic/members/" + member.getId();
-
-                messagingTemplate.convertAndSend(topic, envelope);
-                log.info("Broadcasted status: memberId={}, status={}, topic={}",
-                        member.getId(), statusType, topic);
+                if (member.getTeam() != null) {
+                    messagingTemplate.convertAndSend("/topic/team/" + member.getTeam().getId(), envelope);
+                } else {
+                    messagingTemplate.convertAndSend("/topic/members/" + member.getId(), envelope);
+                }
             }
         });
     }

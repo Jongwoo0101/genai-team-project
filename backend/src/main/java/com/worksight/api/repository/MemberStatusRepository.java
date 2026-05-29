@@ -13,7 +13,7 @@ public interface MemberStatusRepository extends JpaRepository<MemberStatus, Long
 
     Optional<MemberStatus> findByMember(Member member);
 
-    /** 팀 전체 상태 조회 — managerId로 소속 직원 상태 한 번에 조회 */
-    @Query("SELECT ms FROM MemberStatus ms JOIN ms.member m WHERE m.managerId = :managerId")
-    List<MemberStatus> findAllByManagerId(@Param("managerId") Long managerId);
+    /** 팀 전체 상태 조회 — teamId로 소속 직원 상태 한 번에 조회 */
+    @Query("SELECT ms FROM MemberStatus ms JOIN ms.member m WHERE m.team.id = :teamId")
+    List<MemberStatus> findAllByTeamId(@Param("teamId") Long teamId);
 }
