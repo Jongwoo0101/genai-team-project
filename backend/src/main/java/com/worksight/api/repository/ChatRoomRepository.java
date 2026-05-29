@@ -13,7 +13,6 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 
     // ── DIRECT ────────────────────────────────────────
 
-    /** 1:1 채팅방 조회 (member1Id < member2Id 정렬 규칙 활용) */
     @Query("""
            SELECT cr FROM ChatRoom cr
            WHERE cr.roomType = 'DIRECT'
@@ -21,7 +20,6 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
            """)
     Optional<ChatRoom> findDirectRoom(@Param("small") Long small, @Param("big") Long big);
 
-    /** 내가 참여한 1:1 채팅방 목록 */
     @Query("""
            SELECT cr FROM ChatRoom cr
            WHERE cr.roomType = 'DIRECT'
@@ -31,10 +29,8 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 
     // ── TEAM ──────────────────────────────────────────
 
-    /** 팀 채팅방 조회 (managerId 기준) */
     Optional<ChatRoom> findByManagerIdAndRoomType(Long managerId, ChatRoomType roomType);
 
-    /** 내가 참여 중인 팀 채팅방 — ChatRoomParticipant 조인 */
     @Query("""
            SELECT cr FROM ChatRoom cr
            JOIN ChatRoomParticipant p ON p.chatRoom = cr

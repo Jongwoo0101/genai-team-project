@@ -2,16 +2,10 @@ package com.worksight.api.service;
 
 import com.worksight.api.dto.ChatDto.*;
 import com.worksight.api.dto.WsEnvelope;
-import com.worksight.api.entity.ChatMessage;
-import com.worksight.api.entity.ChatRoom;
-import com.worksight.api.entity.Member;
-import com.worksight.api.entity.MemberStatus;
-import com.worksight.api.enums.ChatMessageType;
+import com.worksight.api.entity.*;
+import com.worksight.api.enums.ChatRoomType;
 import com.worksight.api.enums.StatusType;
-import com.worksight.api.repository.ChatMessageRepository;
-import com.worksight.api.repository.ChatRoomRepository;
-import com.worksight.api.repository.MemberRepository;
-import com.worksight.api.repository.MemberStatusRepository;
+import com.worksight.api.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -21,9 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -32,19 +24,23 @@ public class ChatService {
 
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final ChatRoomParticipantRepository participantRepository;
     private final MemberRepository memberRepository;
     private final MemberStatusRepository memberStatusRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
-    /**
-     * 채팅방 목록 조회
-     * - 내가 참여한 모든 1:1 채팅방
-     * - 마지막 메시지 기준 최신순 정렬
-     */
+    // ── 채팅방 목록 ───────────────────────────────────────────────
+
     @Transactional(readOnly = true)
     public List<ChatRoomResponse> getMyChatRooms(Member me) {
-        return chatRoomRepository.findAllByMemberId(me.getId())
-                .stream()
+        List<ChatRoom> direct = chatRoomRepository.findDirectRoomsByMemberId(me.getId());
+        List<ChatRoom> team   = chatRoomRepository.findTeamRoomsByMemberId(me.getId());
+
+        List<ChatRoom> all = new ArrayList<>();
+        all.addAll(direct);
+        all.addAll(team);
+
+        return all.stream()
                 .map(room -> toChatRoomResponse(room, me.getId()))
                 .sorted(Comparator.comparing(
                         r -> r.lastMessage() != null ? r.lastMessage().createdAt() : java.time.LocalDateTime.MIN,
@@ -53,11 +49,8 @@ public class ChatService {
                 .toList();
     }
 
-    /**
-     * 채팅방 입장 (없으면 생성) + 히스토리 반환
-     * - 상대방과 채팅방이 없으면 자동 생성
-     * - 입장 시 미읽음 메시지 일괄 읽음 처리
-     */
+    // ── DIRECT 채팅방 입장 ────────────────────────────────────────
+
     @Transactional
     public ChatRoomDetailResponse enterRoom(Member me, Long otherMemberId) {
         Member other = memberRepository.findById(otherMemberId)
@@ -65,13 +58,11 @@ public class ChatService {
 
         validateSameTeam(me, other);
 
-        ChatRoom room = findOrCreateRoom(me.getId(), other.getId());
+        ChatRoom room = findOrCreateDirectRoom(me.getId(), other.getId());
 
-        // 입장 시 미읽음 일괄 읽음 처리
-        chatMessageRepository.markAllAsReadInRoom(room, me.getId());
+        chatMessageRepository.markAllAsReadInDirectRoom(room, me.getId());
         notifyReadAfterCommit(room, me.getId(), other.getId());
 
-        // 최근 50건 → 엔티티 변환 후 오래된 순으로 재정렬
         List<ChatMessageResponse> messages = chatMessageRepository
                 .findByChatRoomOrderByCreatedAtDesc(room, PageRequest.of(0, 50))
                 .stream()
@@ -79,40 +70,70 @@ public class ChatService {
                 .sorted(Comparator.comparing(ChatMessageResponse::createdAt))
                 .toList();
 
-        StatusType otherStatus = getStatus(other);
-
         return new ChatRoomDetailResponse(
                 room.getId(),
                 other.getId(),
                 other.getUsername(),
-                otherStatus,
+                getStatus(other),
                 messages
         );
     }
 
-    /**
-     * 메시지 전송
-     *
-     * 알림 정책:
-     *   - NORMAL  : 상대방이 MEETING 또는 AWAY 이면 WebSocket 메시지만 전달 (알림 미발송)
-     *   - URGENT  : 상대방 상태 무관 강제 알림 (CHAT_URGENT_RECEIVED 이벤트)
-     *
-     * 프론트 처리:
-     *   - CHAT_MESSAGE_RECEIVED → 일반 메시지 수신 처리 (배너 표시 여부는 프론트 판단)
-     *   - CHAT_URGENT_RECEIVED  → 상태 무관 강제 알림음/진동 처리
-     */
+    // ── TEAM 채팅방 입장 ──────────────────────────────────────────
+
+    @Transactional
+    public ChatRoomDetailResponse enterTeamRoom(Member me, Long roomId) {
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new NoSuchElementException("존재하지 않는 채팅방입니다."));
+
+        if (room.getRoomType() != ChatRoomType.TEAM) {
+            throw new IllegalArgumentException("팀 채팅방이 아닙니다.");
+        }
+
+        ChatRoomParticipant participant = participantRepository
+                .findByChatRoomAndMember(room, me)
+                .orElseThrow(() -> new IllegalArgumentException("채팅방 참여자가 아닙니다."));
+
+        // 읽음 처리: lastReadAt 갱신
+        participant.updateLastReadAt();
+
+        List<ChatMessageResponse> messages = chatMessageRepository
+                .findByChatRoomOrderByCreatedAtDesc(room, PageRequest.of(0, 50))
+                .stream()
+                .map(this::toChatMessageResponse)
+                .sorted(Comparator.comparing(ChatMessageResponse::createdAt))
+                .toList();
+
+        // TEAM은 otherMember 개념이 없으므로 managerId와 room 정보 반환
+        return new ChatRoomDetailResponse(
+                room.getId(),
+                room.getManagerId(),
+                "팀 채팅방",
+                StatusType.WORKING,
+                messages
+        );
+    }
+
+    // ── 메시지 전송 (DIRECT / TEAM 공통) ─────────────────────────
+
     @Transactional
     public ChatMessageResponse sendMessage(Member sender, Long roomId,
                                            SendMessageRequest request) {
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new NoSuchElementException("존재하지 않는 채팅방입니다."));
 
-        if (!room.hasMember(sender.getId())) {
-            throw new IllegalArgumentException("채팅방 참여자가 아닙니다.");
-        }
-
         Member managedSender = memberRepository.findById(sender.getId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+
+        if (room.getRoomType() == ChatRoomType.DIRECT) {
+            if (!room.hasMember(sender.getId())) {
+                throw new IllegalArgumentException("채팅방 참여자가 아닙니다.");
+            }
+        } else {
+            if (!participantRepository.existsByChatRoomAndMemberAndActiveTrue(room, managedSender)) {
+                throw new IllegalArgumentException("채팅방 참여자가 아닙니다.");
+            }
+        }
 
         ChatMessage message = ChatMessage.builder()
                 .chatRoom(room)
@@ -122,21 +143,35 @@ public class ChatService {
                 .build();
         chatMessageRepository.save(message);
 
-        Long receiverId = room.getOtherMemberId(sender.getId());
-        StatusType receiverStatus = getStatusById(receiverId);
-
-        log.info("Chat message sent: roomId={}, senderId={}, type={}, receiverStatus={}",
-                roomId, sender.getId(), request.messageType(), receiverStatus);
-
-        pushAfterCommit(message, receiverId, receiverStatus);
+        pushMessageAfterCommit(message, room, sender.getId());
 
         return toChatMessageResponse(message);
     }
 
-    /**
-     * 채팅창 상단 안내 배너 조회
-     * 채팅창 열기 전 또는 메시지 입력 전 상대방 상태 확인용
-     */
+    // ── 읽음 처리 ─────────────────────────────────────────────────
+
+    @Transactional
+    public void markAsRead(Member me, Long roomId) {
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new NoSuchElementException("존재하지 않는 채팅방입니다."));
+
+        if (room.getRoomType() == ChatRoomType.DIRECT) {
+            if (!room.hasMember(me.getId())) {
+                throw new IllegalArgumentException("채팅방 참여자가 아닙니다.");
+            }
+            chatMessageRepository.markAllAsReadInDirectRoom(room, me.getId());
+            notifyReadAfterCommit(room, me.getId(), room.getOtherMemberId(me.getId()));
+
+        } else {
+            ChatRoomParticipant participant = participantRepository
+                    .findByChatRoomAndMember(room, me)
+                    .orElseThrow(() -> new IllegalArgumentException("채팅방 참여자가 아닙니다."));
+            participant.updateLastReadAt();
+        }
+    }
+
+    // ── 상태 배너 ─────────────────────────────────────────────────
+
     @Transactional(readOnly = true)
     public ReceiverStatusBannerResponse getReceiverStatusBanner(Member me, Long otherMemberId) {
         Member other = memberRepository.findById(otherMemberId)
@@ -147,72 +182,69 @@ public class ChatService {
 
         String bannerMessage = null;
         if (showBanner) {
-            String statusLabel = status == StatusType.MEETING ? "회의 중" : "휴식/자리비움 상태";
-            bannerMessage = "현재 " + other.getUsername() + "님은 " + statusLabel
-                    + "입니다. 알림이 울리지 않습니다.";
+            String label = status == StatusType.MEETING ? "회의 중" : "휴식/자리비움 상태";
+            bannerMessage = "현재 " + other.getUsername() + "님은 " + label + "입니다. 알림이 울리지 않습니다.";
         }
 
         return new ReceiverStatusBannerResponse(
-                other.getId(),
-                other.getUsername(),
-                status,
-                showBanner,
-                true,           // 긴급 알림 버튼은 항상 제공
-                bannerMessage
+                other.getId(), other.getUsername(), status,
+                showBanner, true, bannerMessage
         );
     }
 
+    // ── 팀 참가 시 채팅방 처리 ────────────────────────────────────
+
     /**
-     * 채팅방 읽음 처리 (채팅창 포커스 시 호출)
+     * 팀 참가 시:
+     * 1. 매니저와의 1:1 DIRECT 채팅방 자동 생성
+     * 2. 팀 TEAM 채팅방 생성 또는 참여자로 추가
      */
     @Transactional
-    public void markAsRead(Member me, Long roomId) {
-        ChatRoom room = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new NoSuchElementException("존재하지 않는 채팅방입니다."));
+    public void addParticipantToTeamRoom(Long managerId, Member employee) {
+        // 1. DIRECT 채팅방 생성
+        findOrCreateDirectRoom(managerId, employee.getId());
 
-        if (!room.hasMember(me.getId())) {
-            throw new IllegalArgumentException("채팅방 참여자가 아닙니다.");
+        // 2. TEAM 채팅방 생성 또는 참여자 추가
+        Member manager = memberRepository.findById(managerId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 매니저입니다."));
+
+        ChatRoom teamRoom = chatRoomRepository
+                .findByManagerIdAndRoomType(managerId, ChatRoomType.TEAM)
+                .orElseGet(() -> {
+                    // 팀 채팅방이 없으면 생성 + 매니저를 참여자로 추가
+                    ChatRoom newRoom = chatRoomRepository.save(
+                            ChatRoom.teamBuilder().managerId(managerId).roomType(ChatRoomType.TEAM).build()
+                    );
+                    participantRepository.save(
+                            ChatRoomParticipant.builder().chatRoom(newRoom).member(manager).build()
+                    );
+                    return newRoom;
+                });
+
+        // 이미 참여 중이 아닌 경우에만 추가
+        if (!participantRepository.existsByChatRoomAndMemberAndActiveTrue(teamRoom, employee)) {
+            participantRepository.save(
+                    ChatRoomParticipant.builder().chatRoom(teamRoom).member(employee).build()
+            );
         }
-
-        chatMessageRepository.markAllAsReadInRoom(room, me.getId());
-
-        Long otherId = room.getOtherMemberId(me.getId());
-        notifyReadAfterCommit(room, me.getId(), otherId);
     }
 
     // ── 내부 헬퍼 ────────────────────────────────────────────────
 
-    private ChatRoom findOrCreateRoom(Long myId, Long otherId) {
+    private ChatRoom findOrCreateDirectRoom(Long myId, Long otherId) {
         long small = Math.min(myId, otherId);
         long big   = Math.max(myId, otherId);
 
-        return chatRoomRepository.findByMembers(small, big)
+        return chatRoomRepository.findDirectRoom(small, big)
                 .orElseGet(() -> chatRoomRepository.save(
-                        ChatRoom.builder().member1Id(small).member2Id(big).build()
+                        ChatRoom.directBuilder().member1Id(small).member2Id(big).build()
                 ));
     }
 
-    /**
-     * 팀 내 멤버인지 검증
-     * - MANAGER가 상대방의 managerId 이거나
-     * - 두 EMPLOYEE의 managerId가 같은 경우
-     */
-    private void validateSameTeam(Member me, Member other) {
-        boolean isSameTeam =
-                me.getId().equals(other.getManagerId()) ||          // 내가 상대 매니저
-                other.getId().equals(me.getManagerId()) ||          // 상대가 내 매니저
-                (me.getManagerId() != null &&
-                 me.getManagerId().equals(other.getManagerId()));    // 같은 팀 직원
-
-        if (!isSameTeam) {
-            throw new IllegalArgumentException("같은 팀 멤버에게만 메시지를 보낼 수 있습니다.");
-        }
-    }
-
-    /** 메시지 전송 후 WebSocket 푸시 — 수신자 상태에 따라 이벤트 구분 */
-    private void pushAfterCommit(ChatMessage message, Long receiverId, StatusType receiverStatus) {
+    /** DIRECT/TEAM 구분해서 WebSocket 푸시 */
+    private void pushMessageAfterCommit(ChatMessage message, ChatRoom room, Long senderId) {
         ChatMessagePayload payload = new ChatMessagePayload(
-                message.getChatRoom().getId(),
+                room.getId(),
                 message.getId(),
                 message.getSender().getId(),
                 message.getSender().getUsername(),
@@ -221,24 +253,42 @@ public class ChatService {
                 message.getCreatedAt()
         );
 
-        // 긴급 메시지는 수신자 상태 무관 URGENT 이벤트로 강제 알림
         String event = message.isUrgent()
                 ? WsEnvelope.Event.CHAT_URGENT_RECEIVED
                 : WsEnvelope.Event.CHAT_MESSAGE_RECEIVED;
 
         WsEnvelope envelope = WsEnvelope.of(event, payload);
 
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                messagingTemplate.convertAndSend("/topic/members/" + receiverId, envelope);
-                log.info("Chat pushed: event={}, receiverId={}, receiverStatus={}",
-                        event, receiverId, receiverStatus);
-            }
-        });
+        if (room.getRoomType() == ChatRoomType.DIRECT) {
+            Long receiverId = room.getOtherMemberId(senderId);
+            StatusType receiverStatus = getStatusById(receiverId);
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    messagingTemplate.convertAndSend("/topic/members/" + receiverId, envelope);
+                    log.info("DIRECT pushed: event={}, receiverId={}, status={}", event, receiverId, receiverStatus);
+                }
+            });
+        } else {
+            // TEAM: 발신자 제외 전체 참여자에게 푸시
+            List<Long> receiverIds = participantRepository
+                    .findByChatRoomAndActiveTrue(room)
+                    .stream()
+                    .map(p -> p.getMember().getId())
+                    .filter(id -> !id.equals(senderId))
+                    .toList();
+
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    receiverIds.forEach(id ->
+                            messagingTemplate.convertAndSend("/topic/members/" + id, envelope));
+                    log.info("TEAM pushed: event={}, receiverCount={}", event, receiverIds.size());
+                }
+            });
+        }
     }
 
-    /** 읽음 처리 후 발신자에게 CHAT_READ 이벤트 발송 */
     private void notifyReadAfterCommit(ChatRoom room, Long readByMemberId, Long notifyMemberId) {
         ChatReadPayload payload = new ChatReadPayload(room.getId(), readByMemberId);
         WsEnvelope envelope = WsEnvelope.of(WsEnvelope.Event.CHAT_READ, payload);
@@ -249,6 +299,17 @@ public class ChatService {
                 messagingTemplate.convertAndSend("/topic/members/" + notifyMemberId, envelope);
             }
         });
+    }
+
+    private void validateSameTeam(Member me, Member other) {
+        boolean isSameTeam =
+                me.getId().equals(other.getManagerId()) ||
+                        other.getId().equals(me.getManagerId()) ||
+                        (me.getManagerId() != null && me.getManagerId().equals(other.getManagerId()));
+
+        if (!isSameTeam) {
+            throw new IllegalArgumentException("같은 팀 멤버에게만 메시지를 보낼 수 있습니다.");
+        }
     }
 
     private StatusType getStatus(Member member) {
@@ -264,22 +325,32 @@ public class ChatService {
     }
 
     private ChatRoomResponse toChatRoomResponse(ChatRoom room, Long myId) {
-        Long otherId = room.getOtherMemberId(myId);
-        Member other = memberRepository.findById(otherId).orElse(null);
-        String otherUsername = other != null ? other.getUsername() : "(알 수 없음)";
-        StatusType otherStatus = other != null ? getStatus(other) : StatusType.OFFLINE;
+        String otherUsername;
+        StatusType otherStatus;
+        Long otherId;
+
+        if (room.getRoomType() == ChatRoomType.DIRECT) {
+            otherId = room.getOtherMemberId(myId);
+            Member other = memberRepository.findById(otherId).orElse(null);
+            otherUsername = other != null ? other.getUsername() : "(알 수 없음)";
+            otherStatus   = other != null ? getStatus(other) : StatusType.OFFLINE;
+        } else {
+            // TEAM: 상대방 개념 없음 — managerId와 "팀 채팅방" 표시
+            otherId       = room.getManagerId();
+            otherUsername = "팀 채팅방";
+            otherStatus   = StatusType.WORKING;
+        }
 
         ChatMessageResponse lastMsg = chatMessageRepository
                 .findFirstByChatRoomOrderByCreatedAtDesc(room)
                 .map(this::toChatMessageResponse)
                 .orElse(null);
 
-        long unread = chatMessageRepository.countUnreadByRoomAndReceiver(room, myId);
+        long unread = room.getRoomType() == ChatRoomType.DIRECT
+                ? chatMessageRepository.countUnreadDirect(room, myId)
+                : participantRepository.countUnreadTeamMessages(room, myId);
 
-        return new ChatRoomResponse(
-                room.getId(), otherId, otherUsername,
-                otherStatus, lastMsg, unread
-        );
+        return new ChatRoomResponse(room.getId(), otherId, otherUsername, otherStatus, lastMsg, unread);
     }
 
     private ChatMessageResponse toChatMessageResponse(ChatMessage m) {

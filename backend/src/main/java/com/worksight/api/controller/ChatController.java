@@ -41,6 +41,18 @@ public class ChatController {
     }
 
     /**
+     * POST /api/chat/rooms/{roomId}/team/enter
+     * 팀 채팅방 입장
+     */
+    @PostMapping("/rooms/{roomId}/team/enter")
+    public ResponseEntity<ChatRoomDetailResponse> enterTeamRoom(
+            @AuthenticationPrincipal Member me,
+            @PathVariable Long roomId
+    ) {
+        return ResponseEntity.ok(chatService.enterTeamRoom(me, roomId));
+    }
+
+    /**
      * POST /api/chat/rooms/{roomId}/messages
      * 메시지 전송
      * body: { "content": "...", "messageType": "NORMAL" | "URGENT" }
