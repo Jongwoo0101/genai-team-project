@@ -160,7 +160,7 @@ export const useCommuteStore = create<CommuteState>()(
           }));
         } catch (err: unknown) {
           console.error('퇴근 API 호출 실패:', err);
-          if (err instanceof Error && err.message === '오늘 출근 기록이 없습니다.') {
+          if (err instanceof Error && err.message.includes('출근 기록')) {
             get().resetTodayStatus();
           }
           throw err;
@@ -194,7 +194,7 @@ export const useCommuteStore = create<CommuteState>()(
           }));
         } catch (err: unknown) {
           console.error('상태 변경 API 호출 실패:', err);
-          if (err instanceof Error && err.message === '오늘 출근 기록이 없습니다.') {
+          if (err instanceof Error && err.message.includes('출근 기록')) {
             get().resetTodayStatus();
           }
           throw err;

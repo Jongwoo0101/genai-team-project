@@ -43,22 +43,12 @@ export default function CreateTeamModal({ isOpen, onClose, onSuccess }: CreateTe
         createTeam(teamName.trim(), teamDescription.trim(), user.id, user.username, res.inviteCode);
         setCreatedCode(res.inviteCode);
       } else {
-        // 서버가 코드를 반환하지 않은 경우 → 로컬 폴백
-        console.warn('서버가 초대 코드를 반환하지 않음, 로컬 폴백');
-        const team = createTeam(teamName.trim(), teamDescription.trim(), user.id, user.username);
-        setCreatedCode(team.teamCode);
+        throw new Error('서버에서 초대 코드를 발급하지 않았습니다.');
       }
     } catch (err: unknown) {
       const serverMsg = err instanceof Error ? err.message : '팀 생성 중 오류가 발생했습니다.';
       console.error('팀 생성 API 실패:', serverMsg);
-      
-      // 프론트엔드 테스트를 위해 백엔드가 403 등 에러를 뱉어도 로컬 폴백을 실행하여 차단을 방지합니다.
-      console.warn('서버 에러 발생으로 인해 로컬 폴백으로 팀을 생성합니다.');
-      const team = createTeam(teamName.trim(), teamDescription.trim(), user.id, user.username);
-      setCreatedCode(team.teamCode);
-      
-      // 사용자에게 서버 에러 상태를 살짝 알림 (선택적)
-      // setError(serverMsg + " (로컬 모드로 임시 생성됨)");
+      setError(serverMsg);
     } finally {
       setIsCreating(false);
     }
@@ -103,6 +93,8 @@ export default function CreateTeamModal({ isOpen, onClose, onSuccess }: CreateTe
           <button
             type="button"
             onClick={handleClose}
+            aria-label="닫기"
+            title="닫기"
             className="text-slate-400 hover:text-white transition-colors cursor-pointer"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

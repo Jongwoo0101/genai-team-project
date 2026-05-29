@@ -1,5 +1,5 @@
 import type { WorkEvent } from '../lib/types';
-import { statusTypeLabels, statusTypeColors } from '../lib/mockData';
+import { statusTypeLabels, statusTypeColors } from '../lib/constants';
 
 interface EventLogTableProps {
   events: WorkEvent[];
