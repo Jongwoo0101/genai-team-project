@@ -74,6 +74,12 @@ export function saveTeamStorage(teams: Team[], memberTeamMap: Record<number, str
 }
 
 export function clearTeamStorage() {
+  // 현재 owner의 scoped 키도 함께 삭제
+  const ownerId = localStorage.getItem(TEAM_OWNER_STORAGE_KEY);
+  if (ownerId) {
+    localStorage.removeItem(`${TEAM_STORAGE_KEY}:${ownerId}`);
+    localStorage.removeItem(`${MEMBER_MAP_STORAGE_KEY}:${ownerId}`);
+  }
   localStorage.removeItem(TEAM_OWNER_STORAGE_KEY);
   localStorage.removeItem(TEAM_STORAGE_KEY);
   localStorage.removeItem(MEMBER_MAP_STORAGE_KEY);

@@ -113,10 +113,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       localStorage.removeItem(`${STORAGE_KEYS.COMMUTE_STATE}:${user.id}`);
       localStorage.removeItem(`${STORAGE_KEYS.STANDUP_STATE}:${user.id}`);
       localStorage.removeItem(`${STORAGE_KEYS.VIDEOCALL_STATE}:${user.id}`);
-      localStorage.removeItem(`${STORAGE_KEYS.TEAM_DATA}:${user.id}`);
-      localStorage.removeItem(`${STORAGE_KEYS.MEMBER_MAP}:${user.id}`);
-      localStorage.removeItem(STORAGE_KEYS.TEAM_OWNER);
     }
+    // 팀 데이터: localStorage + Zustand 메모리 상태 모두 초기화
+    clearTeamStorage();
     sessionStorage.clear();
     set({ user: null, token: null, isAuthenticated: false });
   },
