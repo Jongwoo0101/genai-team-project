@@ -28,8 +28,9 @@ public class ChatRoom {
     private Long member2Id;
 
     // ── TEAM 전용 ─────────────────────────────────────
-    @Column(name = "manager_id")
-    private Long managerId;
+    // 수정됨: manager_id -> team_id
+    @Column(name = "team_id")
+    private Long teamId;
 
     @CreationTimestamp
     private LocalDateTime createdAt;
@@ -42,11 +43,11 @@ public class ChatRoom {
         this.member2Id = Math.max(member1Id, member2Id);
     }
 
-    /** TEAM 채팅방 생성 */
+    /** TEAM 채팅방 생성 (수정됨: managerId -> teamId) */
     @Builder(builderMethodName = "teamBuilder", builderClassName = "TeamBuilder")
-    public ChatRoom(Long managerId, ChatRoomType roomType) {
+    public ChatRoom(Long teamId, ChatRoomType roomType) {
         this.roomType  = ChatRoomType.TEAM;
-        this.managerId = managerId;
+        this.teamId    = teamId;
     }
 
     public boolean hasMember(Long memberId) {

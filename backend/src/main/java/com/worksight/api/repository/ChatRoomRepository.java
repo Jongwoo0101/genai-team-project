@@ -29,7 +29,8 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 
     // ── TEAM ──────────────────────────────────────────
 
-    Optional<ChatRoom> findByManagerIdAndRoomType(Long managerId, ChatRoomType roomType);
+    // 수정됨: ManagerId -> TeamId
+    Optional<ChatRoom> findByTeamIdAndRoomType(Long teamId, ChatRoomType roomType);
 
     @Query("""
            SELECT cr FROM ChatRoom cr

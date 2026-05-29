@@ -27,6 +27,7 @@ public class ChatService {
     private final ChatRoomParticipantRepository participantRepository;
     private final MemberRepository memberRepository;
     private final MemberStatusRepository memberStatusRepository;
+    private final TeamRepository teamRepository; // 팀 조회를 위해 추가
     private final SimpMessagingTemplate messagingTemplate;
 
     // ── 채팅방 목록 ───────────────────────────────────────────────
@@ -104,10 +105,13 @@ public class ChatService {
                 .sorted(Comparator.comparing(ChatMessageResponse::createdAt))
                 .toList();
 
-        // TEAM은 otherMember 개념이 없으므로 managerId와 room 정보 반환
+        // TEAM은 otherMember 개념이 없으므로 teamId와 room 정보 반환 (ChatRoom 엔티티에 teamId가 있다고 가정)
+        // 기존에는 managerId를 반환했으나, 이제는 teamId(혹은 대표값)를 반환하는 것이 적절함.
+        Long representativeId = room.getTeamId();
+
         return new ChatRoomDetailResponse(
                 room.getId(),
-                room.getManagerId(),
+                representativeId,
                 "팀 채팅방",
                 StatusType.WORKING,
                 messages
@@ -200,20 +204,22 @@ public class ChatService {
      * 2. 팀 TEAM 채팅방 생성 또는 참여자로 추가
      */
     @Transactional
-    public void addParticipantToTeamRoom(Long managerId, Member employee) {
-        // 1. DIRECT 채팅방 생성
-        findOrCreateDirectRoom(managerId, employee.getId());
+    public void addParticipantToTeamRoom(Long teamId, Member employee) {
+        Team team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 팀입니다."));
+        Member manager = team.getManager();
+
+        // 1. DIRECT 채팅방 생성 (매니저 - 직원 간)
+        findOrCreateDirectRoom(manager.getId(), employee.getId());
 
         // 2. TEAM 채팅방 생성 또는 참여자 추가
-        Member manager = memberRepository.findById(managerId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 매니저입니다."));
-
+        // 주의: 기존 findByManagerIdAndRoomType 대신 findByTeamIdAndRoomType 등을 사용해야 함.
         ChatRoom teamRoom = chatRoomRepository
-                .findByManagerIdAndRoomType(managerId, ChatRoomType.TEAM)
+                .findByTeamIdAndRoomType(teamId, ChatRoomType.TEAM)
                 .orElseGet(() -> {
-                    // 팀 채팅방이 없으면 생성 + 매니저를 참여자로 추가
+                    // 팀 채팅방이 없으면 생성 + 매니저를 기본 참여자로 추가
                     ChatRoom newRoom = chatRoomRepository.save(
-                            ChatRoom.teamBuilder().managerId(managerId).roomType(ChatRoomType.TEAM).build()
+                            ChatRoom.teamBuilder().teamId(teamId).roomType(ChatRoomType.TEAM).build()
                     );
                     participantRepository.save(
                             ChatRoomParticipant.builder().chatRoom(newRoom).member(manager).build()
@@ -221,7 +227,7 @@ public class ChatService {
                     return newRoom;
                 });
 
-        // 이미 참여 중이 아닌 경우에만 추가
+        // 3. 직원이 이미 참여 중이 아닌 경우에만 추가
         if (!participantRepository.existsByChatRoomAndMemberAndActiveTrue(teamRoom, employee)) {
             participantRepository.save(
                     ChatRoomParticipant.builder().chatRoom(teamRoom).member(employee).build()
@@ -241,7 +247,6 @@ public class ChatService {
                 ));
     }
 
-    /** DIRECT/TEAM 구분해서 WebSocket 푸시 */
     private void pushMessageAfterCommit(ChatMessage message, ChatRoom room, Long senderId) {
         ChatMessagePayload payload = new ChatMessagePayload(
                 room.getId(),
@@ -270,7 +275,6 @@ public class ChatService {
                 }
             });
         } else {
-            // TEAM: 발신자 제외 전체 참여자에게 푸시
             List<Long> receiverIds = participantRepository
                     .findByChatRoomAndActiveTrue(room)
                     .stream()
@@ -302,10 +306,26 @@ public class ChatService {
     }
 
     private void validateSameTeam(Member me, Member other) {
-        boolean isSameTeam =
-                me.getId().equals(other.getManagerId()) ||
-                        other.getId().equals(me.getManagerId()) ||
-                        (me.getManagerId() != null && me.getManagerId().equals(other.getManagerId()));
+        // 기존: me.getManagerId() 기반 비교
+        // 변경: 양쪽 모두 팀이 세팅되어 있고, 같은 Team 객체(ID)를 바라보는지 체크
+
+        Team myTeam = me.getTeam();
+        Team otherTeam = other.getTeam();
+
+        // 1. 관리자-직원 관계이거나
+        // 2. 같은 팀에 소속되어 있어야 함
+        boolean isSameTeam = false;
+
+        if (myTeam != null && otherTeam != null) {
+            isSameTeam = myTeam.getId().equals(otherTeam.getId());
+        } else if (myTeam != null) {
+            // 내가 팀이 있는데 상대방이 내 팀의 매니저인 경우 (상대방은 Team 엔티티가 null일 수 있으나 매니저 역할인 경우)
+            // 혹은 내가 매니저고 상대방이 내 팀 소속인 경우
+            isSameTeam = myTeam.getManager().getId().equals(other.getId()) ||
+                    (otherTeam != null && otherTeam.getManager().getId().equals(me.getId()));
+        } else if (otherTeam != null) {
+            isSameTeam = otherTeam.getManager().getId().equals(me.getId());
+        }
 
         if (!isSameTeam) {
             throw new IllegalArgumentException("같은 팀 멤버에게만 메시지를 보낼 수 있습니다.");
@@ -335,8 +355,8 @@ public class ChatService {
             otherUsername = other != null ? other.getUsername() : "(알 수 없음)";
             otherStatus   = other != null ? getStatus(other) : StatusType.OFFLINE;
         } else {
-            // TEAM: 상대방 개념 없음 — managerId와 "팀 채팅방" 표시
-            otherId       = room.getManagerId();
+            // TEAM: managerId 대신 teamId로 반환
+            otherId       = room.getTeamId();
             otherUsername = "팀 채팅방";
             otherStatus   = StatusType.WORKING;
         }
