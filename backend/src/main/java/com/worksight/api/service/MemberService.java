@@ -2,10 +2,12 @@ package com.worksight.api.service;
 
 import com.worksight.api.dto.MemberDto.*;
 import com.worksight.api.dto.WsEnvelope;
+import com.worksight.api.entity.InviteCode;
 import com.worksight.api.entity.Member;
 import com.worksight.api.entity.RefreshToken;
 import com.worksight.api.entity.Team;
 import com.worksight.api.exception.DuplicateUsernameException;
+import com.worksight.api.exception.ResourceNotFoundException;
 import com.worksight.api.repository.InviteCodeRepository;
 import com.worksight.api.repository.MemberRepository;
 import com.worksight.api.repository.TeamRepository;
@@ -17,6 +19,8 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.util.Map;
@@ -27,7 +31,7 @@ import java.util.UUID;
 public class MemberService {
 
     private final MemberRepository memberRepository;
-    private final TeamRepository teamRepository; // 추가됨: 팀 조회를 위해 필요
+    private final TeamRepository teamRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
     private final RefreshTokenService refreshTokenService;
@@ -48,26 +52,28 @@ public class MemberService {
                 .password(passwordEncoder.encode(request.password()))
                 .role(request.role())
                 .build();
-        Member savedMember = memberRepository.save(member);
-        return new MemberResponse(
-                savedMember.getId(),
-                savedMember.getUsername(),
-                savedMember.getRole(),
-                savedMember.getVirtualBalance()
-        );
+        Member saved = memberRepository.save(member);
+        return new MemberResponse(saved.getId(), saved.getUsername(),
+                saved.getRole(), saved.getVirtualBalance());
     }
 
     @Transactional
     public LoginResponse login(LoginRequest request) {
+        // 아이디/비밀번호 오류 메시지 통일 — 사용자 열거(User Enumeration) 공격 방지
+        // 기존: 아이디 없음 / 비밀번호 틀림을 각각 다른 메시지로 노출
+        // 개선: 두 경우 모두 동일한 메시지 반환
         Member member = memberRepository.findByUsername(request.username())
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "존재하지 않는 아이디입니다. 아이디를 다시 확인해주세요."));
+                .orElseThrow(() ->
+                        new IllegalArgumentException("아이디 또는 비밀번호가 올바르지 않습니다."));
+
         if (!passwordEncoder.matches(request.password(), member.getPassword())) {
-            throw new IllegalArgumentException("비밀번호가 올바르지 않습니다. 다시 확인해주세요.");
+            throw new IllegalArgumentException("아이디 또는 비밀번호가 올바르지 않습니다.");
         }
-        String accessToken = jwtProvider.generateAccessToken(member);
+
+        String accessToken  = jwtProvider.generateAccessToken(member);
         String refreshToken = jwtProvider.generateRefreshToken(member);
         refreshTokenService.save(member.getId(), refreshToken);
+
         return new LoginResponse(accessToken, refreshToken,
                 member.getId(), member.getUsername(),
                 member.getRole(), member.getVirtualBalance());
@@ -81,10 +87,12 @@ public class MemberService {
         }
         RefreshToken refreshToken = refreshTokenService.validate(oldToken);
         Member member = memberRepository.findById(refreshToken.getMemberId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
-        String newAccessToken = jwtProvider.generateAccessToken(member);
+                .orElseThrow(() -> ResourceNotFoundException.member(refreshToken.getMemberId()));
+
+        String newAccessToken  = jwtProvider.generateAccessToken(member);
         String newRefreshToken = jwtProvider.generateRefreshToken(member);
         refreshTokenService.save(member.getId(), newRefreshToken);
+
         return new LoginResponse(newAccessToken, newRefreshToken,
                 member.getId(), member.getUsername(),
                 member.getRole(), member.getVirtualBalance());
@@ -92,73 +100,72 @@ public class MemberService {
 
     @Transactional
     public InviteCodeResponse generateInviteCode(Member manager, CreateTeamRequest request) {
-        String customName = (request != null && request.teamName() != null && !request.teamName().trim().isEmpty())
+        String teamName = (request != null
+                && request.teamName() != null
+                && !request.teamName().isBlank())
                 ? request.teamName().trim()
                 : manager.getUsername() + " 님의 팀";
 
-        // 1. 관리자의 팀을 찾거나, 없다면 새로 하나 생성해 줍니다.
+        // 관리자의 팀이 없으면 자동 생성 (초대 코드 발급 시점에 팀을 함께 만들어주는 편의 처리)
         Team team = teamRepository.findFirstByManagerIdOrderByIdDesc(manager.getId())
-                .orElseGet(() -> {
-                    Team newTeam = Team.builder()
-                            .teamName(customName)
-                            .manager(manager)
-                            .build();
-                    return teamRepository.save(newTeam);
-                });
+                .orElseGet(() -> teamRepository.save(
+                        Team.builder().teamName(teamName).manager(manager).build()
+                ));
 
         String code = "WS-" + randomSegment() + "-" + randomSegment();
         Instant expiresAt = Instant.now().plusSeconds(inviteExpirationSeconds);
 
-        // 2. 초대 코드 생성 시 managerId가 아닌 team 객체를 매핑
-        com.worksight.api.entity.InviteCode inviteCode =
-                com.worksight.api.entity.InviteCode.builder()
+        inviteCodeRepository.save(
+                InviteCode.builder()
                         .code(code)
                         .team(team)
                         .expiresAt(expiresAt)
-                        .build();
-        inviteCodeRepository.save(inviteCode);
+                        .build()
+        );
 
         return new InviteCodeResponse(code, team.getId());
     }
 
     @Transactional
     public void joinTeam(JoinTeamRequest request, Member employee) {
-        // 1. 코드 조회
-        com.worksight.api.entity.InviteCode inviteCode =
-                inviteCodeRepository.findByCode(request.inviteCode())
-                        .orElseThrow(() -> new IllegalArgumentException(
-                                "유효하지 않거나 만료된 초대 코드입니다."));
+        InviteCode inviteCode = inviteCodeRepository.findByCode(request.inviteCode())
+                .orElseThrow(() ->
+                        new IllegalArgumentException("유효하지 않거나 만료된 초대 코드입니다."));
 
-        // 2. 만료 시간 검증 (우리가 엔티티에 만들어둔 편의 메서드 isExpired() 활용)
+        // InviteCode 엔티티의 isExpired() 편의 메서드 활용
         if (inviteCode.isExpired()) {
             throw new IllegalArgumentException("유효하지 않거나 만료된 초대 코드입니다.");
         }
 
         Member managedEmployee = memberRepository.findById(employee.getId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 직원입니다."));
+                .orElseThrow(() -> ResourceNotFoundException.member(employee.getId()));
 
-        // 3. 초대 코드에 매핑된 '팀' 정보를 가져옴
         Team targetTeam = inviteCode.getTeam();
-
-        // 4. 직원 엔티티를 해당 팀에 조인 (기존의 linkManager 대체)
         managedEmployee.joinTeam(targetTeam);
 
-        // 5. 팀 채팅방에 새로운 팀원 참여 처리
-        // 주의: ChatService가 기존에 managerId를 파라미터로 받았다면, 이제 team.getId()를 받도록 의미가 변경됨!
         chatService.addParticipantToTeamRoom(targetTeam.getId(), managedEmployee);
 
-        // 6. 웹소켓으로 프론트에 성공 알림
-        messagingTemplate.convertAndSend(
-                "/topic/members/" + managedEmployee.getId(),
-                WsEnvelope.of(
-                        WsEnvelope.Event.TEAM_LINKED,
-                        Map.of(
-                                "teamId", targetTeam.getId(),
-                                "teamName", targetTeam.getTeamName(),
-                                "managerId", targetTeam.getManager().getId()
-                        )
-                )
-        );
+        // 트랜잭션 내 직접 전송 → afterCommit()으로 변경
+        // 기존: messagingTemplate.convertAndSend(...) — 롤백 시에도 메시지가 전송되는 버그
+        // 개선: DB 커밋 성공 후에만 WebSocket 메시지 전송 보장
+        final Long employeeId = managedEmployee.getId();
+        final Long teamId     = targetTeam.getId();
+        final String teamName2 = targetTeam.getTeamName();
+        final Long managerId  = targetTeam.getManager().getId();
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                messagingTemplate.convertAndSend(
+                        "/topic/members/" + employeeId,
+                        WsEnvelope.of(WsEnvelope.Event.TEAM_LINKED, Map.of(
+                                "teamId",    teamId,
+                                "teamName",  teamName2,
+                                "managerId", managerId
+                        ))
+                );
+            }
+        });
     }
 
     private String randomSegment() {
