@@ -41,20 +41,10 @@ export function loadTeamStorage(ownerMemberId?: number): { ownerMemberId: number
     const scopedTeamsRaw = localStorage.getItem(teamKey);
     const scopedMapRaw = localStorage.getItem(memberMapKey);
 
-    if (scopedTeamsRaw || scopedMapRaw || resolvedOwnerId !== activeOwnerId) {
-      return {
-        ownerMemberId: resolvedOwnerId,
-        teams: scopedTeamsRaw ? JSON.parse(scopedTeamsRaw) : [],
-        memberTeamMap: scopedMapRaw ? JSON.parse(scopedMapRaw) : {},
-      };
-    }
-
-    const legacyTeamsRaw = localStorage.getItem(TEAM_STORAGE_KEY);
-    const legacyMapRaw = localStorage.getItem(MEMBER_MAP_STORAGE_KEY);
     return {
       ownerMemberId: resolvedOwnerId,
-      teams: legacyTeamsRaw ? JSON.parse(legacyTeamsRaw) : [],
-      memberTeamMap: legacyMapRaw ? JSON.parse(legacyMapRaw) : {},
+      teams: scopedTeamsRaw ? JSON.parse(scopedTeamsRaw) : [],
+      memberTeamMap: scopedMapRaw ? JSON.parse(scopedMapRaw) : {},
     };
   } catch {
     return { ownerMemberId: null, teams: [], memberTeamMap: {} };
@@ -74,10 +64,13 @@ export function saveTeamStorage(teams: Team[], memberTeamMap: Record<number, str
 }
 
 export function clearTeamStorage() {
+  // 현재 owner의 scoped 키도 함께 삭제
+  const ownerId = localStorage.getItem(TEAM_OWNER_STORAGE_KEY);
+  if (ownerId) {
+    localStorage.removeItem(`${TEAM_STORAGE_KEY}:${ownerId}`);
+    localStorage.removeItem(`${MEMBER_MAP_STORAGE_KEY}:${ownerId}`);
+  }
   localStorage.removeItem(TEAM_OWNER_STORAGE_KEY);
   localStorage.removeItem(TEAM_STORAGE_KEY);
   localStorage.removeItem(MEMBER_MAP_STORAGE_KEY);
-  Object.keys(localStorage)
-    .filter((key) => key.startsWith(`${TEAM_STORAGE_KEY}:`) || key.startsWith(`${MEMBER_MAP_STORAGE_KEY}:`))
-    .forEach((key) => localStorage.removeItem(key));
 }

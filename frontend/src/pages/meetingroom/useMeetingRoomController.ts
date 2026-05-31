@@ -6,6 +6,7 @@ import { webSocketService } from '../../lib/websocket';
 import { WEBSOCKET_TOPICS } from '../../lib/constants';
 import { parseWsEnvelope } from '../../lib/wsEvent';
 import type { AuthUser } from '../../lib/types';
+import { useCommuteStore } from '../../domains/commute/stores/commuteStore';
 
 interface UseMeetingRoomControllerOptions {
   user: AuthUser | null;
@@ -67,12 +68,12 @@ export function useMeetingRoomController({
   }, [user, syncTeamContext, fetchMyTeam, fetchTeamMembers]);
 
   useEffect(() => {
-    if (!user || !managerId) return;
+    if (!user || !team?.id) return;
 
     webSocketService.connect((connected) => {
       if (connected) {
         // 1. 팀 토픽 구독
-        const teamTopic = WEBSOCKET_TOPICS.TEAM(managerId);
+        const teamTopic = WEBSOCKET_TOPICS.TEAM(team.id);
         webSocketService.subscribe(teamTopic, (msg) => {
           const envelope = parseWsEnvelope(msg);
           if (!envelope) return;
@@ -84,6 +85,7 @@ export function useMeetingRoomController({
         webSocketService.subscribe(memberTopic, (msg) => {
           const envelope = parseWsEnvelope(msg);
           if (!envelope) return;
+          
           if (
             envelope.event === 'INVITED' ||
             envelope.event === 'JOIN_REQUESTED' ||
@@ -92,16 +94,44 @@ export function useMeetingRoomController({
           ) {
             void handleWebsocketEvent(envelope);
           }
+
+          // 추가: 긴급 메시지(CHAT_URGENT_RECEIVED) 수신 처리
+          if (envelope.event === 'CHAT_URGENT_RECEIVED') {
+            const data = envelope.data as any;
+            const commuteStore = useCommuteStore.getState();
+            commuteStore.addDirectPingFromNotification({
+              notificationId: data.messageId || Date.now(),
+              senderId: data.senderId,
+              senderUsername: data.senderUsername,
+              receiverId: user.id,
+              receiverUsername: user.username,
+              message: data.content,
+              notificationType: 'IMPORTANT',
+              read: false,
+              createdAt: data.createdAt || new Date().toISOString(),
+              readAt: null
+            });
+          }
+
+          // 일반 상사 경고 알림 수신 처리
+          if (envelope.event === 'NOTIFICATION_RECEIVED') {
+            const data = envelope.data as any;
+            if (data && data.notificationType === 'IMPORTANT') {
+              useCommuteStore.getState().addDirectPingFromNotification(data);
+            }
+          }
         });
       }
     });
 
     return () => {
-      webSocketService.unsubscribe(WEBSOCKET_TOPICS.TEAM(managerId));
+      if (team?.id) {
+        webSocketService.unsubscribe(WEBSOCKET_TOPICS.TEAM(team.id));
+      }
       webSocketService.unsubscribe(WEBSOCKET_TOPICS.MEMBER(user.id));
       webSocketService.disconnect();
     };
-  }, [user, managerId, handleWebsocketEvent]);
+  }, [user, team?.id, handleWebsocketEvent]);
 
   useEffect(() => {
     if (user) {

@@ -15,6 +15,8 @@ import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import Support from './pages/Support';
 import { useAuthStore } from './domains/auth/stores/authStore';
+import { MessagePage } from './domains/messaging/components/MessagePage';
+import { TeamMessageGuard } from './domains/messaging/components/TeamMessageGuard';
 
 export default function AppRoutes() {
   const { isAuthenticated, user } = useAuthStore();
@@ -31,6 +33,18 @@ export default function AppRoutes() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/support" element={<Support />} />
+        
+        {/* 메시지 라우트 */}
+        <Route 
+          path="/team/:teamId/messages" 
+          element={isAuthenticated ? (
+            <TeamMessageGuard>
+              <MessagePage />
+            </TeamMessageGuard>
+          ) : (
+            <Navigate to="/login" replace />
+          )} 
+        />
         
         {/* 관리자 라우트 */}
         <Route 

@@ -1,5 +1,6 @@
 import SockJS from 'sockjs-client';
 import * as Stomp from 'stompjs';
+import { STORAGE_KEYS } from './constants'; // 인증 토큰 키를 가져오기 위해 추가
 
 // Spring Boot 서버가 구동 중인 주소 (v2.0 STOMP 엔드포인트)
 const SOCKET_URL = '/ws';
@@ -32,8 +33,8 @@ class WebSocketService {
       return;
     }
 
-    // 만약 이미 진행 중인 stompClient가 존재한다면 우선 해제 처리
-    if (this.stompClient) {
+    // 기존 stompClient가 존재하고 이미 연결된 상태라면 해제 처리
+    if (this.stompClient && this.connected) {
       this.disconnect();
     }
 
@@ -42,8 +43,16 @@ class WebSocketService {
     stompClient.debug = () => {};
     this.stompClient = stompClient;
 
+    // api.ts와 동일하게 sessionStorage에서 토큰을 가져와 헤더 생성
+    const token = sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+    const headers: Record<string, string> = {};
+    if (token && token !== 'undefined' && token !== 'null') {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // 빈 객체 `{}` 대신 생성한 `headers` 객체를 전달하여 STOMP CONNECT 요청
     stompClient.connect(
-      {},
+      headers,
       () => {
         // 이미 disconnect가 호출되어 stompClient가 다른 인스턴스로 바뀐 경우 취소
         if (this.stompClient !== stompClient) {
@@ -116,7 +125,7 @@ class WebSocketService {
         }
       });
     } else {
-      console.warn(`웹소켓이 아직 연결되지 않았습니다. 연결 후 자동으로 구독됩니다: '${topic}'`);
+      // 아직 연결되지 않았으므로 구독은 저장만 하고, 연결 시 자동으로 구독됩니다.
     }
 
     this.subscriptions.set(topic, {
@@ -139,10 +148,24 @@ class WebSocketService {
     }
   }
 
+  publish(topic: string, payload: unknown) {
+    if (this.connected && this.stompClient) {
+      this.stompClient.send(topic, {}, JSON.stringify(payload));
+    } else {
+      console.warn(`WebSocket이 연결되지 않아 메시지를 보낼 수 없습니다: '${topic}'`);
+    }
+  }
+
   disconnect() {
     if (this.reconnectTimeout) clearTimeout(this.reconnectTimeout);
     
     if (this.stompClient) {
+      // 연결이 아직 확립되지 않았을 경우 stompjs의 disconnect 호출이 InvalidStateError를 발생시킬 수 있음
+      if (!this.connected) {
+        // 현재 연결 상태가 아니면 client만 초기화하고 종료
+        this.stompClient = null;
+        return;
+      }
       const clientToDisconnect = this.stompClient;
       this.stompClient = null;
       this.connected = false;

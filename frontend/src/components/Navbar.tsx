@@ -1,9 +1,13 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../domains/auth/stores/authStore';
+import { useTeamStore } from '../domains/team/stores/teamStore';
 
 export default function Navbar() {
   const location = useLocation();
   const { user, isAuthenticated, logout } = useAuthStore();
+  const { teams } = useTeamStore();
+
+  const activeTeamId = teams[0]?.id || '';
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-[100] px-8 py-6 pointer-events-none">
@@ -27,10 +31,13 @@ export default function Navbar() {
             <NavLink to="/pricing" label="요금제" active={location.pathname === '/pricing'} />
             
             {isAuthenticated && user?.role === 'MANAGER' && (
-              <NavLink to="/teams" label="팀 관리" active={location.pathname.startsWith('/teams')} />
+              <NavLink to="/teams" label="팀 관리" active={location.pathname.startsWith('/teams') && !location.pathname.includes('/messages')} />
             )}
             {isAuthenticated && user?.role === 'EMPLOYEE' && (
               <NavLink to="/employee" label="내 모니터링" active={location.pathname === '/employee'} />
+            )}
+            {isAuthenticated && activeTeamId && (
+              <NavLink to={`/team/${activeTeamId}/messages`} label="메시지" active={location.pathname.includes('/messages')} />
             )}
           </div>
         </div>

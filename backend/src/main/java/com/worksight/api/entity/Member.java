@@ -26,18 +26,22 @@ public class Member implements UserDetails {
     private Role role;
 
     private Long virtualBalance;
-    private Long managerId;
+
+    // 기존 Long managerId 제거 후 Team 연관관계 추가
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id")
+    private Team team;
 
     @Builder
     public Member(String username, String password, Role role) {
         this.username = username;
         this.password = password;
         this.role = role;
-        // this.virtualBalance = 10000L;
     }
 
-    public void linkManager(Long managerId) {
-        this.managerId = managerId;
+    // 팀에 조인할 때 사용하는 메서드
+    public void joinTeam(Team team) {
+        this.team = team;
     }
 
     @Override
@@ -47,5 +51,4 @@ public class Member implements UserDetails {
 
     @Override public String getPassword()  { return password; }
     @Override public String getUsername()  { return username; }
-    public Long getManagerId()             { return managerId; } // 추가
 }

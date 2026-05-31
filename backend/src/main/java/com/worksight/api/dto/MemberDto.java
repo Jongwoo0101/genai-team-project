@@ -15,6 +15,7 @@ public class MemberDto {
             Role role,
             Long virtualBalance
     ) {}
-    public record InviteCodeResponse(String inviteCode) {}
+    public record CreateTeamRequest(String teamName, String description) {}
+    public record InviteCodeResponse(String inviteCode, Long teamId) {}
     public record JoinTeamRequest(String inviteCode) {}
 }

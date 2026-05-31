@@ -41,6 +41,18 @@ public class ChatController {
     }
 
     /**
+     * POST /api/chat/rooms/{roomId}/team/enter
+     * 팀 채팅방 입장
+     */
+    @PostMapping("/rooms/{roomId}/team/enter")
+    public ResponseEntity<ChatRoomDetailResponse> enterTeamRoom(
+            @AuthenticationPrincipal Member me,
+            @PathVariable Long roomId
+    ) {
+        return ResponseEntity.ok(chatService.enterTeamRoom(me, roomId));
+    }
+
+    /**
      * POST /api/chat/rooms/{roomId}/messages
      * 메시지 전송
      * body: { "content": "...", "messageType": "NORMAL" | "URGENT" }
@@ -58,6 +70,7 @@ public class ChatController {
      * GET /api/chat/rooms/{otherMemberId}/status-banner
      * 채팅창 상단 안내 배너 조회
      * 상대방이 MEETING/AWAY 상태일 때 프론트 배너 표시 여부 판단
+     *
      * 프론트 활용 예시:
      *   showBanner === true → "[현재 OOO님은 회의 중입니다. 알림이 울리지 않습니다.]" 표시
      *   canSendUrgent === true → 긴급 알림 버튼 활성화

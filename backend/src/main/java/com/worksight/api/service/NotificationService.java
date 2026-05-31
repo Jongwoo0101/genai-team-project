@@ -7,6 +7,8 @@ import com.worksight.api.entity.MemberStatus;
 import com.worksight.api.entity.Notification;
 import com.worksight.api.enums.NotificationType;
 import com.worksight.api.enums.StatusType;
+import com.worksight.api.exception.ResourceNotFoundException;
+import com.worksight.api.exception.UnauthorizedAccessException;
 import com.worksight.api.repository.MemberRepository;
 import com.worksight.api.repository.MemberStatusRepository;
 import com.worksight.api.repository.NotificationRepository;
@@ -19,7 +21,6 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
-import java.util.NoSuchElementException;
 
 @Slf4j
 @Service
@@ -34,10 +35,10 @@ public class NotificationService {
     @Transactional
     public NotificationResponse send(Member sender, SendNotificationRequest request) {
         Member managedSender = memberRepository.findById(sender.getId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+                .orElseThrow(() -> ResourceNotFoundException.member(sender.getId()));
 
         Member receiver = memberRepository.findById(request.receiverId())
-                .orElseThrow(() -> new NoSuchElementException("존재하지 않는 수신자입니다."));
+                .orElseThrow(() -> ResourceNotFoundException.member(request.receiverId()));
 
         if (request.notificationType() == NotificationType.IMPORTANT) {
             validateReceiverStatus(receiver);
@@ -49,46 +50,43 @@ public class NotificationService {
                 .message(request.message())
                 .notificationType(request.notificationType())
                 .build();
-
         notificationRepository.save(notification);
 
         log.info("Notification sent: senderId={}, receiverId={}, type={}",
                 managedSender.getId(), receiver.getId(), request.notificationType());
 
         pushAfterCommit(notification, receiver);
-
         return toResponse(notification);
     }
 
     @Transactional(readOnly = true)
     public List<NotificationResponse> getMyNotifications(Member member) {
-        Member managed = getManagedMember(member);
         return notificationRepository
-                .findAllByReceiverOrderByCreatedAtDesc(managed)
+                .findAllByReceiverOrderByCreatedAtDesc(getManagedMember(member))
                 .stream().map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
     public List<NotificationResponse> getUnreadNotifications(Member member) {
-        Member managed = getManagedMember(member);
         return notificationRepository
-                .findAllByReceiverAndReadFalseOrderByCreatedAtDesc(managed)
+                .findAllByReceiverAndReadFalseOrderByCreatedAtDesc(getManagedMember(member))
                 .stream().map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
     public UnreadCountResponse getUnreadCount(Member member) {
-        Member managed = getManagedMember(member);
-        return new UnreadCountResponse(notificationRepository.countByReceiverAndReadFalse(managed));
+        return new UnreadCountResponse(
+                notificationRepository.countByReceiverAndReadFalse(getManagedMember(member)));
     }
 
     @Transactional
     public NotificationResponse markAsRead(Long notificationId, Member member) {
         Notification notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new NoSuchElementException("존재하지 않는 알림입니다."));
+                .orElseThrow(() -> ResourceNotFoundException.notification(notificationId));
 
         if (!notification.getReceiver().getId().equals(member.getId())) {
-            throw new IllegalArgumentException("본인의 알림만 읽음 처리할 수 있습니다.");
+            // 커스텀 예외 사용
+            throw UnauthorizedAccessException.myNotificationOnly();
         }
 
         notification.markAsRead();
@@ -97,32 +95,27 @@ public class NotificationService {
 
     @Transactional
     public void markAllAsRead(Member member) {
-        Member managed = getManagedMember(member);
-        notificationRepository
-                .findAllByReceiverAndReadFalseOrderByCreatedAtDesc(managed)
-                .forEach(Notification::markAsRead);
+        // 건별 UPDATE → 벌크 UPDATE 쿼리로 교체
+        // 기존: findAll → forEach(markAsRead) → 알림 N건만큼 UPDATE 쿼리 발생
+        // 개선: NotificationRepository.bulkMarkAllAsRead → 단일 UPDATE 쿼리
+        notificationRepository.bulkMarkAllAsRead(getManagedMember(member));
     }
 
     // ── 내부 헬퍼 ────────────────────────────────────────────────
 
     private void validateReceiverStatus(Member receiver) {
-        MemberStatus status = memberStatusRepository.findByMember(receiver)
-                .orElse(null);
-
+        MemberStatus status = memberStatusRepository.findByMember(receiver).orElse(null);
         if (status == null
                 || (status.getStatusType() != StatusType.WORKING
-                && status.getStatusType() != StatusType.MEETING)) {
+                &&  status.getStatusType() != StatusType.MEETING)) {
             throw new IllegalStateException(
                     "중요 알림은 수신자가 [근무중] 또는 [회의중] 상태일 때만 발송할 수 있습니다.");
         }
     }
 
-    /** WsEnvelope 표준 구조로 수신자에게 푸시 */
     private void pushAfterCommit(Notification notification, Member receiver) {
         WsEnvelope envelope = WsEnvelope.of(
-                WsEnvelope.Event.NOTIFICATION_RECEIVED,
-                toResponse(notification)
-        );
+                WsEnvelope.Event.NOTIFICATION_RECEIVED, toResponse(notification));
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
@@ -137,7 +130,7 @@ public class NotificationService {
 
     private Member getManagedMember(Member member) {
         return memberRepository.findById(member.getId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+                .orElseThrow(() -> ResourceNotFoundException.member(member.getId()));
     }
 
     private NotificationResponse toResponse(Notification n) {

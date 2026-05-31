@@ -1,6 +1,7 @@
 package com.worksight.api.repository;
 
 import com.worksight.api.entity.ChatRoom;
+import com.worksight.api.enums.ChatRoomType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,22 +11,33 @@ import java.util.Optional;
 
 public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 
-    /**
-     * 두 멤버 간 채팅방 조회
-     * member1Id < member2Id 정렬 저장 규칙을 그대로 활용
-     */
-    @Query("""
-           SELECT cr FROM ChatRoom cr
-           WHERE cr.member1Id = :small AND cr.member2Id = :big
-           """)
-    Optional<ChatRoom> findByMembers(@Param("small") Long smallId, @Param("big") Long bigId);
+    // ── DIRECT ────────────────────────────────────────
 
-    /**
-     * 내가 참여한 채팅방 목록 조회 (최근 메시지 기준 정렬은 서비스에서 처리)
-     */
     @Query("""
            SELECT cr FROM ChatRoom cr
-           WHERE cr.member1Id = :memberId OR cr.member2Id = :memberId
+           WHERE cr.roomType = 'DIRECT'
+             AND cr.member1Id = :small AND cr.member2Id = :big
            """)
-    List<ChatRoom> findAllByMemberId(@Param("memberId") Long memberId);
+    Optional<ChatRoom> findDirectRoom(@Param("small") Long small, @Param("big") Long big);
+
+    @Query("""
+           SELECT cr FROM ChatRoom cr
+           WHERE cr.roomType = 'DIRECT'
+             AND (cr.member1Id = :memberId OR cr.member2Id = :memberId)
+           """)
+    List<ChatRoom> findDirectRoomsByMemberId(@Param("memberId") Long memberId);
+
+    // ── TEAM ──────────────────────────────────────────
+
+    // 수정됨: ManagerId -> TeamId
+    Optional<ChatRoom> findByTeamIdAndRoomType(Long teamId, ChatRoomType roomType);
+
+    @Query("""
+           SELECT cr FROM ChatRoom cr
+           JOIN ChatRoomParticipant p ON p.chatRoom = cr
+           WHERE cr.roomType = 'TEAM'
+             AND p.member.id = :memberId
+             AND p.active = true
+           """)
+    List<ChatRoom> findTeamRoomsByMemberId(@Param("memberId") Long memberId);
 }

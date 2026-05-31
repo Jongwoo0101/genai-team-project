@@ -62,6 +62,7 @@ public class ChatDto {
     /**
      * 채팅창 상단 안내 배너 응답
      * 상대방이 MEETING 또는 AWAY 상태일 때 프론트에서 안내 문구 표시용
+     *
      * showBanner: true이면 프론트에서 "[OOO님은 현재 {statusLabel}입니다. 알림이 울리지 않습니다.]" 표시
      * canSendUrgent: true이면 긴급 알림 버튼 활성화
      */

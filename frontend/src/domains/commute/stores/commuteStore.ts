@@ -98,6 +98,24 @@ export const createEmployeeScopedCommuteState = (
   };
 };
 
+export function clearCommuteStorage() {
+  const currentOwnerId = useCommuteStore.getState().ownerEmployeeId;
+  if (currentOwnerId) {
+    localStorage.removeItem(`${STORAGE_KEYS.COMMUTE_STATE}:${currentOwnerId}`);
+  }
+  useCommuteStore.setState({
+    ownerEmployeeId: null,
+    commuteStatus: 'NONE',
+    userState: '오프라인',
+    checkInTime: null,
+    checkOutTime: null,
+    logs: [],
+    isCameraActive: false,
+    cameraStream: null,
+    directPings: [],
+  });
+}
+
 export const useCommuteStore = create<CommuteState>()(
   persist(
     (set, get) => ({
@@ -160,7 +178,7 @@ export const useCommuteStore = create<CommuteState>()(
           }));
         } catch (err: unknown) {
           console.error('퇴근 API 호출 실패:', err);
-          if (err instanceof Error && err.message === '오늘 출근 기록이 없습니다.') {
+          if (err instanceof Error && err.message.includes('출근 기록')) {
             get().resetTodayStatus();
           }
           throw err;
@@ -194,7 +212,7 @@ export const useCommuteStore = create<CommuteState>()(
           }));
         } catch (err: unknown) {
           console.error('상태 변경 API 호출 실패:', err);
-          if (err instanceof Error && err.message === '오늘 출근 기록이 없습니다.') {
+          if (err instanceof Error && err.message.includes('출근 기록')) {
             get().resetTodayStatus();
           }
           throw err;

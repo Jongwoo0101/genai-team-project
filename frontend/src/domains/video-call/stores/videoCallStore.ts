@@ -85,6 +85,20 @@ const createMemberScopedVideoCallState = (
   };
 };
 
+export function clearVideoCallStorage() {
+  const currentOwnerId = useVideoCallStore.getState().ownerMemberId;
+  if (currentOwnerId) {
+    localStorage.removeItem(`${STORAGE_KEYS.VIDEOCALL_STATE}:${currentOwnerId}`);
+  }
+  useVideoCallStore.setState({
+    ownerMemberId: null,
+    rooms: [],
+    activeRoom: null,
+    joinRequests: [],
+    invitations: [],
+  });
+}
+
 export const useVideoCallStore = create<VideoCallState>()(
   persist(
     (set, get) => ({

@@ -35,8 +35,14 @@ export interface CreateTeamRequest {
   description?: string;
 }
 
-/** 팀 생성 및 초대 코드 생성 응답 (서버 → 관리자) */
+/**
+ * 팀 생성 및 초대 코드 생성 응답 (서버 → 관리자)
+ * backend: TeamDto.CreateTeamResponse
+ * [변경] teamId: optional → required, teamName 추가
+ */
 export interface CreateTeamResponse {
+  teamId: number;
+  teamName: string;
   inviteCode: string;
 }
 
@@ -50,6 +56,8 @@ export type JoinTeamResponse = void;
 
 /** 내 팀 정보 응답 (backend: TeamDto.MyTeamResponse) */
 export interface MyTeamResponse {
+  teamId: number;
+  teamName: string;
   managerId: number;
   managerUsername: string;
 }
@@ -60,6 +68,19 @@ export interface TeamMemberResponse {
   username: string;
   role: Role;
   virtualBalance: number;
+}
+
+/**
+ * 관리자 팀 목록 응답 (backend: TeamDto.MyTeamsResponse)
+ * [신규] GET /api/teams/my-teams
+ */
+export interface MyTeamsApiResponse {
+  teamId: number;
+  teamName: string;
+  managerId: number;
+  managerUsername: string;
+  memberCount: number;
+  createdAt: string;
 }
 
 /** 로그인 응답 (backend: MemberDto.LoginResponse) */
@@ -77,7 +98,7 @@ export interface MemberResponse {
   id: number;
   username: string;
   role: Role;
-  balance: number; // virtualBalance (가상 머니)
+  balance: number;
 }
 
 /** 웹소켓 알림 (backend: StatusService WebSocket broadcast) */
@@ -118,7 +139,7 @@ export interface MonitoringStatus {
   currentStatus: StatusType;
   lastChecked: string;
   isOnline: boolean;
-  confidence: number; // AI 판별 신뢰도 (0~100)
+  confidence: number;
 }
 
 /** 대시보드 통계 */
@@ -207,6 +228,7 @@ export interface TeamStatusBroadcast {
 }
 
 /** ──────────── 미팅룸 관련 DTO ──────────── */
+
 export interface MeetingParticipantResponse {
   participantId: number;
   memberId: number;
@@ -244,6 +266,7 @@ export interface JoinRequestResponse {
 }
 
 /** ──────────── 알림 관련 DTO ──────────── */
+
 export type NotificationType = 'GENERAL' | 'IMPORTANT';
 
 export interface NotificationResponse {
@@ -264,6 +287,7 @@ export interface UnreadCountResponse {
 }
 
 /** ──────────── 데일리 스탠드업 관련 DTO ──────────── */
+
 export interface StandupResponse {
   standupId: number;
   memberId: number;

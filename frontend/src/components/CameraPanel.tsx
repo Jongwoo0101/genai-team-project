@@ -1,6 +1,6 @@
 import React from 'react';
 import type { AiStatusType } from '../lib/types';
-import { statusTypeLabels, statusTypeColors } from '../lib/mockData';
+import { statusTypeLabels, statusTypeColors } from '../lib/constants';
 
 interface CameraPanelProps {
   isMonitoring: boolean;
