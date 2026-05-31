@@ -61,3 +61,6 @@ application_default_credentials.json
 
 src/logs/
 logs/
+
+# Agent App Data
+.gemini/
