@@ -5,9 +5,11 @@ import com.worksight.api.dto.WsEnvelope;
 import com.worksight.api.entity.*;
 import com.worksight.api.enums.ChatRoomType;
 import com.worksight.api.enums.StatusType;
+import com.worksight.api.exception.ResourceNotFoundException;
 import com.worksight.api.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
@@ -27,7 +29,7 @@ public class ChatService {
     private final ChatRoomParticipantRepository participantRepository;
     private final MemberRepository memberRepository;
     private final MemberStatusRepository memberStatusRepository;
-    private final TeamRepository teamRepository; // 팀 조회를 위해 추가
+    private final TeamRepository teamRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
     // ── 채팅방 목록 ───────────────────────────────────────────────
@@ -44,9 +46,9 @@ public class ChatService {
         return all.stream()
                 .map(room -> toChatRoomResponse(room, me.getId()))
                 .sorted(Comparator.comparing(
-                        r -> r.lastMessage() != null ? r.lastMessage().createdAt() : java.time.LocalDateTime.MIN,
-                        Comparator.reverseOrder()
-                ))
+                        r -> r.lastMessage() != null
+                                ? r.lastMessage().createdAt() : java.time.LocalDateTime.MIN,
+                        Comparator.reverseOrder()))
                 .toList();
     }
 
@@ -55,7 +57,7 @@ public class ChatService {
     @Transactional
     public ChatRoomDetailResponse enterRoom(Member me, Long otherMemberId) {
         Member other = memberRepository.findById(otherMemberId)
-                .orElseThrow(() -> new NoSuchElementException("존재하지 않는 사용자입니다."));
+                .orElseThrow(() -> ResourceNotFoundException.member(otherMemberId));
 
         validateSameTeam(me, other);
 
@@ -85,7 +87,7 @@ public class ChatService {
     @Transactional
     public ChatRoomDetailResponse enterTeamRoom(Member me, Long roomId) {
         ChatRoom room = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new NoSuchElementException("존재하지 않는 채팅방입니다."));
+                .orElseThrow(() -> ResourceNotFoundException.chatRoom(roomId));
 
         if (room.getRoomType() != ChatRoomType.TEAM) {
             throw new IllegalArgumentException("팀 채팅방이 아닙니다.");
@@ -95,7 +97,6 @@ public class ChatService {
                 .findByChatRoomAndMember(room, me)
                 .orElseThrow(() -> new IllegalArgumentException("채팅방 참여자가 아닙니다."));
 
-        // 읽음 처리: lastReadAt 갱신
         participant.updateLastReadAt();
 
         List<ChatMessageResponse> messages = chatMessageRepository
@@ -105,29 +106,27 @@ public class ChatService {
                 .sorted(Comparator.comparing(ChatMessageResponse::createdAt))
                 .toList();
 
-        // TEAM은 otherMember 개념이 없으므로 teamId와 room 정보 반환 (ChatRoom 엔티티에 teamId가 있다고 가정)
-        // 기존에는 managerId를 반환했으나, 이제는 teamId(혹은 대표값)를 반환하는 것이 적절함.
-        Long representativeId = room.getTeamId();
-
+        // TEAM 채팅방은 "상대방" 개념 없음 — teamId를 대표 ID로 반환
+        // otherMemberStatus를 null 허용하거나 별도 DTO 분리를 권장 (4-2 개선 참고)
         return new ChatRoomDetailResponse(
                 room.getId(),
-                representativeId,
+                room.getTeamId(),
                 "팀 채팅방",
-                StatusType.WORKING,
+                null,           // TEAM은 otherMemberStatus 없음 — DTO에서 @Nullable 처리 필요
                 messages
         );
     }
 
-    // ── 메시지 전송 (DIRECT / TEAM 공통) ─────────────────────────
+    // ── 메시지 전송 ───────────────────────────────────────────────
 
     @Transactional
     public ChatMessageResponse sendMessage(Member sender, Long roomId,
                                            SendMessageRequest request) {
         ChatRoom room = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new NoSuchElementException("존재하지 않는 채팅방입니다."));
+                .orElseThrow(() -> ResourceNotFoundException.chatRoom(roomId));
 
         Member managedSender = memberRepository.findById(sender.getId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+                .orElseThrow(() -> ResourceNotFoundException.member(sender.getId()));
 
         if (room.getRoomType() == ChatRoomType.DIRECT) {
             if (!room.hasMember(sender.getId())) {
@@ -148,7 +147,6 @@ public class ChatService {
         chatMessageRepository.save(message);
 
         pushMessageAfterCommit(message, room, sender.getId());
-
         return toChatMessageResponse(message);
     }
 
@@ -157,7 +155,7 @@ public class ChatService {
     @Transactional
     public void markAsRead(Member me, Long roomId) {
         ChatRoom room = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new NoSuchElementException("존재하지 않는 채팅방입니다."));
+                .orElseThrow(() -> ResourceNotFoundException.chatRoom(roomId));
 
         if (room.getRoomType() == ChatRoomType.DIRECT) {
             if (!room.hasMember(me.getId())) {
@@ -165,7 +163,6 @@ public class ChatService {
             }
             chatMessageRepository.markAllAsReadInDirectRoom(room, me.getId());
             notifyReadAfterCommit(room, me.getId(), room.getOtherMemberId(me.getId()));
-
         } else {
             ChatRoomParticipant participant = participantRepository
                     .findByChatRoomAndMember(room, me)
@@ -179,7 +176,7 @@ public class ChatService {
     @Transactional(readOnly = true)
     public ReceiverStatusBannerResponse getReceiverStatusBanner(Member me, Long otherMemberId) {
         Member other = memberRepository.findById(otherMemberId)
-                .orElseThrow(() -> new NoSuchElementException("존재하지 않는 사용자입니다."));
+                .orElseThrow(() -> ResourceNotFoundException.member(otherMemberId));
 
         StatusType status = getStatus(other);
         boolean showBanner = (status == StatusType.MEETING || status == StatusType.AWAY);
@@ -187,7 +184,8 @@ public class ChatService {
         String bannerMessage = null;
         if (showBanner) {
             String label = status == StatusType.MEETING ? "회의 중" : "휴식/자리비움 상태";
-            bannerMessage = "현재 " + other.getUsername() + "님은 " + label + "입니다. 알림이 울리지 않습니다.";
+            bannerMessage = "현재 " + other.getUsername() + "님은 " + label
+                    + "입니다. 알림이 울리지 않습니다.";
         }
 
         return new ReceiverStatusBannerResponse(
@@ -198,64 +196,75 @@ public class ChatService {
 
     // ── 팀 참가 시 채팅방 처리 ────────────────────────────────────
 
-    /**
-     * 팀 참가 시:
-     * 1. 매니저와의 1:1 DIRECT 채팅방 자동 생성
-     * 2. 팀 TEAM 채팅방 생성 또는 참여자로 추가
-     */
     @Transactional
     public void addParticipantToTeamRoom(Long teamId, Member employee) {
         Team team = teamRepository.findById(teamId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 팀입니다."));
+                .orElseThrow(() -> ResourceNotFoundException.team(teamId));
         Member manager = team.getManager();
 
-        // 1. DIRECT 채팅방 생성 (매니저 - 직원 간)
+        // 1. DIRECT 채팅방 (매니저 ↔ 직원) 생성
         findOrCreateDirectRoom(manager.getId(), employee.getId());
 
         // 2. TEAM 채팅방 생성 또는 참여자 추가
-        // 주의: 기존 findByManagerIdAndRoomType 대신 findByTeamIdAndRoomType 등을 사용해야 함.
         ChatRoom teamRoom = chatRoomRepository
                 .findByTeamIdAndRoomType(teamId, ChatRoomType.TEAM)
                 .orElseGet(() -> {
-                    // 팀 채팅방이 없으면 생성 + 매니저를 기본 참여자로 추가
                     ChatRoom newRoom = chatRoomRepository.save(
                             ChatRoom.teamBuilder().teamId(teamId).roomType(ChatRoomType.TEAM).build()
                     );
+                    // 팀 채팅방 최초 생성 시 매니저를 참여자로 추가
                     participantRepository.save(
                             ChatRoomParticipant.builder().chatRoom(newRoom).member(manager).build()
                     );
                     return newRoom;
                 });
 
-        // 3. 직원이 이미 참여 중이 아닌 경우에만 추가
+        // [개선 2-2] ChatRoomParticipant 유니크 제약(uq_participant)과 함께 이중 방어
+        // existsBy 체크 후 save 사이 gap에서 중복 INSERT 발생 가능
+        // → DataIntegrityViolationException 은 GlobalExceptionHandler에서 처리
         if (!participantRepository.existsByChatRoomAndMemberAndActiveTrue(teamRoom, employee)) {
-            participantRepository.save(
-                    ChatRoomParticipant.builder().chatRoom(teamRoom).member(employee).build()
-            );
+            try {
+                participantRepository.save(
+                        ChatRoomParticipant.builder().chatRoom(teamRoom).member(employee).build()
+                );
+            } catch (DataIntegrityViolationException e) {
+                log.warn("ChatRoomParticipant 중복 INSERT 무시: teamRoomId={}, memberId={}",
+                        teamRoom.getId(), employee.getId());
+            }
         }
     }
 
     // ── 내부 헬퍼 ────────────────────────────────────────────────
 
+    /**
+     * DIRECT 채팅방 중복 생성 race condition 방어
+     * DB 유니크 제약(uq_direct_room)과 함께 이중 방어
+     * 중복 INSERT 시 DataIntegrityViolationException → 기존 방 재조회
+     */
     private ChatRoom findOrCreateDirectRoom(Long myId, Long otherId) {
         long small = Math.min(myId, otherId);
         long big   = Math.max(myId, otherId);
 
         return chatRoomRepository.findDirectRoom(small, big)
-                .orElseGet(() -> chatRoomRepository.save(
-                        ChatRoom.directBuilder().member1Id(small).member2Id(big).build()
-                ));
+                .orElseGet(() -> {
+                    try {
+                        return chatRoomRepository.save(
+                                ChatRoom.directBuilder().member1Id(small).member2Id(big).build()
+                        );
+                    } catch (DataIntegrityViolationException e) {
+                        // 동시 요청으로 중복 INSERT 발생 시 이미 만들어진 방 재조회
+                        return chatRoomRepository.findDirectRoom(small, big)
+                                .orElseThrow(() -> new IllegalStateException(
+                                        "채팅방 생성 중 오류가 발생했습니다."));
+                    }
+                });
     }
 
     private void pushMessageAfterCommit(ChatMessage message, ChatRoom room, Long senderId) {
         ChatMessagePayload payload = new ChatMessagePayload(
-                room.getId(),
-                message.getId(),
-                message.getSender().getId(),
-                message.getSender().getUsername(),
-                message.getContent(),
-                message.getMessageType(),
-                message.getCreatedAt()
+                room.getId(), message.getId(),
+                message.getSender().getId(), message.getSender().getUsername(),
+                message.getContent(), message.getMessageType(), message.getCreatedAt()
         );
 
         String event = message.isUrgent()
@@ -266,19 +275,19 @@ public class ChatService {
 
         if (room.getRoomType() == ChatRoomType.DIRECT) {
             Long receiverId = room.getOtherMemberId(senderId);
-            StatusType receiverStatus = getStatusById(receiverId);
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
                     messagingTemplate.convertAndSend("/topic/members/" + receiverId, envelope);
-                    log.info("DIRECT pushed: event={}, receiverId={}, status={}", event, receiverId, receiverStatus);
+                    log.info("DIRECT pushed: event={}, receiverId={}", event, receiverId);
                 }
             });
         } else {
+            // findByChatRoomAndActiveTrue → Member lazy load N+1 방지
+            // findActiveMemberIds: memberId만 SELECT하는 전용 쿼리 사용
             List<Long> receiverIds = participantRepository
-                    .findByChatRoomAndActiveTrue(room)
+                    .findActiveMemberIds(room)
                     .stream()
-                    .map(p -> p.getMember().getId())
                     .filter(id -> !id.equals(senderId))
                     .toList();
 
@@ -294,9 +303,10 @@ public class ChatService {
     }
 
     private void notifyReadAfterCommit(ChatRoom room, Long readByMemberId, Long notifyMemberId) {
-        ChatReadPayload payload = new ChatReadPayload(room.getId(), readByMemberId);
-        WsEnvelope envelope = WsEnvelope.of(WsEnvelope.Event.CHAT_READ, payload);
-
+        WsEnvelope envelope = WsEnvelope.of(
+                WsEnvelope.Event.CHAT_READ,
+                new ChatReadPayload(room.getId(), readByMemberId)
+        );
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
@@ -305,28 +315,33 @@ public class ChatService {
         });
     }
 
+    /**
+     * 같은 팀 검증 — Team 엔티티 기반으로 변경
+     * 기존: managerId 숫자 비교 → 오류 가능성 있음
+     * 개선: DB에서 최신 Member 조회 후 team.id 비교
+     */
     private void validateSameTeam(Member me, Member other) {
-        Member managedMe = memberRepository.findById(me.getId())
-                .orElseThrow(() -> new java.util.NoSuchElementException("사용자를 찾을 수 없습니다."));
+        Member managedMe    = memberRepository.findById(me.getId())
+                .orElseThrow(() -> ResourceNotFoundException.member(me.getId()));
         Member managedOther = memberRepository.findById(other.getId())
-                .orElseThrow(() -> new java.util.NoSuchElementException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> ResourceNotFoundException.member(other.getId()));
 
-        Team myTeam = managedMe.getTeam();
+        Team myTeam    = managedMe.getTeam();
         Team otherTeam = managedOther.getTeam();
 
-        // 1. 관리자-직원 관계이거나
-        // 2. 같은 팀에 소속되어 있어야 함
-        boolean isSameTeam = false;
+        boolean isSameTeam;
 
         if (myTeam != null && otherTeam != null) {
+            // 둘 다 팀이 있는 경우: 같은 팀인지 확인
             isSameTeam = myTeam.getId().equals(otherTeam.getId());
         } else if (myTeam != null) {
-            // 내가 팀이 있는데 상대방이 내 팀의 매니저인 경우 (상대방은 Team 엔티티가 null일 수 있으나 매니저 역할인 경우)
-            // 혹은 내가 매니저고 상대방이 내 팀 소속인 경우
-            isSameTeam = myTeam.getManager().getId().equals(managedOther.getId()) ||
-                    (otherTeam != null && otherTeam.getManager().getId().equals(managedMe.getId()));
+            // 내가 팀이 있고 상대방이 없는 경우: 상대방이 내 팀 매니저인지 확인
+            isSameTeam = myTeam.getManager().getId().equals(managedOther.getId());
         } else if (otherTeam != null) {
+            // 내가 팀이 없고 상대방이 있는 경우: 내가 상대방 팀의 매니저인지 확인
             isSameTeam = otherTeam.getManager().getId().equals(managedMe.getId());
+        } else {
+            isSameTeam = false;
         }
 
         if (!isSameTeam) {
@@ -353,14 +368,15 @@ public class ChatService {
 
         if (room.getRoomType() == ChatRoomType.DIRECT) {
             otherId = room.getOtherMemberId(myId);
-            Member other = memberRepository.findById(otherId).orElse(null);
-            otherUsername = other != null ? other.getUsername() : "(알 수 없음)";
-            otherStatus   = other != null ? getStatus(other) : StatusType.OFFLINE;
+            // [개선 4-3] orElse(null) 대신 orElseThrow — 정상 상태에서 없을 수 없음
+            Member other = memberRepository.findById(otherId)
+                    .orElseThrow(() -> ResourceNotFoundException.member(otherId));
+            otherUsername = other.getUsername();
+            otherStatus   = getStatus(other);
         } else {
-            // TEAM: managerId 대신 teamId로 반환
             otherId       = room.getTeamId();
             otherUsername = "팀 채팅방";
-            otherStatus   = StatusType.WORKING;
+            otherStatus   = null; // TEAM은 상대방 상태 없음
         }
 
         ChatMessageResponse lastMsg = chatMessageRepository
@@ -377,15 +393,10 @@ public class ChatService {
 
     private ChatMessageResponse toChatMessageResponse(ChatMessage m) {
         return new ChatMessageResponse(
-                m.getId(),
-                m.getChatRoom().getId(),
-                m.getSender().getId(),
-                m.getSender().getUsername(),
-                m.getContent(),
-                m.getMessageType(),
-                m.isRead(),
-                m.getCreatedAt(),
-                m.getReadAt()
+                m.getId(), m.getChatRoom().getId(),
+                m.getSender().getId(), m.getSender().getUsername(),
+                m.getContent(), m.getMessageType(),
+                m.isRead(), m.getCreatedAt(), m.getReadAt()
         );
     }
 }

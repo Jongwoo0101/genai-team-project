@@ -18,7 +18,7 @@ public interface ChatRoomParticipantRepository extends JpaRepository<ChatRoomPar
 
     boolean existsByChatRoomAndMemberAndActiveTrue(ChatRoom chatRoom, Member member);
 
-    /** 팀 채팅방 미읽음 수 — lastReadAt 이후 발송된 메시지 수 */
+    /** 팀 채팅 미읽음 수 — lastReadAt 이후 메시지 수 */
     @Query("""
            SELECT COUNT(cm) FROM ChatMessage cm
            JOIN ChatRoomParticipant p
@@ -30,4 +30,16 @@ public interface ChatRoomParticipantRepository extends JpaRepository<ChatRoomPar
            """)
     long countUnreadTeamMessages(@Param("room") ChatRoom room,
                                  @Param("memberId") Long memberId);
+
+    /**
+     * TEAM 채팅 WebSocket 푸시 시 Member 전체 로딩 없이 ID만 조회
+     * 기존: findByChatRoomAndActiveTrue → p.getMember().getId() (Member lazy load → N+1)
+     * 개선: memberId만 SELECT
+     */
+    @Query("""
+           SELECT p.member.id FROM ChatRoomParticipant p
+           WHERE p.chatRoom = :room
+             AND p.active = true
+           """)
+    List<Long> findActiveMemberIds(@Param("room") ChatRoom room);
 }

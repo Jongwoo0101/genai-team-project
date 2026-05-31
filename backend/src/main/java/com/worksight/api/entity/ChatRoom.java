@@ -7,8 +7,23 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
+/**
+ * DIRECT 채팅방 중복 생성 race condition 방어
+ * (member1_id, member2_id) 유니크 제약 추가
+ * 두 사용자가 동시에 처음 대화를 시작할 경우
+ * SELECT → INSERT 사이의 gap에서 중복 INSERT가 발생할 수 있다.
+ * DB 유니크 제약이 두 번째 INSERT를 막고,
+ * DataIntegrityViolationException → GlobalExceptionHandler에서 409로 응답한다.
+ * 팀 채팅방은 team_id 기반으로 관리 (기존 manager_id → team_id 변경 반영)
+ */
 @Entity
-@Table(name = "chat_room")
+@Table(
+    name = "chat_room",
+    uniqueConstraints = {
+        // DIRECT 채팅방 중복 생성 방지
+        @UniqueConstraint(name = "uq_direct_room", columnNames = {"member1_id", "member2_id"})
+    }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ChatRoom {
@@ -28,7 +43,7 @@ public class ChatRoom {
     private Long member2Id;
 
     // ── TEAM 전용 ─────────────────────────────────────
-    // 수정됨: manager_id -> team_id
+    // 기존 manager_id → team_id 변경 (Team 엔티티 도입에 따른 수정)
     @Column(name = "team_id")
     private Long teamId;
 
@@ -43,18 +58,17 @@ public class ChatRoom {
         this.member2Id = Math.max(member1Id, member2Id);
     }
 
-    /** TEAM 채팅방 생성 (수정됨: managerId -> teamId) */
+    /** TEAM 채팅방 생성 */
     @Builder(builderMethodName = "teamBuilder", builderClassName = "TeamBuilder")
     public ChatRoom(Long teamId, ChatRoomType roomType) {
-        this.roomType  = ChatRoomType.TEAM;
-        this.teamId    = teamId;
+        this.roomType = ChatRoomType.TEAM;
+        this.teamId   = teamId;
     }
 
     public boolean hasMember(Long memberId) {
         if (roomType == ChatRoomType.DIRECT) {
             return member1Id.equals(memberId) || member2Id.equals(memberId);
         }
-        // TEAM은 ChatRoomParticipant로 관리 — 서비스 레이어에서 별도 검증
         return true;
     }
 
