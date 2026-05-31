@@ -8,11 +8,19 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * 출퇴근 기록 엔티티
- * - CLOCK_IN  : 업무 시작 클릭 시 생성
- * - CLOCK_OUT : 업무 종료 클릭 시 clockOutTime 업데이트
+ * 출근 중복 체크 race condition 방어
+ * (member_id, work_date) 유니크 제약 추가
+ * WorkLogService에서 SELECT → INSERT 사이 동시 요청이 들어올 경우
+ * DB 유니크 제약이 두 번째 INSERT를 막는다.
+ * DataIntegrityViolationException → GlobalExceptionHandler에서 409 응답.
  */
 @Entity
+@Table(
+    name = "work_log",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uq_work_log_member_date", columnNames = {"member_id", "work_date"})
+    }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class WorkLog {
@@ -25,12 +33,12 @@ public class WorkLog {
     private Member member;
 
     @Column(nullable = false)
-    private LocalDate workDate;         // 근무 날짜 (당일)
+    private LocalDate workDate;
 
     @Column(nullable = false)
-    private LocalDateTime clockInTime;  // 출근 시각
+    private LocalDateTime clockInTime;
 
-    private LocalDateTime clockOutTime; // 퇴근 시각 (출근 시엔 null)
+    private LocalDateTime clockOutTime;
 
     @CreationTimestamp
     private LocalDateTime createdAt;
