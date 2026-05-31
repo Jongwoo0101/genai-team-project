@@ -1,5 +1,6 @@
 import SockJS from 'sockjs-client';
 import * as Stomp from 'stompjs';
+import { STORAGE_KEYS } from './constants'; // 인증 토큰 키를 가져오기 위해 추가
 
 // Spring Boot 서버가 구동 중인 주소 (v2.0 STOMP 엔드포인트)
 const SOCKET_URL = '/ws';
@@ -42,8 +43,16 @@ class WebSocketService {
     stompClient.debug = () => {};
     this.stompClient = stompClient;
 
+    // api.ts와 동일하게 sessionStorage에서 토큰을 가져와 헤더 생성
+    const token = sessionStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+    const headers: Record<string, string> = {};
+    if (token && token !== 'undefined' && token !== 'null') {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // 빈 객체 `{}` 대신 생성한 `headers` 객체를 전달하여 STOMP CONNECT 요청
     stompClient.connect(
-      {},
+      headers,
       () => {
         // 이미 disconnect가 호출되어 stompClient가 다른 인스턴스로 바뀐 경우 취소
         if (this.stompClient !== stompClient) {
@@ -104,9 +113,9 @@ class WebSocketService {
     this.unsubscribe(topic);
 
     let stompSub: Stomp.Subscription | null = null;
-      if (this.connected && this.stompClient) {
-        stompSub = this.stompClient.subscribe(topic, (message) => {
-          if (message.body) {
+    if (this.connected && this.stompClient) {
+      stompSub = this.stompClient.subscribe(topic, (message) => {
+        if (message.body) {
           try {
             const data = JSON.parse(message.body);
             callback(data);
@@ -115,9 +124,9 @@ class WebSocketService {
           }
         }
       });
-      } else {
-        // 아직 연결되지 않았으므로 구독은 저장만 하고, 연결 시 자동으로 구독됩니다.
-      }
+    } else {
+      // 아직 연결되지 않았으므로 구독은 저장만 하고, 연결 시 자동으로 구독됩니다.
+    }
 
     this.subscriptions.set(topic, {
       stompSubscription: stompSub,

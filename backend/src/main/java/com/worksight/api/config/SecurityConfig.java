@@ -5,6 +5,7 @@ import com.worksight.api.security.JwtAuthenticationFilter;
 import com.worksight.api.security.JwtProvider;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -32,6 +33,10 @@ public class SecurityConfig {
 
     private final JwtProvider jwtProvider;
     private final MemberRepository memberRepository;
+
+    // CORS 허용 출처를 application.yaml로 외부화
+    @Value("${app.cors.allowed-origins:http://localhost:5173}")
+    private List<String> allowedOrigins;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -71,6 +76,8 @@ public class SecurityConfig {
                                 "/api/members/login",
                                 "/api/members/reissue").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
+                        // [개선 1-2] /ws/** 는 SockJS HTTP 핸드셰이크를 위해 permitAll 유지
+                        // 실제 STOMP 인증은 WebSocketAuthInterceptor(ChannelInterceptor)에서 처리
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/ws-monitoring/**").permitAll()
                         .requestMatchers(HttpMethod.POST,
@@ -97,7 +104,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        config.setAllowedOrigins(allowedOrigins); // [개선 1-1]
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
         config.setExposedHeaders(List.of("Authorization"));
