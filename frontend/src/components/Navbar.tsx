@@ -5,9 +5,24 @@ import { useTeamStore } from '../domains/team/stores/teamStore';
 export default function Navbar() {
   const location = useLocation();
   const { user, isAuthenticated, logout } = useAuthStore();
-  const { teams } = useTeamStore();
+  const { teams, memberTeamMap } = useTeamStore(); // memberTeamMap 추가
 
-  const activeTeamId = teams[0]?.id || '';
+  // 상황에 맞는 정확한 teamId를 추출하는 똑똑한 로직
+  const activeTeamId = (() => {
+    if (!user) return '';
+
+    // 1. 현재 URL 경로에 teamId가 있다면 최우선 사용 (관리자가 여러 팀을 전환하며 볼 때 필수)
+    const match = location.pathname.match(/\/team\/([^/]+)/);
+    if (match) return match[1];
+
+    // 2. 직원의 경우 자신이 소속된 '진짜' 팀 ID를 사용
+    if (user.role === 'EMPLOYEE') {
+      return memberTeamMap[user.id] || teams[0]?.id || '';
+    }
+
+    // 3. 관리자가 홈 화면 등에 있을 때는 소유한 첫 번째 팀을 기본값으로 사용
+    return teams[0]?.id || '';
+  })();
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-[100] px-8 py-6 pointer-events-none">
@@ -36,6 +51,7 @@ export default function Navbar() {
             {isAuthenticated && user?.role === 'EMPLOYEE' && (
               <NavLink to="/employee" label="내 모니터링" active={location.pathname === '/employee'} />
             )}
+            {/*  정확한 teamId를 기반으로 메시지 링크 생성 */}
             {isAuthenticated && activeTeamId && (
               <NavLink to={`/team/${activeTeamId}/messages`} label="메시지" active={location.pathname.includes('/messages')} />
             )}
@@ -50,7 +66,7 @@ export default function Navbar() {
                 <span className="text-xs font-bold text-slate-500 tracking-wider uppercase">{user.role}</span>
                 <span className="text-sm font-bold text-white">{user.username}님</span>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/10 flex items-center justify-center text-white text-sm font-bold shadow-inner group hover:border-cyan-500/50 transition-colors">
+              <div className="w-10 h-10 rounded-xl bg-slate-800 border border-white/10 flex items-center justify-center text-white text-sm font-bold shadow-inner group hover:border-cyan-500/50 transition-colors cursor-help" title="프로필 아바타">
                 {user.username.charAt(0).toUpperCase()}
               </div>
               <button
