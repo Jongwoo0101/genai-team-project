@@ -51,7 +51,8 @@ interface VideoCallState {
   activeRoom: VideoCallRoom | null;
   joinRequests: JoinRequest[];
   invitations: Invitation[];
-  loadRooms: () => Promise<void>;
+  // loadRooms: () => Promise<void>;
+  loadRooms: (teamId?: number) => Promise<void>;
   loadActiveRoomDetail: (roomId: number) => Promise<void>;
   createRoom: (title: string) => Promise<void>;
   joinRoom: (roomId: number) => Promise<void>;
@@ -108,9 +109,9 @@ export const useVideoCallStore = create<VideoCallState>()(
       joinRequests: [],
       invitations: [],
 
-      loadRooms: async () => {
+      loadRooms: async (teamId?: number) => {
         try {
-          const list = await api.getMeetings();
+          const list = await api.getMeetings(teamId);
           const mapped: VideoCallRoom[] = list.map((r) => ({
             roomId: r.roomId,
             title: r.title,

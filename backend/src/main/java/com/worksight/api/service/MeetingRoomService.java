@@ -33,7 +33,7 @@ public class MeetingRoomService {
     private final MeetingRoomRepository meetingRoomRepository;
     private final MeetingParticipantRepository participantRepository;
     private final MemberRepository memberRepository;
-    private final TeamRepository teamRepository; // 추가
+    private final TeamRepository teamRepository;
     private final StatusService statusService;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -71,8 +71,9 @@ public class MeetingRoomService {
     }
 
     @Transactional(readOnly = true)
-    public List<MeetingRoomResponse> getActiveRooms(Member member) {
-        Long teamId = resolveTeamId(member);
+    public List<MeetingRoomResponse> getActiveRooms(Member member, Long requestedTeamId) {
+        // 프론트에서 명시적으로 teamId를 넘겨주면 그 팀의 방을 반환
+        Long teamId = (requestedTeamId != null) ? requestedTeamId : resolveTeamId(member);
 
         return meetingRoomRepository.findActiveRoomsByTeamId(teamId)
                 .stream()

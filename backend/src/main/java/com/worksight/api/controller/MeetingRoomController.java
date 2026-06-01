@@ -29,9 +29,10 @@ public class MeetingRoomController {
     /** GET /api/meetings — 진행 중인 미팅룸 목록 조회 */
     @GetMapping
     public ResponseEntity<List<MeetingRoomResponse>> getActiveRooms(
-            @AuthenticationPrincipal Member member
+            @AuthenticationPrincipal Member member,
+            @RequestParam(required = false) Long teamId // 다중 팀 조회를 위한 파라미터
     ) {
-        return ResponseEntity.ok(meetingRoomService.getActiveRooms(member));
+        return ResponseEntity.ok(meetingRoomService.getActiveRooms(member, teamId));
     }
 
     /** GET /api/meetings/{roomId} — 미팅룸 상세 조회 */

@@ -201,11 +201,19 @@ export async function createMeeting(title: string): Promise<MeetingRoomResponse>
   return requestWithAuth<MeetingRoomResponse>('/meetings', 'POST', { title });
 }
 
-/** 진행 중인 미팅룸 목록 조회 */
+/** 진행 중인 미팅룸 목록 조회 
 export async function getMeetings(): Promise<MeetingRoomResponse[]> {
   const res = await fetchWithAuth('/meetings');
   if (!res.ok) throw new Error('미팅룸 목록을 불러오지 못했습니다.');
   return res.json();
+} */
+export async function getMeetings(teamId?: number): Promise<MeetingRoomResponse[]> {
+  const url = teamId ? `/meetings?teamId=${teamId}` : '/meetings';
+  const res = await fetchWithAuth(url);
+
+  if (!res.ok) throw new Error('미팅룸 목록을 불러오지 못했습니다.');
+  return res.json();
+  
 }
 
 /** 미팅룸 상세 조회 */

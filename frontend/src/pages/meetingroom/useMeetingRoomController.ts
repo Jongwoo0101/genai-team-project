@@ -95,7 +95,6 @@ export function useMeetingRoomController({
             void handleWebsocketEvent(envelope);
           }
 
-          // 추가: 긴급 메시지(CHAT_URGENT_RECEIVED) 수신 처리
           if (envelope.event === 'CHAT_URGENT_RECEIVED') {
             const data = envelope.data as any;
             const commuteStore = useCommuteStore.getState();
@@ -113,7 +112,6 @@ export function useMeetingRoomController({
             });
           }
 
-          // 일반 상사 경고 알림 수신 처리
           if (envelope.event === 'NOTIFICATION_RECEIVED') {
             const data = envelope.data as any;
             if (data && data.notificationType === 'IMPORTANT') {
@@ -133,12 +131,13 @@ export function useMeetingRoomController({
     };
   }, [user, team?.id, handleWebsocketEvent]);
 
+  // ✅ [수정됨] loadRooms 호출 시 현재 활성화된 팀 ID를 전달
   useEffect(() => {
     if (user) {
       syncMemberContext(user.id);
-      void loadRooms();
+      void loadRooms(team ? Number(team.id) : undefined);
     }
-  }, [user, loadRooms, syncMemberContext]);
+  }, [user, team, loadRooms, syncMemberContext]);
 
   useEffect(() => {
     if (user && !activeRoom) {
