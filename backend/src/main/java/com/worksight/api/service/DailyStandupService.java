@@ -84,9 +84,9 @@ public class DailyStandupService {
     }
 
     @Transactional(readOnly = true)
-    public TeamStandupResponse getTeamStandup(Member member, LocalDate date) {
+    public TeamStandupResponse getTeamStandup(Member member, LocalDate date, Long requestedTeamId) {
         LocalDate targetDate = (date != null) ? date : LocalDate.now();
-        Long teamId = resolveTeamId(member);
+        Long teamId = (requestedTeamId != null) ? requestedTeamId : resolveTeamId(member);
 
         List<DailyStandupResponse> standups = dailyStandupRepository
                 .findTeamStandupsByDate(teamId, targetDate)

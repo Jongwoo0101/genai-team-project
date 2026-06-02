@@ -10,6 +10,7 @@ import { useCommuteStore } from '../../domains/commute/stores/commuteStore';
 
 interface UseMeetingRoomControllerOptions {
   user: AuthUser | null;
+  currentTeamId?: number;
   commuteStatus?: 'NONE' | 'WORK' | 'LEAVE';
   requireWorkStatus?: boolean;
 }
@@ -19,6 +20,7 @@ const getErrorMessage = (err: unknown, fallback: string): string =>
 
 export function useMeetingRoomController({
   user,
+  currentTeamId,
   commuteStatus,
   requireWorkStatus = false,
 }: UseMeetingRoomControllerOptions) {
@@ -46,6 +48,9 @@ export function useMeetingRoomController({
 
   const team = (() => {
     if (!user) return undefined;
+    if (currentTeamId !== undefined) {
+      return teams.find((t) => Number(t.id) === currentTeamId);
+    }
     if (user.role === 'MANAGER') {
       return teams.find((t) => t.managerId === user.id);
     }
@@ -54,7 +59,7 @@ export function useMeetingRoomController({
     return teams.find((t) => t.id === teamId);
   })();
 
-  const managerId = user?.role === 'MANAGER' ? user.id : team?.managerId;
+  const resolvedTeamId = team ? Number(team.id) : currentTeamId;
 
   useEffect(() => {
     if (user) {
@@ -62,10 +67,10 @@ export function useMeetingRoomController({
       if (user.role === 'EMPLOYEE') {
         void fetchMyTeam();
       } else if (user.role === 'MANAGER') {
-        void fetchTeamMembers(user.id);
+        void fetchTeamMembers(resolvedTeamId ?? user.id);
       }
     }
-  }, [user, syncTeamContext, fetchMyTeam, fetchTeamMembers]);
+  }, [user, resolvedTeamId, syncTeamContext, fetchMyTeam, fetchTeamMembers]);
 
   useEffect(() => {
     if (!user || !team?.id) return;
@@ -77,7 +82,7 @@ export function useMeetingRoomController({
         webSocketService.subscribe(teamTopic, (msg) => {
           const envelope = parseWsEnvelope(msg);
           if (!envelope) return;
-          void handleWebsocketEvent(envelope);
+          void handleWebsocketEvent(envelope, resolvedTeamId);
         });
 
         // 2. 개인 토픽 구독
@@ -92,7 +97,7 @@ export function useMeetingRoomController({
             envelope.event === 'REQUEST_ACCEPTED' ||
             envelope.event === 'REQUEST_REJECTED'
           ) {
-            void handleWebsocketEvent(envelope);
+            void handleWebsocketEvent(envelope, resolvedTeamId);
           }
 
           if (envelope.event === 'CHAT_URGENT_RECEIVED') {
@@ -129,15 +134,15 @@ export function useMeetingRoomController({
       webSocketService.unsubscribe(WEBSOCKET_TOPICS.MEMBER(user.id));
       webSocketService.disconnect();
     };
-  }, [user, team?.id, handleWebsocketEvent]);
+  }, [user, team?.id, resolvedTeamId, handleWebsocketEvent]);
 
   // ✅ [수정됨] loadRooms 호출 시 현재 활성화된 팀 ID를 전달
   useEffect(() => {
     if (user) {
       syncMemberContext(user.id);
-      void loadRooms(team ? Number(team.id) : undefined);
+      void loadRooms(resolvedTeamId);
     }
-  }, [user, team, loadRooms, syncMemberContext]);
+  }, [user, resolvedTeamId, loadRooms, syncMemberContext]);
 
   useEffect(() => {
     if (user && !activeRoom) {

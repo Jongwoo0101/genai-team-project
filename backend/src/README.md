@@ -428,7 +428,7 @@ PUT /api/status/manual
 ### 6.3 팀 전체 상태 조회
 
 ```
-GET /api/status/team/{managerId}
+GET /api/status/team/{teamId}
 ```
 
 > **MANAGER 권한 필요**

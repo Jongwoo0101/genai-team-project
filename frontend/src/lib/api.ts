@@ -188,8 +188,8 @@ export async function updateManualStatus(statusType: StatusType): Promise<Status
 }
 
 /** 매니저용 팀원 전체 실시간 상태 조회 */
-export async function getTeamMemberStatuses(managerId: number): Promise<TeamMemberStatusResponse[]> {
-  const res = await fetchWithAuth(`/status/team/${managerId}`);
+export async function getTeamMemberStatuses(teamId: number): Promise<TeamMemberStatusResponse[]> {
+  const res = await fetchWithAuth(`/status/team/${teamId}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
@@ -316,8 +316,11 @@ export async function getMyTodayStandup(): Promise<StandupResponse> {
 }
 
 /** 팀 전체 스탠드업 조회 */
-export async function getTeamStandups(date?: string): Promise<TeamStandupResponse> {
-  const url = date ? `/standup/team?date=${date}` : '/standup/team';
+export async function getTeamStandups(date?: string, teamId?: number): Promise<TeamStandupResponse> {
+  const params = new URLSearchParams();
+  if (date) params.set('date', date);
+  if (teamId !== undefined) params.set('teamId', String(teamId));
+  const url = params.size > 0 ? `/standup/team?${params.toString()}` : '/standup/team';
   const res = await fetchWithAuth(url);
   if (!res.ok) throw new Error('팀 스탠드업 목록을 불러오지 못했습니다.');
   return res.json();

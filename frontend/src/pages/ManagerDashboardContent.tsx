@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Navigate, useParams, useNavigate } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { useAuthStore } from '../domains/auth/stores/authStore';
 import { useTeamStore } from '../domains/team/stores/teamStore';
 import { useCommuteStore, mapEnStatusToKoState } from '../domains/commute/stores/commuteStore';
 import type { UserStateType } from '../domains/commute/stores/commuteStore';
-import { STATUS_UI_SETTINGS } from '../domains/commute/constants/statusSettings';
 import { WEBSOCKET_TOPICS } from '../lib/constants';
 import { useStandupStore } from '../domains/standup/stores/standupStore';
 import { useVideoCallStore } from '../domains/video-call/stores/videoCallStore';
@@ -29,7 +28,6 @@ import type { DashboardAlert } from './manager-dashboard/components/ManagerAlert
 export default function ManagerDashboard() {
   const { user, isAuthenticated } = useAuthStore();
   const { teamId } = useParams<{ teamId: string }>();
-  const navigate = useNavigate();
   const fetchTeamMembers = useTeamStore((s) => s.fetchTeamMembers);
   const syncTeamContext = useTeamStore((s) => s.syncMemberContext);
   const team = useTeamStore((s) => teamId ? s.teams.find((t) => t.id === teamId) : undefined);
@@ -43,6 +41,7 @@ export default function ManagerDashboard() {
   } = useCommuteStore();
   const { standups, loadTeamStandups, syncMemberContext: syncStandupContext } = useStandupStore();
   const { handleWebsocketEvent: handleVideoCallWS } = useVideoCallStore();
+  const numericTeamId = teamId ? Number(teamId) : undefined;
   const {
     rooms,
     activeRoom,
@@ -52,12 +51,8 @@ export default function ManagerDashboard() {
     invitations,
     handleAcceptInvitation,
     declineInvitation,
-  } = useMeetingRoomController({ user });
+  } = useMeetingRoomController({ user, currentTeamId: numericTeamId });
 
-  const [copied, setCopied] = useState(false);
-  
-  // 검색 및 필터 상태
-  const [searchTerm, setSearchTerm] = useState('');
   const [standupFilterDate, setStandupFilterDate] = useState(new Date().toISOString().split('T')[0]);
 
   // 실시간 알림 수신 상태
@@ -67,7 +62,6 @@ export default function ManagerDashboard() {
 
   // 디렉토링 경고 작성 상태
   const [pingTarget, setPingTarget] = useState<{ id: number; name: string } | null>(null);
-  const [pingMessage, setPingMessage] = useState('');
 
   // team is now reactively derived from Zustand selector above
 
@@ -76,7 +70,7 @@ export default function ManagerDashboard() {
       syncTeamContext(user.id);
       syncStandupContext(user.id);
       void fetchTeamMembers(Number(teamId));
-      void loadTeamStandups(standupFilterDate);
+      void loadTeamStandups(standupFilterDate, Number(teamId));
     }
   }, [fetchTeamMembers, user?.id, teamId, loadTeamStandups, standupFilterDate, syncTeamContext, syncStandupContext]);
 
@@ -110,8 +104,8 @@ export default function ManagerDashboard() {
       const { event, data, occurredAt } = envelope;
 
       if (event) {
-        handleVideoCallWS(envelope);
-        useStandupStore.getState().handleWebsocketEvent(envelope);
+        handleVideoCallWS(envelope, numericTeamId);
+        useStandupStore.getState().handleWebsocketEvent(envelope, numericTeamId);
       }
 
       const memberId = typeof data.memberId === 'number' ? data.memberId : null;
@@ -142,7 +136,7 @@ export default function ManagerDashboard() {
     webSocketService.subscribe(memberTopic, (msg) => {
       const envelope = parseWsEnvelope(msg);
       if (envelope?.event) {
-        handleVideoCallWS(envelope);
+        handleVideoCallWS(envelope, numericTeamId);
       }
     });
 
@@ -151,18 +145,10 @@ export default function ManagerDashboard() {
       webSocketService.unsubscribe(memberTopic);
       webSocketService.disconnect();
     };
-  }, [user, teamId, handleVideoCallWS]);
+  }, [user, teamId, numericTeamId, handleVideoCallWS]);
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!team) return <Navigate to="/teams" replace />;
-
-  const handleCopyCode = async () => {
-    if (team?.teamCode) {
-      await navigator.clipboard.writeText(team.teamCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
 
   // 영상통화 빠른 참여
   const handleJoinCall = async (roomId: number) => {
@@ -238,9 +224,6 @@ export default function ManagerDashboard() {
   };
 
   const membersStatus = getTeamMembersStatus();
-  const filteredMembers = membersStatus.filter((m) =>
-    m.username.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   // 2. 대시보드용 주요 통계
   const onlineCount = membersStatus.filter((m) => m.isOnline).length;
@@ -248,40 +231,10 @@ export default function ManagerDashboard() {
   const meetingCount = membersStatus.filter((m) => m.status === '회의 중').length;
   const restingCount = membersStatus.filter((m) => m.status === '자리비움').length;
 
-  // 3. Recharts 순 인원 차트 시각화 데이터 구성
-  // - 업무 시간(09:00 ~ 18:00) 내 온라인 상태인 직원의 수
-  const getChartData = () => {
-    // 실시간 근무 현황과 모의 일일 근무 패턴을 융합
-    const basePattern = [
-      { time: '09:00', 인원: Math.max(0, onlineCount - 1) },
-      { time: '10:00', 인원: onlineCount },
-      { time: '11:00', 인원: onlineCount },
-      { time: '12:00', 인원: Math.round(onlineCount * 0.3) }, // 점심시간 인원 감소
-      { time: '13:00', 인원: Math.round(onlineCount * 0.7) },
-      { time: '14:00', 인원: onlineCount },
-      { time: '15:00', 인원: onlineCount },
-      { time: '16:00', 인원: onlineCount },
-      { time: '17:00', 인원: Math.max(0, onlineCount - 1) },
-      { time: '18:00', 인원: Math.round(onlineCount * 0.2) }, // 퇴근 준비
-    ];
-    return basePattern;
-  };
-
-  const chartData = getChartData();
-
-  // 4. 데일리 스탠드업 필터링 리스트
+  // 3. 데일리 스탠드업 필터링 리스트
   const todayStandups = standups.filter(
     (s) => s.dateStr === standupFilterDate && team.members.some((m) => m.id === s.employeeId)
   );
-
-  const getStatusBadge = (status: UserStateType) => {
-    const setting = STATUS_UI_SETTINGS[status] || STATUS_UI_SETTINGS['오프라인'];
-    return (
-      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${setting.bgStyle} ${setting.textStyle}`}>
-        {setting.icon} {setting.label}
-      </span>
-    );
-  };
 
   return (
     <div className="min-h-screen bg-slate-950 pt-6 pb-12 px-6">

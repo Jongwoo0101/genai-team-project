@@ -92,15 +92,15 @@ Content-Type: application/json
 }
 
 ### ══════════════════════════════════════════
-### 팀 전체 상태 조회 (GET /api/status/team/{managerId})
+### 팀 전체 상태 조회 (GET /api/status/team/{teamId})
 ### ══════════════════════════════════════════
 
 ### 10. 팀 전체 상태 조회 (MANAGER 호출) ← 200 기대
-GET {{baseUrl}}/api/status/team/{{managerId}}
+GET {{baseUrl}}/api/status/team/{{teamId}}
 Authorization: Bearer {{managerToken}}
 
 ### 11. EMPLOYEE가 팀 상태 조회 시도 ← 403 기대
-GET {{baseUrl}}/api/status/team/{{managerId}}
+GET {{baseUrl}}/api/status/team/{{teamId}}
 Authorization: Bearer {{employeeToken}}
 
 ### 12. 타 관리자 팀 조회 시도 ← 400 기대
@@ -108,4 +108,4 @@ GET {{baseUrl}}/api/status/team/9999
 Authorization: Bearer {{managerToken}}
 
 ### 13. 미인증 팀 상태 조회 ← 401 기대
-GET {{baseUrl}}/api/status/team/{{managerId}}
+GET {{baseUrl}}/api/status/team/{{teamId}}

@@ -43,15 +43,15 @@ public class StatusController {
     }
 
     /**
-     * GET /api/status/team/{managerId}
+     * GET /api/status/team/{teamId}
      * 팀 전체 현재 상태 조회 (MANAGER 전용)
      */
-    @GetMapping("/team/{managerId}")
+    @GetMapping("/team/{teamId}")
     @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<List<TeamMemberStatusResponse>> getTeamStatus(
-            @PathVariable Long managerId,
+            @PathVariable Long teamId,
             @AuthenticationPrincipal Member manager
     ) {
-        return ResponseEntity.ok(statusService.getTeamStatus(managerId, manager));
+        return ResponseEntity.ok(statusService.getTeamStatus(teamId, manager));
     }
 }

@@ -20,19 +20,23 @@ export interface Standup {
 
 interface StandupState {
   ownerMemberId: number | null;
+  currentTeamId: number | null;
   standups: Standup[];
   syncMemberContext: (memberId: number) => void;
   addStandup: (employeeId: number, employeeName: string, todayGoal: string, todayResult: string) => Promise<void>;
   getStandupsByDate: (dateStr: string) => Standup[];
   getStandupsByEmployee: (employeeId: number) => Standup[];
-  loadTeamStandups: (dateStr?: string) => Promise<void>;
+  loadTeamStandups: (dateStr?: string, teamId?: number) => Promise<void>;
   loadMyTodayStandup: () => Promise<void>;
   clearAll: () => void;
-  handleWebsocketEvent: (envelope: WsEnvelope) => Promise<void>;
+  handleWebsocketEvent: (envelope: WsEnvelope, teamId?: number) => Promise<void>;
 }
 
-const createMemberScopedStandupState = (memberId: number): Pick<StandupState, 'ownerMemberId' | 'standups'> => ({
+const createMemberScopedStandupState = (
+  memberId: number
+): Pick<StandupState, 'ownerMemberId' | 'currentTeamId' | 'standups'> => ({
   ownerMemberId: memberId,
+  currentTeamId: null,
   standups: [],
 });
 
@@ -40,6 +44,7 @@ export const useStandupStore = create<StandupState>()(
   persist(
     (set, get) => ({
       ownerMemberId: null,
+      currentTeamId: null,
       standups: [],
       syncMemberContext: (memberId) => {
         if (get().ownerMemberId === memberId) return;
@@ -66,9 +71,10 @@ export const useStandupStore = create<StandupState>()(
       getStandupsByEmployee: (employeeId) => {
         return get().standups.filter((s) => s.employeeId === employeeId);
       },
-      loadTeamStandups: async (dateStr) => {
+      loadTeamStandups: async (dateStr, teamId) => {
         try {
-          const res = await api.getTeamStandups(dateStr);
+          const resolvedTeamId = teamId ?? get().currentTeamId ?? undefined;
+          const res = await api.getTeamStandups(dateStr, resolvedTeamId);
           const mapped: Standup[] = res.standups.map((s) => ({
             id: String(s.standupId),
             employeeId: s.memberId,
@@ -80,7 +86,10 @@ export const useStandupStore = create<StandupState>()(
             timestampDisplay: formatDateTimeKo(toIsoString(s.createdAt)),
             epochMs: toEpochMs(toIsoString(s.createdAt)),
           }));
-          set({ standups: mapped });
+          set({
+            standups: mapped,
+            currentTeamId: resolvedTeamId ?? null,
+          });
         } catch (err) {
           console.error('팀 스탠드업 로드 실패:', err);
         }
@@ -113,12 +122,12 @@ export const useStandupStore = create<StandupState>()(
         }
       },
       clearAll: () => {
-        set({ standups: [] });
+        set({ standups: [], currentTeamId: null });
       },
-      handleWebsocketEvent: async (envelope) => {
+      handleWebsocketEvent: async (envelope, teamId) => {
         if (envelope.event === 'GOAL_UPDATED' || envelope.event === 'RESULT_UPDATED') {
           const todayStr = new Date().toISOString().split('T')[0];
-          await get().loadTeamStandups(todayStr);
+          await get().loadTeamStandups(todayStr, teamId);
         }
       },
     }),

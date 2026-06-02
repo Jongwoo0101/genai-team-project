@@ -47,6 +47,7 @@ export interface Invitation {
 
 interface VideoCallState {
   ownerMemberId: number | null;
+  currentTeamId: number | null;
   rooms: VideoCallRoom[];
   activeRoom: VideoCallRoom | null;
   joinRequests: JoinRequest[];
@@ -68,17 +69,18 @@ interface VideoCallState {
   inviteUser: (roomId: number, inviteeId: number) => Promise<void>;
   acceptInvitation: (roomId: number, inviteId: number) => Promise<void>;
   declineInvitation: (roomId: number, inviteId: number) => Promise<void>;
-  handleWebsocketEvent: (envelope: WsEnvelope) => Promise<void>;
+  handleWebsocketEvent: (envelope: WsEnvelope, teamId?: number) => Promise<void>;
   syncMemberContext: (memberId: number) => void;
 }
 
 const createMemberScopedVideoCallState = (
-  prevState: Pick<VideoCallState, 'ownerMemberId' | 'rooms' | 'activeRoom' | 'joinRequests' | 'invitations'>,
+  prevState: Pick<VideoCallState, 'ownerMemberId' | 'currentTeamId' | 'rooms' | 'activeRoom' | 'joinRequests' | 'invitations'>,
   memberId: number
 ) => {
   if (prevState.ownerMemberId === memberId) return prevState;
   return {
     ownerMemberId: memberId,
+    currentTeamId: null,
     rooms: [],
     activeRoom: null,
     joinRequests: [],
@@ -93,6 +95,7 @@ export function clearVideoCallStorage() {
   }
   useVideoCallStore.setState({
     ownerMemberId: null,
+    currentTeamId: null,
     rooms: [],
     activeRoom: null,
     joinRequests: [],
@@ -104,6 +107,7 @@ export const useVideoCallStore = create<VideoCallState>()(
   persist(
     (set, get) => ({
       ownerMemberId: null,
+      currentTeamId: null,
       rooms: [],
       activeRoom: null,
       joinRequests: [],
@@ -111,7 +115,8 @@ export const useVideoCallStore = create<VideoCallState>()(
 
       loadRooms: async (teamId?: number) => {
         try {
-          const list = await api.getMeetings(teamId);
+          const resolvedTeamId = teamId ?? get().currentTeamId ?? undefined;
+          const list = await api.getMeetings(resolvedTeamId);
           const mapped: VideoCallRoom[] = list.map((r) => ({
             roomId: r.roomId,
             title: r.title,
@@ -123,7 +128,10 @@ export const useVideoCallStore = create<VideoCallState>()(
               : [],
             createdAt: new Date(r.createdAt).toLocaleTimeString('ko-KR'),
           }));
-          set({ rooms: mapped });
+          set({
+            rooms: mapped,
+            currentTeamId: resolvedTeamId ?? null,
+          });
         } catch (err) {
           console.error('회의실 목록 로드 실패:', err);
         }
@@ -206,7 +214,7 @@ export const useVideoCallStore = create<VideoCallState>()(
         try {
           await api.leaveMeeting(roomId);
           set({ activeRoom: null });
-          await get().loadRooms();
+          await get().loadRooms(get().currentTeamId ?? undefined);
         } catch (err) {
           console.error('회의실 나가기 실패:', err);
         }
@@ -216,7 +224,7 @@ export const useVideoCallStore = create<VideoCallState>()(
         try {
           await api.endMeeting(roomId);
           set({ activeRoom: null });
-          await get().loadRooms();
+          await get().loadRooms(get().currentTeamId ?? undefined);
         } catch (err) {
           console.error('회의실 종료 실패:', err);
         }
@@ -360,12 +368,13 @@ export const useVideoCallStore = create<VideoCallState>()(
         }
       },
 
-      handleWebsocketEvent: async (envelope) => {
+      handleWebsocketEvent: async (envelope, teamId) => {
         const { event, data } = envelope;
+        const resolvedTeamId = teamId ?? get().currentTeamId ?? undefined;
 
         switch (event) {
           case 'ROOM_CREATED': {
-            await get().loadRooms();
+            await get().loadRooms(resolvedTeamId);
             break;
           }
           case 'ROOM_ENDED': {
@@ -381,7 +390,7 @@ export const useVideoCallStore = create<VideoCallState>()(
           case 'MEMBER_LEFT': {
             const roomId = toNumber(data.roomId);
             if (!roomId) break;
-            await get().loadRooms();
+            await get().loadRooms(resolvedTeamId);
             if (get().activeRoom?.roomId === roomId) {
               await get().loadActiveRoomDetail(roomId);
             }
@@ -436,8 +445,7 @@ export const useVideoCallStore = create<VideoCallState>()(
                   : r
               ),
             }));
-            await get().loadRooms();
-            // ✅ 수정: joinRoom 호출 전 loadActiveRoomDetail로 participants 먼저 세팅
+            await get().loadRooms(resolvedTeamId);
             await get().joinRoom(roomId);
             break;
           }

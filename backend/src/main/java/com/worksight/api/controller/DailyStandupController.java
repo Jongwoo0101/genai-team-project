@@ -62,8 +62,9 @@ public class DailyStandupController {
     public ResponseEntity<TeamStandupResponse> getTeamStandup(
             @AuthenticationPrincipal Member member,
             @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) Long teamId
     ) {
-        return ResponseEntity.ok(dailyStandupService.getTeamStandup(member, date));
+        return ResponseEntity.ok(dailyStandupService.getTeamStandup(member, date, teamId));
     }
 }

@@ -153,8 +153,8 @@ export default function EmployeeView() {
         webSocketService.subscribe(teamTopic, (msg) => {
           const envelope = parseWsEnvelope(msg);
           if (!envelope) return;
-          handleVideoCallWS(envelope);
-          useStandupStore.getState().handleWebsocketEvent(envelope);
+          handleVideoCallWS(envelope, Number(team.id));
+          useStandupStore.getState().handleWebsocketEvent(envelope, Number(team.id));
         });
 
         // 2. 개인 토픽 구독
@@ -163,7 +163,7 @@ export default function EmployeeView() {
           const envelope = parseWsEnvelope(msg);
           if (!envelope) return;
           if (envelope.event === 'INVITED' || envelope.event === 'JOIN_REQUESTED' || envelope.event === 'REQUEST_ACCEPTED' || envelope.event === 'REQUEST_REJECTED') {
-            handleVideoCallWS(envelope);
+            handleVideoCallWS(envelope, Number(team.id));
           }
           if (isNotificationResponse(envelope.data)) {
             addDirectPingFromNotification(envelope.data);
